@@ -1,0 +1,11 @@
+a.uniphish-warn {
+  outline: 2px dashed #f59e0b !important;
+  outline-offset: 2px !important;
+  border-radius: 2px !important;
+}
+a.uniphish-block {
+  outline: 2px solid #ef4444 !important;
+  outline-offset: 2px !important;
+  background: rgba(239, 68, 68, 0.10) !important;
+  border-radius: 2px !important;
+}

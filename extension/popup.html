@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header>
+    <h1>UniPhish</h1>
+    <span id="status" class="status status--off" title="API status">API</span>
+  </header>
+  <p class="tag">Unicode-native multilingual phishing detection</p>
+
+  <div class="row">
+    <input id="url" type="text" placeholder="Paste a URL to scan…" spellcheck="false" />
+    <button id="scan">Scan</button>
+  </div>
+
+  <div id="result" class="result hidden"></div>
+
+  <div class="examples">
+    <div class="examples__label">Try:</div>
+    <button class="ex" data-url="https://paypa1.xyz/login">paypa1.xyz</button>
+    <button class="ex" data-url="https://аpple.com/verify">аpple (Cyrillic)</button>
+    <button class="ex" data-url="https://www.sbi.co.in/">sbi.co.in</button>
+  </div>
+
+  <footer>
+    <button id="rescan" class="link">Re-scan links on this page</button>
+    <span id="pagestats"></span>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>

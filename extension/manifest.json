@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "UniPhish — Multilingual Phishing Detector",
+  "version": "0.1.0",
+  "description": "Flags phishing URLs in any language (Arabic, CJK, Devanagari, Hangul, ...) using a Unicode-native byte-level CNN.",
+  "permissions": ["activeTab", "scripting", "storage"],
+  "host_permissions": ["http://localhost:8000/*", "http://127.0.0.1:8000/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "UniPhish"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

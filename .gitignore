@@ -31,3 +31,7 @@ results/*.json
 
 # OS
 .DS_Store
+
+# CI workflow lives at .github/workflows/ci.yml but pushing it needs a PAT with
+# the `workflow` scope. Ignored for now; add it via the GitHub UI or a scoped token.
+.github/

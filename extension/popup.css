@@ -1,0 +1,48 @@
+* { box-sizing: border-box; }
+body {
+  width: 320px;
+  margin: 0;
+  padding: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: #0f172a;
+  background: #ffffff;
+}
+header { display: flex; align-items: center; justify-content: space-between; }
+h1 { font-size: 18px; margin: 0; letter-spacing: -0.02em; }
+.tag { margin: 2px 0 12px; font-size: 11px; color: #64748b; }
+.status {
+  font-size: 10px; font-weight: 700; padding: 3px 7px; border-radius: 999px;
+  color: #fff;
+}
+.status--on { background: #16a34a; }
+.status--off { background: #94a3b8; }
+.row { display: flex; gap: 6px; }
+input {
+  flex: 1; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 8px;
+  font-size: 12px; outline: none;
+}
+input:focus { border-color: #6366f1; }
+button {
+  border: 0; border-radius: 8px; padding: 8px 12px; font-size: 12px;
+  font-weight: 600; cursor: pointer; background: #6366f1; color: #fff;
+}
+button:hover { background: #4f46e5; }
+.result { margin-top: 12px; padding: 12px; border-radius: 10px; font-size: 13px; }
+.result.hidden { display: none; }
+.result .score { font-size: 22px; font-weight: 800; }
+.result .label { font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.result .u { font-size: 11px; color: #475569; word-break: break-all; margin-top: 6px; }
+.r-safe  { background: #f0fdf4; border: 1px solid #86efac; }
+.r-safe .label, .r-safe .score { color: #16a34a; }
+.r-warn  { background: #fffbeb; border: 1px solid #fcd34d; }
+.r-warn .label, .r-warn .score { color: #d97706; }
+.r-block { background: #fef2f2; border: 1px solid #fca5a5; }
+.r-block .label, .r-block .score { color: #dc2626; }
+.examples { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.examples__label { font-size: 11px; color: #64748b; }
+.ex { background: #f1f5f9; color: #334155; font-weight: 500; padding: 5px 8px; }
+.ex:hover { background: #e2e8f0; }
+footer { margin-top: 14px; display: flex; align-items: center; justify-content: space-between; }
+.link { background: none; color: #6366f1; padding: 0; font-size: 11px; }
+.link:hover { text-decoration: underline; background: none; }
+#pagestats { font-size: 11px; color: #64748b; }
