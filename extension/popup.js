@@ -1,9 +1,17 @@
 const $ = (id) => document.getElementById(id);
 
+// On-device model (no server; nothing leaves the browser).
+const MODEL = new UniPhish.UniPhishModel();
+let onDevice = false;
+MODEL.load(chrome.runtime.getURL("model/"))
+  .then(() => { onDevice = true; setStatus(true); })
+  .catch(() => setStatus(false));
+
 function setStatus(ok) {
   const el = $("status");
-  el.textContent = ok ? "API ● live" : "API ● off";
+  el.textContent = ok ? "on-device ●" : "loading…";
   el.className = "status " + (ok ? "status--on" : "status--off");
+  el.title = ok ? "Runs entirely in your browser — no URL leaves your device" : "";
 }
 
 function esc(s) {
@@ -48,16 +56,22 @@ function scan(url) {
   if (!url) return;
   $("result").className = "result r-warn";
   $("result").innerHTML = "<div class='head'><span class='label'>Scanning…</span></div>";
-  chrome.runtime.sendMessage({ type: "explainOne", url }, (resp) => {
-    if (!resp || !resp.ok) {
-      $("result").className = "result r-warn";
-      $("result").innerHTML =
-        `<div class="label">API not reachable</div>` +
-        `<div class="u">Start it: <code>uvicorn api.server:app --port 8000</code></div>`;
+
+  // Primary path: score entirely on-device.
+  setTimeout(() => {
+    if (!onDevice) {
+      $("result").innerHTML = `<div class="label">Model still loading…</div>`;
       return;
     }
-    render(resp.result);
-  });
+    const prob = MODEL.predict(url);
+    const a = UniPhishAnalyze.reasons(url);
+    render({ url, prob, tier: MODEL.tier(prob), reasons: a.reasons, brand: a.brand });
+
+    // Optional: if the API is running, enrich with a saliency heatmap.
+    chrome.runtime.sendMessage({ type: "explainOne", url }, (resp) => {
+      if (resp && resp.ok && resp.result.saliency) render(resp.result);
+    });
+  }, 0);
 }
 
 $("scan").addEventListener("click", () => scan($("url").value.trim()));
@@ -78,4 +92,3 @@ chrome.runtime.onMessage.addListener((msg) => {
   }
 });
 
-chrome.runtime.sendMessage({ type: "health" }, (resp) => setStatus(resp && resp.ok));

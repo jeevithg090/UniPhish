@@ -108,6 +108,14 @@ Docs: [MODEL_CARD.md](MODEL_CARD.md) · [data/DATASHEET.md](data/DATASHEET.md) �
 - **Explainable verdicts:** every score comes with the **impersonated brand** (Unicode
   skeleton + typo distance), **plain-language reasons**, and a **character-level saliency**
   heatmap — via `POST /explain` and rendered in the extension popup. Not a black box.
+- **On-device inference (privacy):** the extension popup runs the model *in the browser* via
+  a hand-written, zero-dependency JS forward pass (`extension/model.js`) — verified to match
+  the Python model to ~5 decimals. **No URL leaves your device.** No Safe-Browsing-style
+  server round-trip.
+- **Red-teamed:** `scripts/redteam.py` attacks the model (homoglyph/zero-width/TLD-swap/…)
+  and reports evasion rates + rules-layer recovery (`results/robustness.json`).
+- **Telegram bot** (`bot/`): forward a link, get a verdict in your language — the paper's
+  messaging use case, realized.
 - **Hybrid detection, not one model:** `POST /enrich` fuses the ML score with IDN/punycode
   decoding, SSRF-guarded redirect resolution, and RDAP domain-age into a transparent 0–100
   risk — so a homoglyph the model misses is still caught by the rules (defense in depth).
