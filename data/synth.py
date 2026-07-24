@@ -68,6 +68,19 @@ _SUFFIX_TLDS = [".xyz", ".top", ".online", ".click", ".info", ".live", ".site"]
 _SUB_STUFF = ["login", "secure", "verify", "account", "update", "signin", "auth"]
 _ASCII_SUB = str.maketrans({"a": "4", "o": "0", "l": "1", "e": "3", "i": "1", "s": "5"})
 
+# Large generic word bank so synthesized *benign* domains are highly unique and do
+# not collapse under dedup + per-domain capping (which previously skewed the set
+# heavily toward phishing). ~60 words -> thousands of unique second-level domains.
+_BENIGN_WORDS = [
+    "media", "cloud", "data", "group", "tech", "systems", "digital", "global",
+    "network", "solutions", "services", "market", "shop", "store", "news", "daily",
+    "central", "prime", "smart", "next", "vision", "logic", "core", "spark", "nova",
+    "atlas", "delta", "orbit", "pixel", "vertex", "quantum", "fusion", "matrix",
+    "beacon", "harbor", "summit", "ridge", "valley", "river", "forest", "garden",
+    "studio", "labs", "works", "hub", "point", "zone", "space", "world", "life",
+    "health", "learn", "edu", "connect", "flow", "wave", "bright", "clear", "true",
+]
+
 
 @dataclass
 class SynthConfig:
@@ -82,14 +95,25 @@ def _rand_token(rng: random.Random, n: int = 6) -> str:
 
 def _benign_url(rng: random.Random, fam: str) -> str:
     b = FAMILIES[fam]
-    brand = rng.choice(b["brands"])
     tld = rng.choice(b["tlds"])
-    word = rng.choice(b["words"])
-    path_word = quote(word) if rng.random() < 0.5 else word
-    scheme = "https://"
-    host = f"www.{brand}{tld}" if rng.random() < 0.6 else f"{brand}{tld}"
+    # 70% synthesized unique domain (two words from the bank), 30% a known brand.
     if rng.random() < 0.7:
-        return f"{scheme}{host}/{path_word}"
+        sld = rng.choice(_BENIGN_WORDS)
+        if rng.random() < 0.6:
+            sld += rng.choice(_BENIGN_WORDS)
+        if rng.random() < 0.2:
+            sld += str(rng.randint(1, 999))
+        host = sld + tld
+    else:
+        host = rng.choice(b["brands"]) + tld
+    if rng.random() < 0.5:
+        host = "www." + host
+    scheme = "https://" if rng.random() < 0.85 else "http://"
+    # path: sometimes native-script content, sometimes an ascii word, sometimes none
+    if rng.random() < 0.55:
+        seg = rng.choice(b["words"])
+        seg = quote(seg) if rng.random() < 0.5 else rng.choice(_BENIGN_WORDS)
+        return f"{scheme}{host}/{seg}"
     return f"{scheme}{host}/"
 
 

@@ -9,6 +9,7 @@ that the figure scripts consume (replacing their hardcoded numbers).
 from __future__ import annotations
 
 import argparse
+import os
 
 import numpy as np
 import pandas as pd
@@ -75,11 +76,24 @@ def evaluate(model_path: str, data_dir: str, out: str = "results/results.json"):
     except FileNotFoundError:
         pass
 
+    # Cross-dataset generalization: pure-real holdout NOT seen in training.
+    # This is the honest number — expect it well below the in-distribution test.
+    real_path = f"{data_dir}/real_test.csv"
+    if os.path.exists(real_path):
+        rt = load_split(real_path)
+        rp = model.predict(rt.X, verbose=0).ravel()
+        results["cross_dataset_real"] = _metrics(rt.y.astype(int), rp)
+        results["cross_dataset_real"]["n"] = int(len(rt))
+
     save_json(results, out)
-    print(f"macro_f1={results['macro_f1']:.4f}  macro_acc={results['macro_accuracy']:.4f}")
-    print(f"overall FNR={results['overall']['fnr']:.4f}  FPR={results['overall']['fpr']:.4f}")
+    print(f"[in-distribution]  macro_f1={results['macro_f1']:.4f}  macro_acc={results['macro_accuracy']:.4f}")
+    print(f"[in-distribution]  overall FNR={results['overall']['fnr']:.4f}  FPR={results['overall']['fpr']:.4f}")
     if "adversarial_sweep" in results:
         print("adversarial:", {k: round(v, 3) for k, v in results["adversarial_sweep"].items()})
+    if "cross_dataset_real" in results:
+        c = results["cross_dataset_real"]
+        print(f"[CROSS-DATASET real, n={c['n']}]  acc={c['accuracy']:.4f}  f1={c['f1']:.4f}  "
+              f"FNR={c['fnr']:.4f}  FPR={c['fpr']:.4f}   <- the honest generalization number")
     print(f"wrote {out}")
     return results
 

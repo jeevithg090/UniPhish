@@ -111,17 +111,25 @@ def main():
     per_family = 200 if args.small else args.per_family
     os.makedirs(args.out, exist_ok=True)
 
+    cols = ["url", "label", "script_family", "technique", "source"]
+
     print(f"Synthesizing {per_family} URLs/family x 6 families ...")
     rows = synthesize(SynthConfig(per_family=per_family, seed=args.seed))
-    df = pd.DataFrame(rows)
+    df = pd.DataFrame(rows)[cols]
 
+    # Real public feeds: blend most into the training pool; hold out 30% as a
+    # pure-real CROSS-DATASET test (the honest generalization metric).
+    real_holdout = None
     if args.include_real:
         try:
             from data.sources import fetch_real
             real = fetch_real(seed=args.seed)
             if real is not None and len(real):
-                print(f"Blending {len(real)} real public-feed URLs ...")
-                df = pd.concat([df, real], ignore_index=True)
+                real = _dedup(real[cols])[cols].sample(frac=1.0, random_state=args.seed).reset_index(drop=True)
+                k = max(1, int(0.30 * len(real)))
+                real_holdout = real.iloc[:k].copy()
+                df = pd.concat([df, real.iloc[k:]], ignore_index=True)
+                print(f"Blended {len(real) - k} real URLs; held out {k} for cross-dataset test")
         except Exception as e:  # network/credentials optional
             print(f"[warn] real feeds skipped: {e}")
 
@@ -131,7 +139,6 @@ def main():
     df = _cap_domains(df, args.per_domain_cap, args.seed)
     print(f"After per-domain cap ({args.per_domain_cap}): {len(df)}")
 
-    cols = ["url", "label", "script_family", "technique", "source"]
     train, val, test = _stratified_split(df[cols], (0.8, 0.1, 0.1), args.seed)
     adv = _build_adversarial(test, [0.05, 0.10, 0.15, 0.20], args.seed)
 
@@ -139,11 +146,16 @@ def main():
     val.to_csv(f"{args.out}/val.csv", index=False)
     test.to_csv(f"{args.out}/test.csv", index=False)
     adv.to_csv(f"{args.out}/adversarial_test.csv", index=False)
+    if real_holdout is not None:
+        real_holdout[cols].to_csv(f"{args.out}/real_test.csv", index=False)
+        print(f"Wrote {len(real_holdout)} real cross-dataset URLs to real_test.csv")
 
     stats = {
         "total": int(len(df)),
         "splits": {"train": len(train), "val": len(val), "test": len(test),
-                    "adversarial": len(adv)},
+                    "adversarial": len(adv),
+                    "real_test": int(len(real_holdout)) if real_holdout is not None else 0},
+        "by_source": df.groupby("source").size().to_dict(),
         "by_family": df.groupby("script_family").size().to_dict(),
         "phish_ratio": float(df.label.mean()),
         "by_technique": df[df.label == 1].groupby("technique").size().to_dict(),
