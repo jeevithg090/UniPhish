@@ -1,0 +1,57 @@
+# UniPhish default configuration.
+# Values mirror Table III (Hyperparameter Configuration) of the paper.
+# Override any field on the CLI, e.g.:  python -m uniphish.train --max_len 200
+
+seed: 42
+
+model:
+  max_len: 600            # UTF-8 byte sequence length (paper: 600)
+  vocab_size: 256         # one embedding per possible byte value -> no [UNK]
+  embed_dim: 64
+  kernels: [2, 3, 4, 5, 6]
+  filters: 128            # per kernel branch
+  spatial_dropout: 0.20
+  fc1_units: 256
+  fc2_units: 128
+  fc_dropout: 0.30
+
+train:
+  optimizer: adam
+  beta_1: 0.9
+  beta_2: 0.999
+  learning_rate: 0.0003   # 3e-4
+  lr_schedule: cosine     # cosine annealing to 1e-6
+  lr_min: 0.000001
+  batch_size: 512
+  max_epochs: 100
+  early_stop_patience: 5
+  early_stop_metric: val_macro_f1
+
+adversarial:
+  enabled: true
+  lambda: 0.40            # weight of adversarial CE term (Eq. 15)
+  sub_rate: 0.15          # homoglyph substitution rate alpha_sub
+
+thresholds:
+  warn: 0.5               # advisory banner
+  block: 0.9              # blocking interstitial
+
+data:
+  script_families:
+    - latin_nonenglish
+    - arabic
+    - cjk
+    - devanagari
+    - hangul
+    - other
+  per_domain_cap: 50      # max URLs per (domain, class)
+  split: [0.8, 0.1, 0.1]  # train / val / test, stratified
+  adv_test_rates: [0.05, 0.10, 0.15, 0.20]
+
+compress:
+  prune_rounds: 5
+  prune_per_round: 0.20   # remove 20% of filters per round
+  finetune_epochs: 3
+  distill_temperature: 4
+  distill_alpha: 0.3
+  quantize: int8

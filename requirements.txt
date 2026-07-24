@@ -1,0 +1,18 @@
+# Core (pinned ranges for reproducibility; see README for exact frozen versions)
+numpy>=1.24,<2.0
+tensorflow>=2.16,<2.20      # arm64 macOS supported natively since 2.16
+pandas>=2.0
+scikit-learn>=1.3
+matplotlib>=3.7
+pyyaml>=6.0
+tqdm>=4.65
+requests>=2.31
+idna>=3.4                   # IDN / punycode handling in the data synthesizer
+
+# Live demo (Phase 7)
+fastapi>=0.110
+uvicorn[standard]>=0.29
+
+# Optional / dev
+optuna>=3.4                # hyperparameter search (paper: 80 Optuna trials)
+pytest>=7.4

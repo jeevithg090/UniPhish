@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# Data & artifacts (large / regenerable)
+data/raw/
+data/interim/
+data/processed/*.csv
+data/processed/*.parquet
+data/processed/*.json
+!data/processed/.gitkeep
+artifacts/
+*.h5
+*.keras
+*.tflite
+*.pkl
+*.joblib
+
+# Generated results (regenerable from a run)
+results/*.json
+!results/.gitkeep
+
+# OS
+.DS_Store

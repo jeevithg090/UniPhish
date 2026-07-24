@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "uniphish"
+version = "0.1.0"
+description = "Unicode-native character-level 1D-CNN for real-time multilingual phishing URL detection"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [
+    { name = "Jeevith Gangadhar" },
+    { name = "Raunak Khandelwal" },
+    { name = "K. Shashank Reddy" },
+    { name = "Sudhina Kumar G. K." },
+    { name = "Hareesha K. S." },
+]
+keywords = ["phishing", "cybersecurity", "cnn", "unicode", "utf-8", "multilingual"]
+
+[tool.setuptools.packages.find]
+include = ["uniphish*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
