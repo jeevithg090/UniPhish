@@ -38,6 +38,24 @@ class UniPhishScorer:
                 self.model = build_model()
                 self.model.load_weights(model_path)
 
+        # Optional calibration temperature (from uniphish.calibrate) applied to probs.
+        import json
+        import os
+        self.T = 1.0
+        cal = os.path.join(os.path.dirname(model_path) or ".", "calibration.json")
+        if os.path.exists(cal):
+            try:
+                self.T = float(json.load(open(cal))["temperature"])
+            except Exception:
+                pass
+
+    def _calibrate(self, p: float) -> float:
+        if self.T == 1.0:
+            return p
+        import math
+        p = min(max(p, 1e-6), 1 - 1e-6)
+        return 1 / (1 + math.exp(-math.log(p / (1 - p)) / self.T))
+
     def _predict(self, X: np.ndarray) -> np.ndarray:
         if self.is_tflite:
             probs = []
@@ -59,8 +77,8 @@ class UniPhishScorer:
         return self.scan_batch([url])[0]
 
     def scan_batch(self, urls: List[str]) -> List[Dict]:
-        probs = self._predict(encode_batch(list(urls)))
-        return [{"url": u, "prob": round(float(p), 4), "tier": self.tier(float(p))}
+        probs = [self._calibrate(float(p)) for p in self._predict(encode_batch(list(urls)))]
+        return [{"url": u, "prob": round(p, 4), "tier": self.tier(p)}
                 for u, p in zip(urls, probs)]
 
 

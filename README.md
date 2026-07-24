@@ -37,6 +37,12 @@ UniPhish is a strong, deployable detector; its byte-level design is best motivat
 *homoglyph/IDN robustness*, not a general accuracy advantage. Full analysis:
 [`docs/paper_vs_reality.md`](docs/paper_vs_reality.md).
 
+Figures (regenerate with `python -m scripts.make_report`):
+
+![Per-family F1 by model](reports/comparison.png)
+![Adversarial robustness](reports/adversarial.png)
+![Red-team evasion vs rules recovery](reports/redteam.png)
+
 Live check (weights loaded into a fresh model):
 ```
 safe   p=0.0000  https://www.sbi.co.in/
@@ -108,6 +114,13 @@ Docs: [MODEL_CARD.md](MODEL_CARD.md) · [data/DATASHEET.md](data/DATASHEET.md) �
 - **Explainable verdicts:** every score comes with the **impersonated brand** (Unicode
   skeleton + typo distance), **plain-language reasons**, and a **character-level saliency**
   heatmap — via `POST /explain` and rendered in the extension popup. Not a black box.
+- **Attack-technique classification:** every verdict is labeled with the *construction
+  technique* — homoglyph / typosquat / combosquat / subdomain-stuffing / IDN / path-deception
+  / IP-host / shortener — and the **target brand**, so the output is triage-ready threat intel.
+- **Calibrated confidence:** temperature-scaling + Expected Calibration Error measurement
+  (`uniphish/calibrate.py`) — probabilities are validated, not blindly trusted.
+- **Auto-generated figures:** `python -m scripts.make_report` builds the results charts from
+  the recorded JSONs (see `reports/`).
 - **On-device inference (privacy):** the extension popup runs the model *in the browser* via
   a hand-written, zero-dependency JS forward pass (`extension/model.js`) — verified to match
   the Python model to ~5 decimals. **No URL leaves your device.** No Safe-Browsing-style

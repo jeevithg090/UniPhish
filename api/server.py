@@ -22,6 +22,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from uniphish.brands import _host
+from uniphish.classify_attack import classify
 from uniphish.enrich import decode_idn, domain_age_days, fused_risk, resolve_redirects
 from uniphish.explain import saliency
 from uniphish.infer import UniPhishScorer
@@ -66,6 +67,7 @@ def scan(req: ScanRequest):
     """
     result = scorer().scan(req.url)
     result.update(analyze(req.url))     # adds {"reasons": [...], "brand": {...}|None}
+    result["attack"] = classify(req.url)  # technique taxonomy + target brand
     return result
 
 
