@@ -1,0 +1,14 @@
+{
+  "cpu": "local",
+  "n": 500,
+  "models": {
+    "keras_full": {
+      "size_mb": 1.578,
+      "latency_ms": 8.5545
+    },
+    "tflite": {
+      "size_mb": 0.402,
+      "latency_ms": 0.7584
+    }
+  }
+}

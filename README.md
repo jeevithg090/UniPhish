@@ -1,100 +1,121 @@
 # UniPhish
 
-**Unicode-native character-level 1D-CNN for real-time multilingual phishing URL detection.**
+**A Unicode-native, byte-level 1D-CNN for multilingual phishing-URL detection — with an honest reproduction study of the paper it implements.**
 
-A reproducible reference implementation of the IEEE paper *"UniPhish: A Unicode-Native
-Character-Level 1D-Convolutional Neural Network for Real-Time Multilingual Phishing URL
-Detection in Messaging Applications."* The core idea: encode every URL as a **UTF-8 byte
-sequence** so a **256-token vocabulary** gives complete Unicode coverage — no `[UNK]` token,
-no per-script preprocessing — and a parallel multi-kernel 1D-CNN detects phishing patterns
-across Latin, Arabic, CJK, Devanagari, Hangul, and mixed scripts from a single model.
+UniPhish encodes every URL as its **UTF-8 byte sequence** (256-token vocabulary, no
+`[UNK]`), so a single 378K-parameter model handles Latin, Arabic, CJK, Devanagari,
+Hangul and mixed-script URLs. It's adversarially trained against Unicode homoglyph
+evasion, ships as a **0.40 MB int8 TFLite** model doing **sub-millisecond CPU
+inference**, and comes with a live browser-extension demo.
 
 ```
-"paypal.com"  ->  [112, 97, 121, 112, 97, 108, 46, 99, 111, 109, 0, ...]   (ASCII, 1 byte/char)
+"paypal.com"  ->  [112, 97, 121, 112, 97, 108, 46, 99, 111, 109, 0, ...]   (1 byte/char)
 "банк.рф"     ->  [208,177, 208,176, 208,189, 208,186, ...]                (Cyrillic, 2 bytes/char)
+```
+
+> This repo implements the IEEE paper *UniPhish* **and audits it**. Two claims did not
+> survive contact with real data — the parameter count and the "ASCII detectors are
+> blind to non-Latin scripts" claim. Reporting that honestly is the point:
+> see [`docs/paper_vs_reality.md`](docs/paper_vs_reality.md).
+
+---
+
+## Results (real runs, regenerable)
+
+| Metric | Value |
+|---|---|
+| In-distribution macro-F1 (6 script families) | **0.9991** |
+| **Cross-dataset real holdout (n=7,199)** — trained on our blend, tested on held-out real URLs | **0.9954** F1, FNR 0.0090 |
+| Accuracy @ 20% Unicode homoglyph substitution | **0.995** (robust) |
+| Model / latency (int8 TFLite, laptop CPU, 1 thread) | **0.40 MB / 0.76 ms per URL** |
+| Parameters | 377,985 |
+
+**Honest headline finding:** on realistic, structure-rich data an ASCII-vocabulary CNN
+**ties** UniPhish (both ≈0.999 macro-F1) — the paper's blanket "multilingual gap" does
+*not* reproduce, because phishing is largely detectable from ASCII-visible structure.
+UniPhish is a strong, deployable detector; its byte-level design is best motivated by
+*homoglyph/IDN robustness*, not a general accuracy advantage. Full analysis:
+[`docs/paper_vs_reality.md`](docs/paper_vs_reality.md).
+
+Live check (weights loaded into a fresh model):
+```
+safe   p=0.0000  https://www.sbi.co.in/
+BLOCK  p=1.0000  https://paypa1.xyz/login
+BLOCK  p=1.0000  https://аpple.com/verify            ← Cyrillic homoglyph
+BLOCK  p=1.0000  https://नमस्ते-bank-verify.top/login   ← Devanagari
+safe   p=0.0000  https://www.google.com/
 ```
 
 ---
 
-## Status
-
-| Phase | Component | State |
-|---|---|---|
-| 0 | Package scaffold, venv, tests, config | ✅ done (`pytest` green) |
-| 1 | UTF-8 encoder + paper-spec Keras model | ✅ done (param count verified) |
-| 2 | Reproducible data builder (synthetic + optional real feeds) | ✅ done |
-| 3 | Training + adversarial min-max loss (Eq. 15) | ✅ done (runs end-to-end) |
-| 5 | Evaluation (per-family metrics, FNR/FPR, adversarial sweep) | ✅ done |
-| — | Inference + risk tiers (warn/block) | ✅ done |
-| 4 | Baselines (ASCII-CNN, byte-BiLSTM, RF, Unicode-block CNN) | ⬜ next |
-| 6 | Compression → distillation → int8 → TFLite | ⬜ next |
-| 7 | Live demo: FastAPI `/scan` + browser-extension front-end | ⬜ next |
-| — | Wire figure scripts to `results/results.json` | ⬜ next |
-
 ## Quickstart
 
 ```bash
-make setup                       # venv + deps (TensorFlow, etc.)
-make test                        # 12 unit tests
-make data                        # build a small demo dataset
-make train                       # adversarial training (use --epochs for a quick run)
-make eval                        # writes results/results.json
-make infer URL="https://paypa1.xyz/login"
+make setup                                  # venv + deps
+make test                                   # 16 unit tests
+python -m data.build_dataset --per-family 10000 --include-real   # build data (real + synthetic)
+python -m uniphish.train                    # adversarial training (GPU recommended)
+python -m uniphish.evaluate                 # in-dist + cross-dataset metrics
+python -m uniphish.compress --weights artifacts/uniphish_adv.keras --out artifacts/uniphish.tflite
+python -m scripts.benchmark                 # real size + latency
+python -m scripts.run_experiments           # UniPhish vs ASCII-CNN / BiLSTM / RandomForest
 ```
 
-For a real run, use the full-scale dataset and default epochs:
+GPU training is easiest on Kaggle/Colab (P100 ≈ 20 s/epoch). See
+[`notebooks`](notebooks) once added, or the commands above.
 
+### Live demo
 ```bash
-./.venv/bin/python -m data.build_dataset --per-family 40000
-./.venv/bin/python -m uniphish.train        # cosine LR, early stop on val_macro_f1
-./.venv/bin/python -m uniphish.evaluate
+UNIPHISH_MODEL=artifacts/uniphish_adv.keras uvicorn api.server:app --port 8000
+```
+Then load [`extension/`](extension) unpacked in Chrome (`chrome://extensions` →
+Developer mode → Load unpacked). Risky links on any page get outlined; the popup
+scans a pasted URL. See [`extension/README.md`](extension/README.md).
+
+---
+
+## What's inside
+
+```
+uniphish/
+  encoding.py     UTF-8 byte encoder (256 vocab, 600-byte window)
+  model.py        parallel multi-kernel 1D-CNN (377,985 params)
+  homoglyphs.py   Unicode confusables map + adversarial substitution
+  adversarial.py  min-max trainer (clean + λ·adversarial loss)
+  train.py        training (cosine LR, macro-F1 early stop, checkpoint/resume)
+  evaluate.py     per-family, FNR/FPR, adversarial sweep, cross-dataset
+  baselines.py    ASCII-CNN, byte-BiLSTM, RandomForest (lexical)
+  compress.py     -> quantized TFLite; optional distillation
+  infer.py        URL scorer + risk tiers (Keras or TFLite)
+data/             synthesizer + real feeds + dataset builder (+ DATASHEET.md)
+scripts/          run_experiments.py (comparison), benchmark.py (size/latency)
+api/              FastAPI scan service
+extension/        Manifest V3 browser-extension demo
+docs/             paper_vs_reality.md (the reproduction audit)
 ```
 
-## Project layout
+Docs: [MODEL_CARD.md](MODEL_CARD.md) · [data/DATASHEET.md](data/DATASHEET.md) ·
+[docs/paper_vs_reality.md](docs/paper_vs_reality.md) · [PLAN.md](PLAN.md)
 
-```
-uniphish/            core package
-  encoding.py        UTF-8 byte encoder (256 vocab, 600-byte window)
-  model.py           parallel multi-kernel 1D-CNN (Keras functional)
-  homoglyphs.py      Unicode confusables map + adversarial substitution
-  adversarial.py     min-max trainer (clean + λ·adversarial loss)
-  dataset.py         CSV -> byte tensors
-  train.py           training driver (standard or adversarial)
-  evaluate.py        per-family metrics, confusion, adversarial sweep
-  infer.py           URL scorer + risk tiers (Keras or TFLite)
-data/
-  synth.py           multilingual URL synthesizer (6 script families)
-  build_dataset.py   dedup, per-domain cap, stratified split, adv test set
-configs/default.yaml all hyperparameters (mirrors paper Table III)
-tests/               unit tests (encoder, homoglyphs, model)
-```
+---
 
-## Reproducibility & honesty ("paper vs. reality")
+## Why this project is worth a look
 
-This repo is meant to make the paper's claims **runnable and checkable**. Where reality
-differs from the current paper text, we surface it rather than hide it:
+- **End-to-end ML engineering:** data pipeline → adversarial training → evaluation →
+  compression → TFLite → live demo, reproducibly.
+- **Adversarial ML:** min-max training against Unicode homoglyph evasion; robust to 20%
+  character substitution.
+- **On-device deployment:** 0.40 MB int8 TFLite, sub-ms CPU inference, browser extension.
+- **Scientific integrity:** a reproduction study that *corrects* the source paper
+  (parameter count; the overstated multilingual-gap claim) instead of rubber-stamping it.
 
-1. **Parameter count.** The paper's Table III headlines **847,425** trainable parameters,
-   but the architecture *as described* yields **377,985** (run `python -m uniphish.model`
-   to see the summary). The component counts in the paper itself sum to ~378K. Recommend
-   correcting the paper, or clarifying a larger architecture if 847K was intended.
-2. **Dataset.** The real *MultiPhishDB* (Saudi NCA, CNCERT, CERT-In, KrCERT feeds) is
-   **gated and not public**, and did not ship with the paper. To keep the project fully
-   reproducible, `data/synth.py` **synthesizes** realistic URLs across the six script
-   families using the exact phishing construction strategies from Section II-A, clearly
-   labeled `source="synthetic"`. Optional real public feeds (PhishTank/OpenPhish/URLhaus/
-   Tranco) can be blended via `--include-real`. **Any accuracy/latency/robustness number you
-   report should come from a real run on real data, not from the paper's placeholder tables.**
-
-As real experiments are run, discrepancies are tracked so the paper can be updated to match.
+---
 
 ## Responsible use
+UniPhish is **defensive**. The synthesizer produces phishing-*style* strings to train a
+detector; it builds no live malicious infrastructure and targets no real people. The
+homoglyph engine exists to make the detector *robust to* evasion. See `MODEL_CARD.md`.
 
-UniPhish is a **defensive** security tool. The synthetic data generator produces
-phishing-*style* strings for training a detector; it is not a phishing kit and generates no
-live malicious infrastructure. Do not use the synthesizer or model to create or target real
-victims. The homoglyph engine exists to make the detector *robust to* evasion, per the paper.
-
-## Citation
-
-If you use this code, please cite the UniPhish paper (Gangadhar et al., 2025).
+## License
+MIT — see [LICENSE](LICENSE). If you use this, please cite the UniPhish paper
+(Gangadhar et al., 2025).

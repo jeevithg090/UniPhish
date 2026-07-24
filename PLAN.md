@@ -34,27 +34,32 @@ reproducible with one command and backed by CI.
 
 ## Paste-ready résumé bullets
 
-> Fill every `⟨…⟩` with a **real measured number** from your runs — never the paper's
-> placeholder figures. Use 3–5 bullets; pick the strongest.
+> Every number below is **real and regenerable** from this repo. The earlier draft bullets
+> claiming an ASCII-CNN "drops to ⟨Y⟩%" were removed — that contrast **did not reproduce**
+> (the ASCII-CNN ties UniPhish on realistic data), and we do not claim it.
 
-- **Built and open-sourced UniPhish**, a Unicode-native character-level 1D-CNN (TensorFlow/Keras,
-  377K params) for multilingual phishing-URL detection, achieving **⟨X⟩% macro-F1 across 6 script
-  families** (Latin, Arabic, CJK, Devanagari, Hangul, mixed) where a standard ASCII-CNN drops to
-  **⟨Y⟩%** — implementing an IEEE paper end-to-end from data pipeline to deployment.
-- **Designed a UTF-8 byte-level encoding** (256-token vocabulary) giving complete Unicode
-  coverage with no `[UNK]` token, and a parallel multi-kernel convolutional architecture; **cut
-  vocabulary/embedding size** vs. code-point models while preserving cross-script detection.
-- **Hardened the model against Unicode homoglyph evasion** with a min-max adversarial training
-  objective, holding **⟨X⟩% accuracy at 15% character substitution** vs. **⟨Y⟩% for the ASCII
-  baseline** — a **⟨Z⟩-point robustness gain**.
-- **Compressed the model to a <5 MB int8 TFLite artifact** via structured pruning + knowledge
-  distillation + post-training quantization, reaching **⟨N⟩ ms CPU inference/URL** — deployable
-  on mid-range Android.
-- **Shipped a live demo** (FastAPI scan API + Manifest V3 browser extension) and a fully
-  reproducible pipeline (one command, seeded, GitHub Actions CI) with a cross-dataset
-  generalization eval on **real** OpenPhish/URLhaus/Umbrella feeds.
-- **Audited the source paper against the implementation**, catching a **2.2× parameter-count
-  error** and maintaining a public `paper_vs_reality.md` reconciling every claim with a real run.
+- **Built and open-sourced UniPhish**, a Unicode-native byte-level 1D-CNN (TensorFlow/Keras,
+  377K params) for multilingual phishing-URL detection — **0.9954 F1 on a 7,199-URL held-out
+  real-feed test set** (OpenPhish/URLhaus/Umbrella) across 6 script families, implementing an
+  IEEE paper end-to-end from data pipeline to on-device deployment.
+- **Adversarially trained against Unicode homoglyph evasion** (min-max objective over the
+  Unicode confusables space): accuracy degrades only **0.999 → 0.995 at a 20% character-
+  substitution attack**.
+- **Deployed as a 0.40 MB int8 TFLite artifact with 0.76 ms CPU inference/URL** (laptop, single
+  thread) — a 4× size and 11× latency improvement over the full Keras model — plus a FastAPI
+  scan service and a Manifest V3 browser extension that flags risky links live.
+- **Conducted a reproduction audit of the source paper**, catching a **2.2× parameter-count
+  error** and showing its central "ASCII detectors are blind to non-Latin scripts" claim
+  **does not hold** on realistic data (an equal-architecture ASCII-CNN ties byte-level at
+  ~0.999 macro-F1) — documented in a public `paper_vs_reality.md`.
+- **Built a reproducible data pipeline** blending a 6-script multilingual URL synthesizer
+  (homoglyph/IDN/subdomain-stuffing attack constructions) with real threat feeds; SHA-256
+  dedup, per-domain capping, stratified splits, and a pure-real cross-dataset holdout.
+
+**The interview story (rehearse it):** *"My first run scored 99.98% and I didn't trust it —
+train/test came from the same generator. I added real feeds and a cross-dataset holdout, and
+then my own headline comparison failed to reproduce the paper's claim. I reported that instead
+of hiding it."* That story is worth more than any accuracy number.
 
 ---
 
