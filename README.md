@@ -85,6 +85,9 @@ uniphish/
   train.py        training (cosine LR, macro-F1 early stop, checkpoint/resume)
   evaluate.py     per-family, FNR/FPR, adversarial sweep, cross-dataset
   baselines.py    ASCII-CNN, byte-BiLSTM, RandomForest (lexical)
+  brands.py       brand-impersonation ID (Unicode TR39 skeleton + typo distance)
+  reasons.py      plain-language reasons for a verdict
+  explain.py      character-level saliency (occlusion)
   compress.py     -> quantized TFLite; optional distillation
   infer.py        URL scorer + risk tiers (Keras or TFLite)
 data/             synthesizer + real feeds + dataset builder (+ DATASHEET.md)
@@ -101,6 +104,9 @@ Docs: [MODEL_CARD.md](MODEL_CARD.md) · [data/DATASHEET.md](data/DATASHEET.md) �
 
 ## Why this project is worth a look
 
+- **Explainable verdicts:** every score comes with the **impersonated brand** (Unicode
+  skeleton + typo distance), **plain-language reasons**, and a **character-level saliency**
+  heatmap — via `POST /explain` and rendered in the extension popup. Not a black box.
 - **End-to-end ML engineering:** data pipeline → adversarial training → evaluation →
   compression → TFLite → live demo, reproducibly.
 - **Adversarial ML:** min-max training against Unicode homoglyph evasion; robust to 20%

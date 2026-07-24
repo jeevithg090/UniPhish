@@ -6,24 +6,53 @@ function setStatus(ok) {
   el.className = "status " + (ok ? "status--on" : "status--off");
 }
 
-function render(result) {
+function esc(s) {
+  return s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+}
+
+function heatmap(sal) {
+  if (!sal || !sal.chars || !sal.chars.length) return "";
+  const max = Math.max(0.0001, ...sal.chars.map((c) => c.weight));
+  const spans = sal.chars
+    .map((c) => {
+      const a = Math.max(0, Math.min(1, c.weight / max));
+      const bg = a > 0.05 ? `background:rgba(239,68,68,${a.toFixed(2)})` : "";
+      return `<span style="${bg}">${esc(c.char)}</span>`;
+    })
+    .join("");
+  return `<div class="heat" title="Redder = pushed the verdict toward phishing">${spans}</div>`;
+}
+
+function render(r) {
   const box = $("result");
-  box.className = "result r-" + result.tier;
-  const pct = (result.prob * 100).toFixed(1);
-  const label = { safe: "Looks safe", warn: "Suspicious", block: "Likely phishing" }[result.tier];
-  box.innerHTML =
-    `<div class="label">${label}</div>` +
-    `<div class="score">${pct}%</div>` +
-    `<div class="u">${result.url}</div>`;
+  box.className = "result r-" + r.tier;
+  const pct = (r.prob * 100).toFixed(1);
+  const label = { safe: "Looks safe", warn: "Suspicious", block: "Likely phishing" }[r.tier];
+
+  let html = `<div class="head"><span class="label">${label}</span><span class="score">${pct}%</span></div>`;
+
+  if (r.brand) {
+    const verb = { homoglyph: "disguised as", typo: "lookalike of", subdomain: "hides real domain from" }[r.brand.type] || "impersonates";
+    html += `<div class="brand">🎯 ${verb} <b>${esc(r.brand.brand)}</b></div>`;
+  }
+  html += heatmap(r.saliency);
+  if (r.reasons && r.reasons.length) {
+    html += "<ul class='reasons'>" +
+      r.reasons.map((x) => `<li class="sev-${x.severity}">${esc(x.text)}</li>`).join("") +
+      "</ul>";
+  }
+  box.innerHTML = html;
 }
 
 function scan(url) {
   if (!url) return;
-  chrome.runtime.sendMessage({ type: "scanOne", url }, (resp) => {
+  $("result").className = "result r-warn";
+  $("result").innerHTML = "<div class='head'><span class='label'>Scanning…</span></div>";
+  chrome.runtime.sendMessage({ type: "explainOne", url }, (resp) => {
     if (!resp || !resp.ok) {
-      const box = $("result");
-      box.className = "result r-warn";
-      box.innerHTML = `<div class="label">API not reachable</div>` +
+      $("result").className = "result r-warn";
+      $("result").innerHTML =
+        `<div class="label">API not reachable</div>` +
         `<div class="u">Start it: <code>uvicorn api.server:app --port 8000</code></div>`;
       return;
     }
@@ -49,5 +78,4 @@ chrome.runtime.onMessage.addListener((msg) => {
   }
 });
 
-// health check on open
 chrome.runtime.sendMessage({ type: "health" }, (resp) => setStatus(resp && resp.ok));

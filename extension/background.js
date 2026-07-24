@@ -3,14 +3,18 @@
 
 const API = "http://localhost:8000";
 
-async function scanBatch(urls) {
-  const res = await fetch(`${API}/scan/batch`, {
+async function post(path, body) {
+  const res = await fetch(`${API}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ urls }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`API ${res.status}`);
   return res.json();
+}
+
+async function scanBatch(urls) {
+  return post("/scan/batch", { urls });
 }
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
@@ -23,6 +27,12 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === "scanOne") {
     scanBatch([msg.url])
       .then((r) => sendResponse({ ok: true, result: r[0] }))
+      .catch((e) => sendResponse({ ok: false, error: String(e) }));
+    return true;
+  }
+  if (msg.type === "explainOne") {
+    post("/explain", { url: msg.url })
+      .then((result) => sendResponse({ ok: true, result }))
       .catch((e) => sendResponse({ ok: false, error: String(e) }));
     return true;
   }

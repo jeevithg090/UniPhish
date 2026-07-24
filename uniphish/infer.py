@@ -29,7 +29,14 @@ class UniPhishScorer:
             self.out_idx = self.interp.get_output_details()[0]["index"]
         else:
             from tensorflow import keras
-            self.model = keras.models.load_model(model_path)
+            try:
+                self.model = keras.models.load_model(model_path)
+            except Exception:
+                # Robust to Keras-version drift (e.g. a model saved on a newer Keras):
+                # rebuild the architecture and load only the weights.
+                from uniphish.model import build_model
+                self.model = build_model()
+                self.model.load_weights(model_path)
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         if self.is_tflite:

@@ -21,7 +21,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from uniphish.explain import saliency
 from uniphish.infer import UniPhishScorer
+from uniphish.reasons import analyze
 
 MODEL_PATH = os.environ.get("UNIPHISH_MODEL", "artifacts/uniphish_adv.keras")
 
@@ -56,9 +58,29 @@ def health():
 
 @app.post("/scan")
 def scan(req: ScanRequest):
-    return scorer().scan(req.url)
+    """Score a URL and enrich with brand-impersonation + plain-language reasons.
+
+    Reasons/brand are pure string analysis (no extra model calls), so this stays cheap.
+    """
+    result = scorer().scan(req.url)
+    result.update(analyze(req.url))     # adds {"reasons": [...], "brand": {...}|None}
+    return result
 
 
 @app.post("/scan/batch")
 def scan_batch(req: BatchRequest):
     return scorer().scan_batch(req.urls)
+
+
+@app.post("/explain")
+def explain(req: ScanRequest):
+    """Full explanation: score + tier + brand + reasons + character-level saliency.
+
+    Saliency uses occlusion (one forward pass per character), so this is heavier than
+    /scan — intended for a single URL the user is inspecting.
+    """
+    s = scorer()
+    result = s.scan(req.url)
+    result.update(analyze(req.url))
+    result["saliency"] = saliency(s, req.url)
+    return result
