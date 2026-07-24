@@ -15,4 +15,5 @@ uvicorn[standard]>=0.29
 
 # Optional / dev
 optuna>=3.4                # hyperparameter search (paper: 80 Optuna trials)
+python-telegram-bot>=20    # Telegram bot demo (bot/telegram_bot.py)
 pytest>=7.4
