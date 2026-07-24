@@ -21,6 +21,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from uniphish.brands import _host
+from uniphish.enrich import decode_idn, domain_age_days, fused_risk, resolve_redirects
 from uniphish.explain import saliency
 from uniphish.infer import UniPhishScorer
 from uniphish.reasons import analyze
@@ -84,3 +86,18 @@ def explain(req: ScanRequest):
     result.update(analyze(req.url))
     result["saliency"] = saliency(s, req.url)
     return result
+
+
+@app.post("/enrich")
+def enrich(req: ScanRequest):
+    """Full hybrid analysis: ML score + IDN decode + redirect chain + domain age,
+    fused into a single transparent risk score (0-100). Network calls are
+    best-effort and SSRF-guarded; the endpoint never fails on them."""
+    prob = scorer().scan(req.url)["prob"]
+    idn = decode_idn(req.url)
+    redirects = resolve_redirects(req.url)
+    final = redirects["final_url"]
+    age = domain_age_days(_host(final))
+    risk = fused_risk(prob, final, young_domain_days=age)
+    return {"url": req.url, "model_prob": prob, "idn": idn,
+            "redirects": redirects, **risk}
