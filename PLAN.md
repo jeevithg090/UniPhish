@@ -1,25 +1,88 @@
-# UniPhish — Project Plan
+# UniPhish — Portfolio Build Plan (make it a standout résumé project)
 
-What we do **after the first real Kaggle run** to turn this from "code that runs" into a
-strong, publication-grade, reproducible artifact + demo that credibly backs the paper.
+Goal: turn this from "code that runs" into a project that makes a recruiter or hiring
+manager stop scrolling — a **published-paper implementation** with a novel technical core,
+real adversarial-ML results, an on-device deployment story, and a live demo, all
+reproducible with one command and backed by CI.
 
-> **North star:** anyone can clone the repo, run one command, and reproduce every number
-> and figure in the paper on real data — plus try a live URL scanner. Where reality differs
-> from the paper text, the repo says so and the paper gets corrected.
+> **Elevator pitch (memorize this):** *"UniPhish is a Unicode-native, byte-level 1D-CNN that
+> detects phishing URLs in any language — Arabic, Chinese, Hindi, Korean — where every existing
+> ASCII-based detector goes blind. It's a 378K-parameter model that runs in under a millisecond
+> on CPU, survives Unicode homoglyph evasion attacks via adversarial training, and ships as a
+> <5 MB on-device model with a live browser-extension demo. I built the whole pipeline — data,
+> training, adversarial robustness, compression, and deployment — to implement (and audit) an
+> IEEE paper I co-authored."*
 
 ---
 
-## Definition of "a very good project"
+## Why this reads as "insane" (the hooks)
 
-A reviewer / recruiter / collaborator opening the repo should find, in order:
+1. **You co-authored the IEEE paper AND built the reproducible implementation.** Almost no
+   student project has both. Research + engineering in one artifact.
+2. **Scientific integrity as a feature.** You *audited your own paper* and found a real bug —
+   the model is **377,985 params, not the 847,425 claimed**. A `paper_vs_reality.md` changelog
+   shows you validate claims instead of trusting tables. Senior engineers love this.
+3. **Real subfields, not a tutorial CNN:** adversarial ML (homoglyph attacks + min-max
+   training), model compression (prune → distill → int8 → TFLite), multilingual NLP/security,
+   and MLOps (CI, reproducibility, one-command repro).
+4. **A demo they can touch.** A browser extension that flags a homoglyph phishing URL live is
+   worth more than any table.
+5. **Impact framing:** targets the ~3.4B non-English messaging users that ASCII detectors
+   leave undefended.
 
-1. A clear README with a one-command reproduction and honest results.
-2. Real, logged experimental results (not placeholder tables) with seeds and configs.
-3. The central claim demonstrated: **byte-level UniPhish beats an ASCII-CNN on non-Latin
-   scripts and under homoglyph attack**, with numbers.
-4. A working demo (API + browser extension) and a <5 MB TFLite artifact.
-5. Green CI, tests, a model card, a dataset datasheet, and a license.
-6. A short "paper vs. reality" changelog showing scientific integrity.
+---
+
+## Paste-ready résumé bullets
+
+> Fill every `⟨…⟩` with a **real measured number** from your runs — never the paper's
+> placeholder figures. Use 3–5 bullets; pick the strongest.
+
+- **Built and open-sourced UniPhish**, a Unicode-native character-level 1D-CNN (TensorFlow/Keras,
+  377K params) for multilingual phishing-URL detection, achieving **⟨X⟩% macro-F1 across 6 script
+  families** (Latin, Arabic, CJK, Devanagari, Hangul, mixed) where a standard ASCII-CNN drops to
+  **⟨Y⟩%** — implementing an IEEE paper end-to-end from data pipeline to deployment.
+- **Designed a UTF-8 byte-level encoding** (256-token vocabulary) giving complete Unicode
+  coverage with no `[UNK]` token, and a parallel multi-kernel convolutional architecture; **cut
+  vocabulary/embedding size** vs. code-point models while preserving cross-script detection.
+- **Hardened the model against Unicode homoglyph evasion** with a min-max adversarial training
+  objective, holding **⟨X⟩% accuracy at 15% character substitution** vs. **⟨Y⟩% for the ASCII
+  baseline** — a **⟨Z⟩-point robustness gain**.
+- **Compressed the model to a <5 MB int8 TFLite artifact** via structured pruning + knowledge
+  distillation + post-training quantization, reaching **⟨N⟩ ms CPU inference/URL** — deployable
+  on mid-range Android.
+- **Shipped a live demo** (FastAPI scan API + Manifest V3 browser extension) and a fully
+  reproducible pipeline (one command, seeded, GitHub Actions CI) with a cross-dataset
+  generalization eval on **real** OpenPhish/URLhaus/Umbrella feeds.
+- **Audited the source paper against the implementation**, catching a **2.2× parameter-count
+  error** and maintaining a public `paper_vs_reality.md` reconciling every claim with a real run.
+
+---
+
+## Skills matrix (what each part signals to which role)
+
+| Deliverable | Skills it proves | Target role |
+|---|---|---|
+| Byte-level model + architecture | Deep learning, NLP, CNNs, TF/Keras | ML Engineer / Applied Scientist |
+| Homoglyph attacks + adversarial training | Adversarial ML, security ML | ML Security / Research |
+| Prune → distill → int8 → TFLite | Model compression, edge/on-device ML | Edge/Mobile ML, ML Eng |
+| Data synthesizer + real feed blending + cross-dataset eval | Data engineering, eval rigor | ML Eng / Data Scientist |
+| FastAPI + browser extension + Docker | Full-stack / productionization | ML Eng / SWE |
+| CI, tests, seeds, one-command repro, model card | MLOps, reproducibility, rigor | MLOps / Senior ML Eng |
+| Paper audit + `paper_vs_reality.md` | Scientific integrity, communication | Research / any senior role |
+
+---
+
+## Headline metrics dashboard (fill from real runs — put this table in the README)
+
+| Metric | UniPhish | ASCII-CNN baseline | Source |
+|---|---|---|---|
+| Macro-F1 (6 families) | ⟨ ⟩ | ⟨ ⟩ | `results/comparison.json` |
+| Non-Latin F1 (Arabic/CJK/Deva) | ⟨ ⟩ | ⟨ ⟩ (expected collapse) | `results/comparison.json` |
+| **Cross-dataset (real) F1** — the honest one | ⟨ ⟩ | ⟨ ⟩ | `results/results.json` |
+| Accuracy @ 15% homoglyph attack | ⟨ ⟩ | ⟨ ⟩ | `results/adversarial.json` |
+| Model size (TFLite int8) | ⟨ ⟩ MB | — | `results/latency.json` |
+| CPU latency / URL | ⟨ ⟩ ms | ⟨ ⟩ ms | `results/latency.json` |
+| Params | 377,985 | ⟨ ⟩ | `python -m uniphish.model` |
 
 ---
 
@@ -29,153 +92,113 @@ A reviewer / recruiter / collaborator opening the repo should find, in order:
 |---|---|
 | Package scaffold, config, 12 unit tests | ✅ |
 | UTF-8 byte encoder (256 vocab, 600-byte) | ✅ |
-| Paper-spec Keras model — **377,985 params** (paper says 847,425; discrepancy logged) | ✅ |
-| Reproducible multilingual data synthesizer (6 families, all phishing techniques) | ✅ |
-| Adversarial min-max training (Eq. 15) + cosine LR + macro-F1 early stopping | ✅ |
+| Paper-spec Keras model — **377,985 params** (paper says 847,425; audited) | ✅ |
+| Multilingual data synthesizer (6 families, all phishing techniques) | ✅ |
+| Real public feeds (OpenPhish/URLhaus/Umbrella) + cross-dataset holdout | ✅ |
+| Adversarial min-max training + cosine LR + macro-F1 early stopping | ✅ |
 | Per-epoch checkpoint + `--resume` (free-tier safe) | ✅ |
-| Evaluation: per-family metrics, FNR/FPR, confusion, adversarial sweep → `results.json` | ✅ |
+| Evaluation: per-family, FNR/FPR, confusion, adversarial sweep, cross-dataset | ✅ |
 | Inference + risk tiers (warn/block), Keras or TFLite | ✅ |
-| GitHub repo + Kaggle GPU pipeline verified end-to-end | ✅ |
+| GitHub repo + Kaggle P100 pipeline verified end-to-end | ✅ |
 
 ---
 
-## Step 0 — Right after this run: validate & interpret (½ day)
+## Build phases — each with its résumé payoff
 
-- [ ] Read the real `results/results.json`: macro-F1, per-family F1, FNR/FPR, adversarial sweep.
-- [ ] Sanity checks: does the model actually learn (F1 ≫ 0.5)? Is Devanagari the weakest
-      family (paper's claim)? Does adversarial accuracy degrade gracefully, not collapse?
-- [ ] Record real numbers in `docs/paper_vs_reality.md` (params already logged; add metrics,
-      latency, sizes as they come in).
-- [ ] If learning looks healthy, launch **full scale** (`--per-family 40000`) as a committed
-      Kaggle run; download `artifacts/` + `results/results.json`.
-- [ ] Commit the frozen `results.json` and a `configs/` snapshot for the recorded run.
+### Step 0 — Lock a real headline number (½ day)  → *proof it works*
+- [ ] Read `results/results.json`; record the **cross-dataset real** F1/FNR/FPR — the number
+      that goes on the résumé and README.
+- [ ] If healthy, run **full scale** (`--per-family 40000`), download `artifacts/` + results.
+- [ ] Log everything in `docs/paper_vs_reality.md`.
 
----
+### Phase 1 — The money comparison: ASCII-CNN vs UniPhish (1–2 days)  → *the killer chart*
+- [ ] `uniphish/baselines.py` **B1 ASCII-CNN** (128-vocab, non-ASCII → `[UNK]`). Show it
+      collapses on Arabic/CJK/Devanagari and under homoglyph attack while UniPhish holds.
+- [ ] `scripts/run_experiments.py` → `results/comparison.json`; one bar chart tells the story.
+- **Payoff:** the single figure + bullet that proves the thesis.
 
-## Phase 4 — Baselines (the experiments that prove the thesis) (2–3 days)
+### Phase 2 — Compression & on-device (2 days)  → *"<5 MB, sub-ms" bullet*
+- [ ] `uniphish/compress.py`: structured pruning → distillation (T=4, α=0.3) → int8 TFLite.
+- [ ] `scripts/benchmark.py`: real size (MB) + CPU latency (ms/URL, warm-up discarded) →
+      `results/latency.json`. **Measured, not the paper's.**
+- **Payoff:** edge-ML credibility; a concrete efficiency story.
 
-The paper's whole argument rests on the ASCII-vs-byte contrast. Implement in `uniphish/baselines.py`:
+### Phase 3 — Live demo (2–3 days)  → *the thing they'll actually click*
+- [ ] `api/server.py` — FastAPI `POST /scan` → `{prob, tier, family_hint}`; Keras or TFLite.
+- [ ] `extension/` — Manifest V3 extension: scans page links, blocks `tier=block` (τ=0.9),
+      warns `tier=warn` (τ=0.5). Record a **GIF/30-sec video** for the README + LinkedIn.
+- [ ] Deploy a **Hugging Face Space** (or `docker compose up`) so there's a public URL.
+- **Payoff:** a demo link on the résumé; recruiters love clickable proof.
 
-- [ ] **B1 ASCII-CNN** — same architecture, 128-token ASCII vocab, non-ASCII → `[UNK]`.
-      *This is the money comparison:* expect it to collapse on Arabic/CJK/Devanagari and under
-      homoglyph attack, while UniPhish holds.
-- [ ] **B2 byte-BiLSTM** — 2-layer BiLSTM on the same byte input (arch ablation).
-- [ ] **B4 Random Forest (lexical)** — ~48 hand-engineered URL features.
-- [ ] **B5 Unicode-block CNN** — block-id + offset embedding (byte vs block ablation).
-- [ ] (Optional) **B3 mBERT** — heavy; run once for the accuracy/latency ceiling, or cite as N/A.
-- [ ] A single `scripts/run_experiments.py` that trains all models on one dataset and writes a
-      combined `results/comparison.json` (the source for the main results table).
+### Phase 4 — Ablations & robustness (1–2 days)  → *depth/rigor*
+- [ ] no-adv / single-kernel / no-SpatialDropout / embed-32 / seq-200 → `results/ablation.json`.
+- [ ] Stronger adversarial test using the full Unicode `confusables.txt`.
 
-**Acceptance:** a reproducible table showing ASCII-CNN ≪ UniPhish on non-Latin + adversarial.
+### Phase 5 — Figures & paper sync (1 day)  → *the research half*
+- [ ] Rewire the 7 `fig*.py` to read `results/*.json` (no hardcoded numbers). `make figures`.
+- [ ] Finalize `docs/paper_vs_reality.md`; correct the paper (param count, all tables, dataset
+      section reframed honestly, κ/annotator claims dropped for this reproduction).
 
----
+### Phase 6 — Engineering polish & release (1–2 days)  → *the "senior" signals*
+- [ ] **GitHub Actions CI**: `pytest` + `--small` data build + 1-epoch train + evaluate on CPU,
+      on every push. **Add the green badge to the README** (huge signal).
+- [ ] `requirements-lock.txt`; console entry points (`uniphish-train/eval/scan`); commit
+      `notebooks/kaggle_run.ipynb`.
+- [ ] `MODEL_CARD.md`, `data/DATASHEET.md`, `LICENSE` (MIT).
+- [ ] Publish `best.keras` + `.tflite` as a **GitHub Release** / HF model so users skip training.
+- [ ] README: elevator pitch, metrics table, demo GIF, CI badge, one-command repro, paper link.
 
-## Phase 5b — Ablations & robustness (1–2 days)
-
-- [ ] Ablation runs (config flags already exist): no-adv, single-kernel k=3, no-SpatialDropout,
-      embed-dim 32, seq-len 200. Emit `results/ablation.json`.
-- [ ] Adversarial: confirm the full-scale UniPhish+adv vs UniPhish(no-adv) gap at 15%/20%.
-- [ ] Optional: real Unicode `confusables.txt` (via `homoglyphs.fetch_confusables`) for a
-      stronger adversarial test than the built-in map.
-
----
-
-## Phase 6 — Compression & mobile (`uniphish/compress.py`) (2–3 days)
-
-- [ ] Stage 1: structured filter pruning (5 rounds × 20%, fine-tune 3 epochs each).
-- [ ] Stage 2: knowledge distillation to a small student (T=4, α=0.3).
-- [ ] Stage 3: post-training int8 quantization → **TFLite** with representative-dataset calibration.
-- [ ] `scripts/benchmark.py`: measure real size (MB) and CPU latency (ms/URL, warm-up discarded)
-      for every model → `results/latency.json`. **Report measured numbers, not the paper's.**
-
-**Acceptance:** a `.tflite` artifact with its *actual* size + latency, and `infer.py` runs it.
-
----
-
-## Phase 7 — Live demo (2–3 days)
-
-- [ ] `api/server.py` — FastAPI `POST /scan` {url} → {prob, tier, family_hint}; loads Keras or
-      TFLite; `GET /health`. Batch endpoint for throughput.
-- [ ] `extension/` — Manifest V3 browser extension: scans links on a page, badges risky ones,
-      shows an interstitial for `tier=block` (τ=0.9) and a banner for `warn` (τ=0.5), calling the
-      local API. Ship a short screen-capture GIF in the README.
-- [ ] A tiny hosted/HF-Spaces demo *or* a `docker compose up` that serves API + a demo page.
-
-**Acceptance:** paste a homoglyph phishing URL → it gets flagged live.
+### Phase 7 — Amplify (½ day)  → *reach*
+- [ ] A short **technical blog post / LinkedIn write-up**: "Why every phishing detector is blind
+      to 3.4 billion people, and how a 378K-param byte-level CNN fixes it." Link the repo + demo.
+- [ ] Pin the repo on GitHub; add topics (`phishing-detection`, `adversarial-ml`, `tflite`,
+      `nlp-security`). A clean README screenshot as the social preview image.
 
 ---
 
-## Phase 8 — Figures & paper sync (1 day)
+## Portfolio deliverables checklist (the tangible outputs)
 
-- [ ] Rewrite the 7 `fig*.py` scripts to read `results/*.json` instead of hardcoded numbers
-      (fig1 architecture stays static; fig2 training curves from `history.json`; fig3 latency
-      from `latency.json`; fig4 adversarial from the sweep; fig5 per-script; fig7 confusion).
-- [ ] `make figures` regenerates all PDFs/PNGs from recorded results.
-- [ ] Finalize `docs/paper_vs_reality.md` and update the paper: parameter count (→377,985),
-      all metric tables, latency/size tables, dataset section (say "synthetic + public feeds,
-      reproducible" honestly), and κ / annotation claims (drop or reframe — no human annotators
-      exist in this reproduction).
+- [ ] **GitHub repo** — pinned, CI badge, killer README, one-command repro.
+- [ ] **Live demo URL** — HF Space or hosted API + extension GIF.
+- [ ] **Published model artifact** — `.tflite` in a GitHub Release.
+- [ ] **The IEEE paper** — linked, with the `paper_vs_reality.md` audit.
+- [ ] **A blog post / write-up** — for LinkedIn and the résumé "Projects" link.
+- [ ] **One headline chart** — ASCII-CNN collapse vs UniPhish across scripts.
 
 ---
 
-## Phase 9 — Data realism (optional but strong) (1–2 days)
+## Interview talking points (rehearse these)
 
-- [ ] Flesh out `data/sources.py`: URLhaus (open CSV), OpenPhish community feed, Tranco top-list
-      (benign), PhishTank (needs free API key). Graceful offline fallback to pure synthetic.
-- [ ] Blend real + synthetic with `--include-real`; document provenance & dates in
-      `data/DATASHEET.md` (a Gebru-style datasheet).
-- [ ] Re-run the headline experiment on the blended set; note deltas vs pure-synthetic.
-
----
-
-## Phase 10 — Engineering & reproducibility (1–2 days)
-
-- [ ] `requirements-lock.txt` (frozen exact versions) + note Kaggle's preinstalled TF is used on GPU.
-- [ ] **GitHub Actions CI**: `pytest` + a `--small` data build + 1-epoch train + evaluate on CPU
-      (smoke test) on every push. Badge in README.
-- [ ] Commit the Kaggle/Colab notebook (`notebooks/kaggle_run.ipynb`) so the cloud run is versioned.
-- [ ] Deterministic seeds end-to-end; document expected variance.
-- [ ] `pip install -e .` console entry points: `uniphish-train`, `uniphish-eval`, `uniphish-scan`.
+- *"Why byte-level?"* → 256 values cover all of Unicode with no `[UNK]`; homoglyphs become
+  distinct, learnable byte sequences instead of collapsing to one unknown token.
+- *"How did you make it robust?"* → min-max adversarial training on Unicode confusables; loss =
+  clean CE + λ·adversarial CE; walk through the numbers.
+- *"What was hard / what did you learn?"* → the first run scored 99.98% and I *didn't trust it* —
+  train/test came from the same synthesizer. I added real feeds + a cross-dataset holdout to get
+  an honest number. (This story alone can win an interview.)
+- *"How is it deployable?"* → prune/distill/quantize to <5 MB int8 TFLite, sub-ms CPU, browser
+  extension with risk tiers.
+- *"How do you know it's correct?"* → CI, seeds, unit tests, and a paper-vs-reality audit that
+  already caught a 2.2× parameter error.
 
 ---
 
-## Phase 11 — Documentation & release (1 day)
+## Responsible use (keep visible — it's also a maturity signal)
 
-- [ ] `MODEL_CARD.md` (intended use, training data, metrics, limitations, ethical considerations).
-- [ ] `data/DATASHEET.md` (dataset composition, synthesis method, caveats).
-- [ ] `LICENSE` (MIT for code; state that synthetic data is generated, not scraped victims).
-- [ ] Publish `best.keras` + `.tflite` as a **GitHub Release** (or Hugging Face) so users needn't retrain.
-- [ ] README: results table, demo GIF, CI badge, one-command repro, citation.
-
----
-
-## Responsible use (keep visible)
-
-- UniPhish is **defensive**. The synthesizer produces phishing-*style* strings to train a
-  detector; it creates no live malicious infrastructure and targets no real people.
-- The homoglyph engine exists to make the detector *robust to* evasion, per the paper — not to
-  build attacks. State this in README + MODEL_CARD.
-
----
-
-## Suggested order (fastest path to "impressive")
-
-1. **Step 0** (interpret this run) →
-2. **Phase 4 B1 ASCII-CNN only** (the one comparison that proves the point) →
-3. **Full-scale run** of UniPhish vs B1 →
-4. **Phase 6 TFLite** (real size/latency) →
-5. **Phase 7 demo** →
-6. rest of baselines / ablations / figures / docs.
-
-That sequence gives a defensible headline result + a demo within about a week of focused work,
-then hardens into a full artifact.
+UniPhish is **defensive**. The synthesizer produces phishing-*style* strings to train a
+detector; it builds no live malicious infrastructure and targets no real people. The homoglyph
+engine exists to make the detector *robust to* evasion. Stated in README + `MODEL_CARD.md`.
 
 ---
 
 ## Definition of Done ✅
 
-- [ ] One command reproduces the headline result on real data.
-- [ ] ASCII-vs-byte and adversarial results are real and logged.
-- [ ] <5 MB TFLite artifact with measured latency; live demo works.
-- [ ] CI green; model card + datasheet + license present.
-- [ ] `paper_vs_reality.md` complete and the paper updated to match.
+- [ ] One command reproduces a **real, honest** headline number (cross-dataset).
+- [ ] ASCII-vs-byte + adversarial results are real, logged, and charted.
+- [ ] <5 MB TFLite artifact with measured latency; **live demo URL works**.
+- [ ] CI green (badge in README); model card + datasheet + license present.
+- [ ] `paper_vs_reality.md` complete; paper corrected to match.
+- [ ] Blog post + pinned repo + demo link ready to drop on a résumé.
+
+> **Integrity rule for the résumé:** every number you quote must come from a run in this repo,
+> reproducible by anyone who clones it. The credibility *is* the flex.
