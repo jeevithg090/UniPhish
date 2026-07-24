@@ -53,6 +53,16 @@ Reproducible blend (see `data/DATASHEET.md`):
 - Trained largely on synthetic + a few real feeds — not a substitute for a
   production threat-intel dataset.
 
+## Security / red-team (attack surface)
+Self-red-teamed with `scripts/redteam.py` (`uniphish/attacks.py`): homoglyph swap,
+zero-width injection, TLD swap, subdomain padding, case randomization, char
+duplication. Findings on a phishing set the model detects at 100% baseline:
+- **TLD swap** (→ `.com`) is the strongest evasion (~10% detection drop) — the model
+  partly over-relies on suspicious TLDs. Mitigation: the fused risk score recovers most.
+- **Homoglyph swap** slightly evades the raw model but the **rules layer catches 100%**
+  (defense in depth). See `results/robustness.json`.
+Other attacks show negligible evasion.
+
 ## Ethical considerations
 Defensive tool. The homoglyph engine exists to make detection *robust to* evasion.
 Synthetic phishing strings are for training only; no live malicious content is created.
