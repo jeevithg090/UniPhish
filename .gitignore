@@ -29,6 +29,9 @@ artifacts/
 results/*.json
 !results/.gitkeep
 
+# CT-hunter IOC store (regenerable)
+data/iocs/
+
 # OS
 .DS_Store
 

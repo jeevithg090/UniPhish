@@ -114,6 +114,12 @@ Docs: [MODEL_CARD.md](MODEL_CARD.md) · [data/DATASHEET.md](data/DATASHEET.md) �
 - **Explainable verdicts:** every score comes with the **impersonated brand** (Unicode
   skeleton + typo distance), **plain-language reasons**, and a **character-level saliency**
   heatmap — via `POST /explain` and rendered in the extension popup. Not a black box.
+- **Real-time CT threat-hunting** (`scripts/ct_hunter.py`): streams the global **Certificate
+  Transparency** firehose (Certstream) and scores newly-issued domains *at certificate-issuance
+  time* — before the phishing site is live and before blocklists. Emits STIX IOCs live.
+- **STIX 2.1 / TAXII 2.1 feed + MITRE ATT&CK** (`uniphish/threatintel.py`, `/stix`, `/taxii2/…`):
+  every detection becomes an OASIS STIX 2.1 Indicator linked to MITRE ATT&CK techniques
+  (T1566, T1583.001, T1036) and served over a TAXII 2.1 feed — ingestible by any SIEM/TIP.
 - **Attack-technique classification:** every verdict is labeled with the *construction
   technique* — homoglyph / typosquat / combosquat / subdomain-stuffing / IDN / path-deception
   / IP-host / shortener — and the **target brand**, so the output is triage-ready threat intel.

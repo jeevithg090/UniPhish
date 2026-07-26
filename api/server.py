@@ -21,12 +21,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from uniphish import ioc_store
 from uniphish.brands import _host
 from uniphish.classify_attack import classify
 from uniphish.enrich import decode_idn, domain_age_days, fused_risk, resolve_redirects
 from uniphish.explain import saliency
 from uniphish.infer import UniPhishScorer
 from uniphish.reasons import analyze
+from uniphish.threatintel import detect, to_stix
+
+TAXII_MEDIA = "application/taxii+json;version=2.1"
+COLLECTION_ID = "phishing-iocs"
 
 MODEL_PATH = os.environ.get("UNIPHISH_MODEL", "artifacts/uniphish_adv.keras")
 
@@ -103,3 +108,36 @@ def enrich(req: ScanRequest):
     risk = fused_risk(prob, final, young_domain_days=age)
     return {"url": req.url, "model_prob": prob, "idn": idn,
             "redirects": redirects, **risk}
+
+
+# ---- Threat intelligence: STIX 2.1 + MITRE ATT&CK + TAXII 2.1 feed ---------- #
+@app.post("/stix")
+def stix(req: ScanRequest):
+    """Return a STIX 2.1 bundle (Indicator + MITRE ATT&CK Attack-Patterns) for a URL."""
+    return to_stix(detect(scorer(), req.url))
+
+
+@app.get("/taxii2/")
+def taxii_discovery():
+    return {"title": "UniPhish TAXII Server",
+            "description": "Phishing IOCs (STIX 2.1) with MITRE ATT&CK attribution",
+            "default": "/taxii2/api/", "api_roots": ["/taxii2/api/"]}
+
+
+@app.get("/taxii2/api/")
+def taxii_root():
+    return {"title": "UniPhish API root", "max_content_length": 10485760,
+            "versions": [TAXII_MEDIA]}
+
+
+@app.get("/taxii2/api/collections/")
+def taxii_collections():
+    return {"collections": [{
+        "id": COLLECTION_ID, "title": "UniPhish phishing IOCs", "can_read": True,
+        "can_write": False, "media_types": ["application/stix+json;version=2.1"]}]}
+
+
+@app.get("/taxii2/api/collections/{collection_id}/objects/")
+def taxii_objects(collection_id: str, limit: int = 1000, added_after: str = None):
+    objs = ioc_store.read_objects(limit=limit, added_after=added_after) if collection_id == COLLECTION_ID else []
+    return {"objects": objs, "more": False}

@@ -13,6 +13,10 @@ idna>=3.4                   # IDN / punycode handling in the data synthesizer
 fastapi>=0.110
 uvicorn[standard]>=0.29
 
+# Threat intelligence + CT threat-hunter
+stix2>=3.0                 # OASIS STIX 2.1 generation
+websockets>=12             # Certstream CT firehose (scripts/ct_hunter.py)
+
 # Optional / dev
 optuna>=3.4                # hyperparameter search (paper: 80 Optuna trials)
 python-telegram-bot>=20    # Telegram bot demo (bot/telegram_bot.py)
