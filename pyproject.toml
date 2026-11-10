@@ -1,13 +1,13 @@
 [build-system]
-requires = ["setuptools>=64"]
+requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "uniphish"
-version = "0.1.0"
-description = "Unicode-native character-level 1D-CNN for real-time multilingual phishing URL detection"
+version = "2.0.0"
+description = "Open-source, AI-native anti-phishing platform: multilingual detection for URLs, pages, emails, files and QR codes — for humans and AI agents."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [
     { name = "Jeevith Gangadhar" },
@@ -16,11 +16,98 @@ authors = [
     { name = "Sudhina Kumar G. K." },
     { name = "Hareesha K. S." },
 ]
-keywords = ["phishing", "cybersecurity", "cnn", "unicode", "utf-8", "multilingual"]
+keywords = [
+    "phishing", "cybersecurity", "threat-intelligence", "email-security", "homoglyph",
+    "idn", "aitm", "clickfix", "prompt-injection", "mcp", "stix", "sigma", "soc",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Information Technology",
+    "Topic :: Security",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+]
+dependencies = [
+    "numpy>=1.24",
+    "pydantic>=2.6",
+    "httpx>=0.27",
+    "dnspython>=2.6",
+    "idna>=3.6",
+    "tldextract>=5.1",
+    "pyyaml>=6.0",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+    "defusedxml>=0.7",
+    "cryptography>=42",
+    "mmh3>=4.1",
+    "typer>=0.12",
+    "rich>=13.7",
+    "jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+server = ["fastapi>=0.115", "uvicorn[standard]>=0.30", "python-multipart>=0.0.9"]
+mcp = ["mcp>=1.2"]
+ai = ["anthropic>=0.40"]
+vision = ["opencv-python-headless>=4.9", "pillow>=10.0"]
+sandbox = ["playwright>=1.45"]
+yara = ["yara-python>=4.5"]
+office = ["oletools>=0.60", "pyzipper>=0.3"]
+intel = ["stix2>=3.0", "websockets>=12"]
+bot = ["python-telegram-bot>=21"]
+train = [
+    "tensorflow>=2.16", "scikit-learn>=1.3", "pandas>=2.0", "matplotlib>=3.7", "tqdm>=4.65",
+    "optuna>=3.4",
+]
+all = ["uniphish[server,mcp,ai,vision,sandbox,yara,office,intel,bot]"]
+dev = [
+    "uniphish[all]", "pytest>=8", "pytest-asyncio>=0.23", "hypothesis>=6.100", "respx>=0.21",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+uniphish = "uniphish.cli.main:app"
+
+[project.urls]
+Homepage = "https://github.com/jeevithg090/UniPhish"
 
 [tool.setuptools.packages.find]
 include = ["uniphish*"]
 
+[tool.setuptools.package-data]
+uniphish = ["py.typed", "assets/**/*", "server/static/**/*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q"
+addopts = "-q -p no:cacheprovider --import-mode=importlib"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "network: test needs real network access (deselected by default; run with -m network)",
+    "slow: slow test",
+    "tf: needs TensorFlow (training stack)",
+]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["web", "extension", "uniphish/server/static"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "S", "RUF100"]
+ignore = [
+    "S101",   # assert (tests)
+    "S311",   # non-crypto random is fine for synthesis / jitter
+    "B008",   # FastAPI Depends() in defaults
+    "UP007",  # keep Optional[...] where clearer
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S", "B"]
+"uniphish/ml/**" = ["S"]
+"data/**" = ["S"]
+"scripts/**" = ["S"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["uniphish"]
