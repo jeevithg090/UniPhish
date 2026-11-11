@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UniPhish settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main class="wrap">
+    <h1 data-i18n="opt.title">UniPhish settings</h1>
+    <p class="note" data-i18n="opt.privacy">Privacy: all link scoring happens inside your browser.</p>
+
+    <form id="form" autocomplete="off">
+      <fieldset>
+        <label class="row"><input type="checkbox" id="scanLinks"> <span data-i18n="opt.scan_links">Mark risky links on web pages</span></label>
+        <p class="note" data-i18n="opt.scan_links_help"></p>
+        <label class="row"><input type="checkbox" id="intercept"> <span data-i18n="opt.intercept">Show a warning page before opening dangerous links</span></label>
+        <label class="row"><input type="checkbox" id="navCheck"> <span data-i18n="opt.nav">Also warn when I open a dangerous address directly</span></label>
+        <p class="note" data-i18n="opt.nav_help"></p>
+        <p class="note error" id="navError" hidden></p>
+      </fieldset>
+
+      <fieldset>
+        <legend data-i18n="opt.thresholds">Sensitivity</legend>
+        <label class="slider"><span id="warnLabel"></span>
+          <input type="range" id="warn" min="5" max="95" step="1"></label>
+        <label class="slider"><span id="blockLabel"></span>
+          <input type="range" id="block" min="6" max="99" step="1"></label>
+        <p class="note" data-i18n="opt.threshold_help"></p>
+        <button type="button" id="reset" class="secondary" data-i18n="opt.reset">Reset to defaults</button>
+      </fieldset>
+
+      <fieldset>
+        <legend data-i18n="opt.language">Language</legend>
+        <select id="lang" aria-label="Language"></select>
+      </fieldset>
+
+      <fieldset>
+        <legend data-i18n="opt.trusted">Trusted sites</legend>
+        <textarea id="allowlist" rows="4" spellcheck="false" placeholder="example.com"></textarea>
+        <p class="note" data-i18n="opt.trusted_help"></p>
+      </fieldset>
+
+      <fieldset>
+        <legend data-i18n="opt.deep">Deep analysis (optional)</legend>
+        <p class="note" data-i18n="opt.deep_help"></p>
+        <label class="row"><input type="checkbox" id="deepEnabled"> <span data-i18n="opt.deep_enable">Enable deep analysis</span></label>
+        <label class="field"><span data-i18n="opt.endpoint">Server address</span>
+          <input type="url" id="endpoint" placeholder="https://uniphish.example.com" spellcheck="false"></label>
+        <label class="field"><span data-i18n="opt.apikey">API key</span>
+          <input type="password" id="apiKey" autocomplete="off" spellcheck="false"></label>
+        <p class="note" data-i18n="opt.apikey_help"></p>
+        <button type="button" id="test" class="secondary" data-i18n="opt.test">Test connection</button>
+        <p class="note" id="deepNote" role="status"></p>
+      </fieldset>
+
+      <div class="bar">
+        <button type="submit" id="save" class="primary" data-i18n="opt.save">Save</button>
+        <span id="saved" class="note" role="status"></span>
+      </div>
+    </form>
+  </main>
+
+  <script src="lib/i18n.js"></script>
+  <script src="lib/settings.js"></script>
+  <script src="lib/report.js"></script>
+  <script src="lib/boot.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

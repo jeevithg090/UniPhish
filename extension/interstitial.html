@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>UniPhish</title>
+  <link rel="stylesheet" href="interstitial.css">
+</head>
+<body>
+  <main class="wrap" id="wrap">
+    <div class="icon" aria-hidden="true">!</div>
+    <h1 id="title" data-i18n="inter.title">Dangerous site blocked</h1>
+    <p class="lead" id="lead" data-i18n="inter.lead">UniPhish stopped this link because it looks like a phishing attempt.</p>
+
+    <section class="card">
+      <div class="label" data-i18n="inter.going_to">You were going to</div>
+      <div id="urlview" class="urlview" dir="ltr" lang="und"></div>
+      <div id="brand" class="brand" hidden></div>
+    </section>
+
+    <section class="card">
+      <h2 data-i18n="inter.heading">Why this link is dangerous</h2>
+      <ul id="reasons" class="reasons"></ul>
+      <p id="safenow" class="note" hidden></p>
+    </section>
+
+    <div class="buttons">
+      <button id="back" class="primary" type="button" data-i18n="inter.back">Go back to safety</button>
+    </div>
+
+    <details class="more">
+      <summary data-i18n="inter.false_positive">Think this is a mistake?</summary>
+      <label class="confirm"><input id="confirm" type="checkbox"> <span data-i18n="inter.confirm">I understand this site may steal my passwords or money.</span></label>
+      <div class="buttons">
+        <button id="proceed" class="danger" type="button" disabled data-i18n="inter.proceed">Proceed anyway (unsafe)</button>
+        <button id="trust" class="secondary" type="button" disabled data-i18n="inter.trust">Trust this site and continue</button>
+      </div>
+      <p id="notice" class="note" role="status"></p>
+    </details>
+
+    <details class="more">
+      <summary data-i18n="inter.report">Report this link</summary>
+      <div class="buttons">
+        <button id="copy" class="secondary" type="button" data-i18n="inter.copy">Copy report (defanged)</button>
+        <a id="gsb" class="secondary linkbtn" target="_blank" rel="noopener noreferrer nofollow" data-i18n="inter.report_gsb" href="#">Report to Google Safe Browsing (opens another site)</a>
+        <button id="api" class="secondary" type="button" hidden data-i18n="inter.report_api">Send to my UniPhish server</button>
+      </div>
+      <p id="reportnote" class="note" role="status"></p>
+    </details>
+
+    <p class="foot"><span data-i18n="privacy.note">Nothing leaves your device.</span></p>
+  </main>
+
+  <script src="model.js"></script>
+  <script src="lib/urlparse.js"></script>
+  <script src="lib/confusables.js"></script>
+  <script src="lib/lists.js"></script>
+  <script src="lib/brands.js"></script>
+  <script src="lib/rules.js"></script>
+  <script src="lib/fusion.js"></script>
+  <script src="lib/saliency.js"></script>
+  <script src="lib/engine.js"></script>
+  <script src="lib/i18n.js"></script>
+  <script src="lib/settings.js"></script>
+  <script src="lib/report.js"></script>
+  <script src="lib/boot.js"></script>
+  <script src="lib/ui.js"></script>
+  <script src="interstitial.js"></script>
+</body>
+</html>
