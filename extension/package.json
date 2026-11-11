@@ -5,7 +5,7 @@
   "description": "UniPhish on-device phishing protection (Manifest V3). No runtime dependencies.",
   "license": "MIT",
   "scripts": {
-    "test": "node --test test/",
+    "test": "node --test test/*.test.js",
     "build:data": "../.venv/bin/python tools/build_data.py",
     "build:icons": "../.venv/bin/python tools/make_icons.py"
   }

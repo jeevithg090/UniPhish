@@ -161,4 +161,6 @@ jobs:
           node-version: 22
       - name: node --test (on-device engine, manifest, i18n, fusion)
         working-directory: extension
-        run: node --test test/
+        # Explicit glob (not a bare directory): the directory-discovery pattern of
+        # `node --test test/` differs across Node versions, so name the test files.
+        run: node --test test/*.test.js
