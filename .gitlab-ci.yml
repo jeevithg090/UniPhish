@@ -8,6 +8,14 @@
 
 stages: [lint, test, package]
 
+# Run one branch pipeline per push (and for tags) and never a separate detached
+# merge-request pipeline, so an open MR shows the full suite as its single pipeline
+# instead of splitting rule-bearing jobs into a second, partial one.
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_COMMIT_TAG
+
 default:
   interruptible: true
 

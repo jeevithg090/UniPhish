@@ -413,11 +413,18 @@ def test_find_lures_performance_100kb():
     cjk = ("您的账户已冻结请立即验证登录 お客様のアカウント 계정이 정지 ввод пароль "
            * 4000)[:100_000]
     L.find_lures("warm up login")  # build the index outside the timed region
-    assert min(_cpu(L.find_lures, typical) for _ in range(3)) < 0.05 * slow   # spec: <50ms/100KB
-    for text in (dense, cjk):                                                 # pathological density
-        assert _cpu(L.find_lures, text, max_hits=10_000) < 0.5 * slow
+
+    # Best-of-three: a single sample is at the mercy of a GC pause or scheduler
+    # preemption on a shared CI box, so take the fastest run (what the code can
+    # actually achieve) instead of whichever one a transient spike landed on.
+    def best(*args, **kw) -> float:
+        return min(_cpu(L.find_lures, *args, **kw) for _ in range(3))
+
+    assert best(typical) < 0.05 * slow                       # spec: <50ms/100KB
+    for text in (dense, cjk):                                # pathological density
+        assert best(text, max_hits=10_000) < 0.5 * slow
     for text in ("a" * 100_000, "login" * 20_000, "-" * 100_000, "\u4f60" * 100_000):
-        assert _cpu(L.find_lures, text) < 0.1 * slow
+        assert best(text) < 0.1 * slow
 
 
 def test_find_lures_scales_linearly():
