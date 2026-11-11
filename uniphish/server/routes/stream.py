@@ -46,6 +46,12 @@ async def _event_source(request: Request) -> AsyncIterator[str]:
             except asyncio.TimeoutError:
                 yield ": ping\n\n"
                 continue
+            except StopAsyncIteration:
+                # The bus subscription ended (closed on teardown). Breaking lets this
+                # `StopAsyncIteration` stop the loop instead of escaping the async
+                # generator, which Python 3.10 reraises as "async generator raised
+                # StopAsyncIteration" (PEP 479).
+                break
             yield _format(event)
     except asyncio.CancelledError:  # client went away / server shutdown
         raise
