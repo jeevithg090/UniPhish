@@ -279,7 +279,7 @@ class Signal(_Model):
                                        description="Effective log-odds after fusion damping "
                                                    "(set by the scorer).")
 
-    def model_post_init(self, __context: Any) -> None:  # noqa: D401 - pydantic hook
+    def model_post_init(self, __context: Any) -> None:
         if self.severity is None:
             self.severity = Severity.from_weight(self.weight)
 

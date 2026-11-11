@@ -19,6 +19,15 @@ dependencies (no TensorFlow) so the whole platform runs anywhere:
 
 from __future__ import annotations
 
+from uniphish.url.confusables import (
+    are_confusable,
+    ascii_fold,
+    brand_skeleton,
+    confusable_chars_in,
+    lookalikes_of,
+    skeleton,
+)
+from uniphish.url.idn_policy import IdnAssessment, assess_host
 from uniphish.url.parse import (
     ParsedURL,
     defang,
@@ -29,14 +38,36 @@ from uniphish.url.parse import (
     refang,
     same_site,
 )
+from uniphish.url.scripts import (
+    RestrictionLevel,
+    decode_tag_chars,
+    find_bidi_controls,
+    find_invisible,
+    is_mixed_script,
+    restriction_level,
+)
 
 __all__ = [
+    "IdnAssessment",
     "ParsedURL",
+    "RestrictionLevel",
+    "are_confusable",
+    "ascii_fold",
+    "assess_host",
+    "brand_skeleton",
+    "confusable_chars_in",
+    "decode_tag_chars",
     "defang",
     "extract_urls",
+    "find_bidi_controls",
+    "find_invisible",
     "host_is_under",
+    "is_mixed_script",
+    "lookalikes_of",
     "normalize_url",
     "parse_url",
     "refang",
+    "restriction_level",
     "same_site",
+    "skeleton",
 ]

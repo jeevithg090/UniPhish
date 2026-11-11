@@ -37,9 +37,9 @@ from uniphish.core.analyzer import (
 )
 from uniphish.core.config import Settings, get_settings
 from uniphish.core.types import (
+    AnalyzerRun,
     Artifact,
     ArtifactKind,
-    AnalyzerRun,
     BrandMatch,
     Indicator,
     Level,
@@ -84,6 +84,33 @@ class Engine:
 
     def analyzer_names(self) -> list[str]:
         return [a.name for a in self.analyzers]
+
+    def warm_up(self) -> None:
+        """Eagerly load heavy, cached data (brand KB, Unicode tables, reference lists,
+        the CNN weights) so the cost is paid once here instead of inside the first
+        analysis, where it could exceed a per-analyzer time budget. Best-effort: every
+        loader is optional and failures are ignored."""
+        warmers: list[tuple[str, Callable[[], Any]]] = []
+
+        def _add(mod: str, fn_name: str, *args: Any) -> None:
+            def _call() -> Any:
+                import importlib
+
+                return getattr(importlib.import_module(mod), fn_name)(*args)
+
+            warmers.append((f"{mod}.{fn_name}", _call))
+
+        _add("uniphish.url.brandkb", "get_kb")
+        _add("uniphish.url.confusables", "brand_skeleton", "warmup")
+        _add("uniphish.url.scripts", "restriction_level", "warmup")
+        _add("uniphish.assets.lists", "find_lures", "login verify account")
+        _add("uniphish.assets.lists", "tld_risk", "com")
+        _add("uniphish.url.model", "get_model")
+        for label, fn in warmers:
+            try:
+                fn()
+            except Exception as e:  # optional dep / missing asset -> skip
+                log.debug("warm_up skipped %s: %s", label, e)
 
     async def analyze(self, artifact: Artifact,
                       options: AnalysisOptions | None = None) -> Verdict:
@@ -190,7 +217,7 @@ class Engine:
             batch = [a for a in selected if a.stage == stage]
             outcomes = await asyncio.gather(*(self._run_one(a, artifact, ctx, run)
                                               for a in batch))
-            for a, (res, ar) in zip(batch, outcomes):
+            for a, (res, ar) in zip(batch, outcomes, strict=True):
                 runs.append(ar)
                 if res is not None:
                     ctx.results[a.name] = res
@@ -289,12 +316,15 @@ _default: Engine | None = None
 _default_lock = threading.Lock()
 
 
-def default_engine() -> Engine:
-    """Process-wide engine with all built-in analyzers (lazy)."""
+def default_engine(*, warm: bool = True) -> Engine:
+    """Process-wide engine with all built-in analyzers (lazy, warmed once)."""
     global _default
     with _default_lock:
         if _default is None:
-            _default = Engine()
+            eng = Engine()
+            if warm:
+                eng.warm_up()
+            _default = eng
         return _default
 
 

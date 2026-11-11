@@ -1,0 +1,159 @@
+# Prompt-injection detection signatures (AgentGuard core).
+#
+# These are DEFENSIVE DETECTION patterns: they match text that tries to hijack an AI
+# agent that reads it ("the phishing of AI agents"). They never execute or follow the
+# content they match. Patterns are grouped by tactic; every pattern is a linear,
+# ReDoS-safe regex (single character classes / fixed alternations with BOUNDED gaps,
+# `[^.\n\r]{0,N}`) applied to length-bounded input. Matching is case-insensitive and
+# multiline (see uniphish/analyzers/injection.py).
+#
+# Schema
+# ------
+# version:        int
+# obfuscation:    {weight, mitre}            # signal emitted when a hidden/encoded
+#                                            # instruction is revealed by de-obfuscation
+# turn_markers:   {weight, mitre, min_distinct, pattern}
+#                                            # fabricated chat turns ("system:", "user:")
+#                                            # only fire when >= min_distinct roles appear
+# tactics:        {name: {weight, mitre, patterns: [{re, [gate], [weight], [mitre], [lang]}]}}
+#
+# `gate` is an optional performance guard: a list of lowercase literal substrings, at
+# least one of which MUST appear (case-insensitively) in any text the regex can match.
+# The matcher skips a pattern whose gate tokens are all absent, which keeps scanning
+# linear-and-cheap on adversarial keyword spam WITHOUT changing which inputs match (a
+# gate is a necessary condition, never a sufficient one). Every token must be a sound
+# necessary literal — contiguous (no internal whitespace, since the regex uses `\s+`)
+# and present in every possible match — or a real detection would be silently dropped.
+# Omit `gate` to always run the pattern.
+#
+# Weights are signed log-odds (uniphish/core/types.py scale). mitre ids resolve against
+# uniphish/core/mitre.py (MITRE ATLAS for attacks on AI systems).
+
+version: 1
+
+obfuscation:
+  weight: 4.0
+  mitre: [AML.T0068, AML.T0051]
+
+turn_markers:
+  weight: 3.5
+  mitre: [AML.T0051]
+  min_distinct: 2
+  pattern: '(?:^|\n)[ \t>*#\-]{0,4}(system|assistant|user|human|ai|tool|function|developer)[ \t]{0,3}:'
+
+tactics:
+
+  # ----------------------------------------------------------------------------- #
+  instruction_override:
+    weight: 4.0
+    mitre: [AML.T0051]
+    patterns:
+      - re: 'ignore\s+(?:all\s+|any\s+)?(?:of\s+)?(?:the\s+|your\s+)?(?:previous|prior|above|earlier|preceding|foregoing|initial|original|former|last|system)\b[^.\n\r]{0,40}\b(?:instruction|prompt|command|rule|guideline|guard\s?rail|directive)s?\b'
+        gate: [ignore]
+      - re: 'disregard\s+(?:all\s+|any\s+)?(?:of\s+)?(?:the\s+|your\s+)?(?:previous|prior|above|earlier|preceding|initial|original|system|default)\b[^.\n\r]{0,40}\b(?:instruction|prompt|command|rule|guideline|directive)s?\b'
+        gate: [disregard]
+      - re: 'forget\s+(?:everything|all|what|any)\b[^.\n\r]{0,40}\b(?:above|before|previous|prior|earlier|instruction|prompt|told|said|learned)\b'
+        gate: [forget]
+      - re: '(?:do ?not|never|refuse to)\s+(?:follow|obey|adhere to|comply with|respect)\b[^.\n\r]{0,30}\b(?:previous|prior|above|original|system|earlier)\b[^.\n\r]{0,20}\b(?:instruction|prompt|rule|guideline|directive)s?\b'
+        gate: [follow, obey, adhere, comply, respect]
+      - re: 'override\s+(?:your\s+|the\s+|all\s+)?(?:previous\s+|prior\s+|system\s+|default\s+|safety\s+)?(?:instruction|prompt|rule|directive|guideline|guard\s?rail)s?\b'
+        gate: [override]
+      # jailbreak / persona override (MITRE ATLAS AML.T0054)
+      - re: '\b(?:you\s+are\s+now|from\s+now\s+on(?:\s+you\s+are)?|act\s+as|pretend\s+(?:to\s+be|you\s+are)|roleplay\s+as|enter|enable|activate|switch\s+to)\b[^.\n\r]{0,30}\b(?:dan\b|do\s+anything\s+now|developer\s+mode|jailbreak|jailbroken|unrestricted\s+mode|unfiltered|no\s+restrictions?|god\s+mode|sudo\s+mode|root\s+mode)\b'
+        gate: [dan, anything now, developer mode, jailbreak, jailbroken, unrestricted, unfiltered, restriction, god mode, sudo mode, root mode]
+        mitre: [AML.T0054]
+      - re: '\bdeveloper\s+mode\s+(?:enabled|on|activated|output)\b'
+        gate: [developer]
+        mitre: [AML.T0054]
+      - re: '\b(?:bypass|ignore|disable|turn\s+off|remove|lift|switch\s+off|get\s+around)\b[^.\n\r]{0,25}\b(?:(?:safety|content|ethical|security|moderation)\s+(?:guidelines?|guard\s?rails?|filters?|restrictions?|controls?|policy|policies|measures?|checks?|protocols?)|guard\s?rails?|safeguards?|moderation|censorship)\b'
+        gate: [safety, content, ethical, security, moderation, guard, safeguard, censorship]
+        mitre: [AML.T0054]
+      # multilingual variants (best-effort) of "ignore the previous instructions"
+      - re: 'ignora(?:r)?\s+(?:todas\s+)?(?:las\s+)?(?:instrucciones|indicaciones)\s+(?:anteriores|previas)'
+        gate: [instruccion, indicacion]
+        lang: es
+      - re: 'ignore[zr]?\s+(?:toutes\s+)?les\s+instructions\s+(?:pr[ée]c[ée]dentes|ant[ée]rieures|ci-dessus)'
+        gate: [instruction]
+        lang: fr
+      - re: 'ignorier[est]?\s+(?:alle\s+)?(?:vorherigen|vorigen|obigen|bisherigen)\s+(?:anweisungen|anleitungen|instruktionen)'
+        gate: [anweisung, anleitung, instruktion]
+        lang: de
+      - re: 'ignore?\s+(?:todas\s+)?(?:as\s+)?instru[çc](?:[õo]es)\s+(?:anteriores|pr[ée]vias)'
+        gate: [instru]
+        lang: pt
+      - re: '忽略(?:上面|上述|之前|先前|以上)(?:的)?(?:所有)?(?:指令|指示|提示|说明)'
+        gate: ['忽略']
+        lang: zh
+
+  # ----------------------------------------------------------------------------- #
+  role_hijack:
+    weight: 3.5
+    mitre: [AML.T0051]
+    patterns:
+      - re: '<\|?(?:im_start|im_end|im_sep)\|?>'
+        gate: [im_start, im_end, im_sep]
+      - re: '<\|(?:system|assistant|user|endoftext|eot_id|start_header_id|end_header_id)\|>'
+        gate: ['<|']
+      - re: '<<\s*/?\s*sys\s*>>'
+        gate: ['<<']
+      - re: '\[/?inst\]'
+        gate: [inst]
+      # fabricated role / authority tags (not real HTML elements)
+      - re: '</?(?:system|assistant|admin|important|instruction|instructions|override|developer|root|secret)(?:\s[^>\n]{0,80})?>'
+        gate: ['<']
+      - re: '(?:^|\n)[ \t>*#\-]{0,4}#{1,4}\s*(?:system|instruction|new\s+instruction|assistant|context|important)\b'
+        gate: ['#']
+      - re: '(?:^|\n)[ \t>*#\-]{0,6}(?:new|updated|revised|additional|important|real|actual|true|secret|hidden|override)\s+(?:instruction|system\s+prompt|rule|directive|task|command)s?\s*[:\-]'
+        gate: [new, updated, revised, additional, important, real, actual, true, secret, hidden, override]
+      # fabricated compliant assistant turn injected into content
+      - re: '(?:^|\n)[ \t>*#\-]{0,4}(?:assistant|ai|bot)[ \t]{0,3}:\s*(?:sure|certainly|of\s+course|ok(?:ay)?|understood|absolutely|i\s+(?:will|can|am\s+happy)|here\s+(?:is|are|you))'
+        gate: [assistant, ai, bot]
+
+  # ----------------------------------------------------------------------------- #
+  exfiltration:
+    weight: 5.0
+    mitre: [AML.T0057, AML.T0051]
+    patterns:
+      - re: '(?:send|post|upload|transmit|forward|exfiltrate|leak|deliver|e-?mail|mail|copy|report)\b[^.\n\r]{0,45}\b(?:conversation|chat\s+history|message\s+history|credential|password|passwd|api\s*key|access\s+token|secret|token|session\s+(?:id|token|cookie)|session|cookie|private\s+key|seed\s+phrase|mnemonic|wallet\s+(?:key|seed)|personal\s+(?:data|info|information)|user\s+(?:data|credentials?|info))s?\b[^.\n\r]{0,35}\b(?:to|at|via|through|towards?|into)\b'
+        gate: [conversation, chat, message, credential, password, passwd, api, secret, token, session, cookie, private, seed, mnemonic, wallet, personal, user]
+      - re: '(?:send|post|upload|forward|exfiltrate|deliver|report)\b[^.\n\r]{0,35}\b(?:to|at)\b\s*(?:https?://|www\.|ftp://|[\w.+\-]{1,64}@[\w.\-]{1,255})'
+        gate: [http, www., 'ftp://', '@']
+      - re: '(?:include|append|attach|add|embed|insert|put|encode)\b[^.\n\r]{0,35}\b(?:your|the|all)\s+(?:system\s+prompt|instruction|conversation|chat|api\s*key|credential|secret|token)s?\b[^.\n\r]{0,35}\b(?:in|into|to|within|inside)\b[^.\n\r]{0,25}\b(?:url|link|image|img|request|query|markdown|parameter|param|response|output)s?\b'
+        gate: [prompt, instruction, conversation, chat, api, credential, secret, token]
+      # data smuggled through a rendered markdown image URL
+      - re: '!\[[^\]\n]{0,60}\]\(\s*https?://[^)\n]{0,160}(?:conversation|history|prompt|token|secret|api[_\-]?key|session|cookie|\$\{|\{\{|%7b)'
+        gate: ['![']
+
+  # ----------------------------------------------------------------------------- #
+  tool_abuse:
+    weight: 4.5
+    mitre: [AML.T0053, AML.T0051]
+    patterns:
+      - re: '(?:run|execute|exec|eval|launch)\b[^.\n\r]{0,20}\b(?:this|the\s+following|these|below|the\s+next)\b[^.\n\r]{0,20}\b(?:command|code|script|shell|payload|program|snippet|one-?liner)s?\b'
+        gate: [command, code, script, shell, payload, program, snippet, oneliner, one-liner]
+      - re: '(?:run|execute|type|paste|enter)\s*:?\s*(?:\$\s*)?(?:sudo\s+|bash\s+|sh\s+|cmd(?:\.exe)?\s+|powershell|pwsh|python[0-9.]*\s+|node\s+|npm\s+|npx\s+|pip[0-9]*\s+|curl\s+|wget\s+|iwr\s+|iex\b|rm\s+-rf\b|del\s+/)'
+        gate: [sudo, bash, 'sh ', cmd, powershell, pwsh, python, node, npm, npx, pip, curl, wget, iwr, iex, rm, del]
+      - re: '\b(?:curl|wget|iwr|invoke-web(?:request)?)\b[^.\n\r]{0,80}\bhttps?://'
+        gate: [curl, wget, iwr, invoke-web]
+      - re: '(?:browse|navigate|go)\s+to\s+(?:https?://|www\.|[\w\-]{1,60}\.(?:com|net|org|io|co|xyz|ru|cn|info|top|test|example|invalid))\b[^\n\r]{0,70}\b(?:and\s+)?(?:then\s+)?(?:execute|run|download|install|click|submit|enter|approve|fetch|paste)\b'
+        gate: [browse, navigate, 'go ']
+      - re: '(?:browse|navigate)\s+to\b[^.\n\r]{0,50}\b(?:and\s+)?(?:then\s+)?(?:execute|run|download|install|approve)\b'
+        gate: [browse, navigate]
+      - re: '(?:approve|authorize|sign|execute)\s+(?:this|these|the\s+following|the\s+pending)\s+(?:transaction|transfer|payment|withdrawal|wallet|contract)s?\b'
+        gate: [transaction, transfer, payment, withdrawal, wallet, contract]
+      - re: '\b(?:pip[0-9]*|npm|npx|apt(?:-get)?|yum|dnf|brew|gem|cargo|go)\s+install\b|\bdownload\s+and\s+(?:run|execute|install)\b'
+        gate: [install, download]
+
+  # ----------------------------------------------------------------------------- #
+  data_leak:
+    weight: 4.0
+    mitre: [AML.T0057, AML.T0051]
+    patterns:
+      - re: '(?:reveal|show|print|output|display|repeat|disclose|share|expose|dump|leak|give\s+me|tell\s+me|write\s+out)\b[^.\n\r]{0,30}\b(?:system\s+prompt|system\s+message|system\s+instructions?|initial\s+prompt|hidden\s+(?:prompt|instructions?)|secret\s+(?:prompt|instructions?))\b'
+        gate: [prompt, message, instruction]
+      - re: '(?:reveal|show|print|output|display|repeat|disclose|dump)\b[^.\n\r]{0,20}\b(?:your|the)\s+(?:hidden\s+|initial\s+|original\s+|full\s+|complete\s+|entire\s+|exact\s+|verbatim\s+|secret\s+|confidential\s+)(?:instructions?|prompt|directive|guidelines?|configuration|rules?)\b'
+        gate: [instruction, prompt, directive, guideline, configuration, rule]
+      - re: '(?:what\s+(?:are|were|is|was)|repeat|recite)\b[^.\n\r]{0,20}\byour\b[^.\n\r]{0,20}\b(?:system\s+prompt|initial\s+instructions?|hidden\s+instructions?|instructions?)\b'
+        gate: [instruction, prompt]
+      - re: '(?:print|output|repeat|echo|reproduce)\b[^.\n\r]{0,25}\b(?:everything\s+|all\s+of\s+the\s+)?(?:above|before\s+this|the\s+text\s+above|the\s+system\s+prompt|verbatim)\b'
+        gate: [above, verbatim, before, prompt]

@@ -1,0 +1,9 @@
+X-Garbage header without colon
+From: first@example.com
+From: second@example.net
+Subject: broken
+Date: not a date at all
+Content-Type: multipart/mixed; boundary="NOPE"
+
+this body never opens the boundary
+visit https://example.com/path now

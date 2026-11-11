@@ -1,0 +1,236 @@
+# Credential / urgency lure lexicon for matching against URL hosts, paths and short
+# text (SMS-length) across languages. Phishing URLs reuse the vocabulary of the
+# message they accompany ("login", "verifica", "安全", "доставка") in the victim's
+# language, so an English-only list silently misses most non-English campaigns.
+#
+# Structure
+#   category_weights   default log-odds contribution per category (weak evidence:
+#                      lure words alone are common on legitimate sites)
+#   languages.<tag>.<category>  list of terms; each term is a string or
+#                      {t: term, w: weight} to override the category weight
+#   Language tags are BCP-47-ish: "und" = language-neutral technical token (login,
+#   2fa, kyc ...), "hi-Latn" = Hinglish (Hindi in Latin script), zh-Hans / zh-Hant.
+#
+# Matching semantics (see uniphish/assets/lists.py): terms are lower-cased; terms in
+# space-delimited scripts (Latin, Cyrillic, Greek, Arabic, Hebrew, Devanagari, Bengali,
+# Tamil ...) match on token boundaries (so "tax" does not match inside "syntax");
+# terms in spaceless scripts (Han, Kana, Hangul, Thai) match as substrings. Latin terms
+# with diacritics also match their accent-stripped form (URLs usually drop accents).
+#
+# Provenance: curated from phishing-kit and campaign vocabulary reported in public
+# research (Cofense, Proofpoint, Kaspersky, Group-IB, APWG, Google Safe Browsing
+# reports), then translated by hand into each language by the project maintainers.
+# Native-speaker review of the lower-resource languages (bn, ta, sw, tl, fa) is
+# welcome; see assets/README.md.
+version: 1
+# Suffixing / agglutinative languages whose inflected forms (tr 'hesabiniz', id 'akunnya')
+# should also match by stem (term length >= 5, token must extend the term). Discounted.
+stem_languages: [tr, id, ms]
+category_weights:
+  credential: 0.7
+  account: 0.5
+  urgency: 0.6
+  financial: 0.5
+  delivery: 0.5
+  identity: 0.6
+  security: 0.3
+languages:
+  und:
+    credential: ["login", "logon", "signin", "sign-in", "log-in", "sso", "mfa", "2fa", "otp", "webmail", "auth", "authenticate", "authentication", "oauth", "passcode", "passkey", "credentials", "relogin"]
+    identity: ["kyc", "kyb", "idverify"]
+    account: ["webscr", {t: "cmd", w: 0.2}, "myaccount", "wallet", "reactivate", "reactivation"]
+    security: ["secure", "security"]
+  en:
+    credential: ["log in", "sign in", "password", "passwd", "unlock", "recovery", {t: "recover", w: 0.25}, {t: "reset", w: 0.25}, "verification code", "security code", "single sign-on"]
+    account: ["account", "verify", "verification", {t: "confirm", w: 0.25}, "confirmation", {t: "update", w: 0.25}, "billing", "validate", "validation", {t: "restore", w: 0.25}, "reactivate", {t: "profile", w: 0.25}, {t: "customer", w: 0.25}, {t: "support", w: 0.25}, {t: "helpdesk", w: 0.25}, {t: "service", w: 0.25}]
+    urgency: ["suspended", "suspend", "locked", {t: "limited", w: 0.25}, "restricted", "expired", "expire", "urgent", "immediately", {t: "alert", w: 0.25}, {t: "warning", w: 0.25}, "unusual activity", "action required", "final notice", "deactivated", {t: "disabled", w: 0.25}, {t: "blocked", w: 0.25}]
+    financial: ["invoice", "payment", {t: "pay", w: 0.25}, "refund", {t: "tax", w: 0.25}, {t: "bank", w: 0.25}, "banking", {t: "transaction", w: 0.25}, {t: "statement", w: 0.25}, {t: "receipt", w: 0.25}, {t: "purchase", w: 0.25}, {t: "order", w: 0.25}, "salary", "payroll", "remittance", "crypto", {t: "claim", w: 0.25}, "reward", "prize", {t: "gift", w: 0.25}]
+    delivery: ["delivery", "parcel", {t: "package", w: 0.25}, "shipment", {t: "shipping", w: 0.25}, {t: "tracking", w: 0.25}, "customs", "courier", "redelivery"]
+    identity: ["identity", "id verification", "selfie", "passport"]
+  es:
+    credential: ["iniciar sesion", "iniciar sesión", "acceso", "acceder", "contraseña", "clave", "desbloquear", "recuperar", "recuperación", "código de verificación"]
+    account: ["cuenta", "verificar", "verificación", "confirmar", "actualizar", "actualización", "facturación", "validar", "cliente", "soporte", "restablecer"]
+    urgency: ["suspendida", "suspendido", "bloqueada", "bloqueado", "limitada", "restringida", "caducado", "urgente", "inmediatamente", "alerta", "aviso", "actividad inusual", "desactivada"]
+    financial: ["factura", "pago", "reembolso", "devolución", "impuestos", "banco", "banca", "transacción", "recibo", "pedido", "nómina", "premio"]
+    delivery: ["entrega", "paquete", "envío", "envio", "rastreo", "aduana", "mensajería"]
+    identity: ["identidad", "verificar identidad"]
+  pt:
+    credential: ["entrar", "acesso", "acessar", "senha", "desbloquear", "recuperar", "recuperação", "código de verificação"]
+    account: ["conta", "verificar", "verificação", "confirmar", "atualizar", "atualização", "cobrança", "validar", "cliente", "suporte", "redefinir"]
+    urgency: ["suspensa", "suspenso", "bloqueada", "bloqueado", "limitada", "restrita", "expirado", "urgente", "imediatamente", "alerta", "aviso", "atividade incomum", "desativada"]
+    financial: ["fatura", "pagamento", "reembolso", "restituição", "imposto", "banco", "transação", "boleto", "pedido", "pix", "recibo", "prêmio"]
+    delivery: ["entrega", "encomenda", "pacote", "remessa", "rastreamento", "rastreio", "alfândega", "correios"]
+    identity: ["identidade", "verificar identidade"]
+  fr:
+    credential: ["connexion", "se connecter", "identifiant", "mot de passe", "motdepasse", "débloquer", "debloquer", "récupération", "recuperation", "code de vérification"]
+    account: ["compte", "vérifier", "verifier", "vérification", "verification", "confirmer", "confirmation", "mettre à jour", "mise à jour", "facturation", "valider", "client", "assistance", "réinitialiser"]
+    urgency: ["suspendu", "suspendue", "bloqué", "bloquée", "limité", "restreint", "expiré", "urgent", "immédiatement", "alerte", "avertissement", "activité inhabituelle", "désactivé"]
+    financial: ["facture", "paiement", "remboursement", "impôts", "impots", "banque", "transaction", "reçu", "commande", "salaire", "cadeau"]
+    delivery: ["livraison", "colis", "expédition", "expedition", "suivi", "douane", "transporteur"]
+    identity: ["identité", "identite"]
+  de:
+    credential: ["anmelden", "anmeldung", "einloggen", "passwort", "kennwort", "entsperren", "wiederherstellung", "wiederherstellen", "bestätigungscode", "zugang"]
+    account: ["konto", "benutzerkonto", "verifizieren", "überprüfen", "bestätigen", "aktualisieren", "rechnungsadresse", "kunde", "kundenservice", "zurücksetzen"]
+    urgency: ["gesperrt", "sperrung", "eingeschränkt", "abgelaufen", "dringend", "sofort", "warnung", "ungewöhnliche aktivität", "deaktiviert"]
+    financial: ["rechnung", "zahlung", "erstattung", "rückerstattung", "steuer", "steuererstattung", "bank", "überweisung", "quittung", "bestellung", "gehalt", "gewinn"]
+    delivery: ["lieferung", "paket", "sendung", "sendungsverfolgung", "zoll", "zustellung", "versand"]
+    identity: ["identität", "identitätsprüfung"]
+  it:
+    credential: ["accedi", "accesso", "password", "sblocca", "sbloccare", "recupero", "recuperare", "codice di verifica", "credenziali"]
+    account: ["conto", "account", "verifica", "verificare", "conferma", "confermare", "aggiorna", "aggiornamento", "fatturazione", "convalida", "cliente", "assistenza", "ripristino"]
+    urgency: ["sospeso", "sospesa", "bloccato", "bloccata", "limitato", "limitata", "scaduto", "urgente", "immediatamente", "avviso", "allerta", "attività insolita", "disattivato"]
+    financial: ["fattura", "pagamento", "rimborso", "tasse", "imposte", "banca", "transazione", "ricevuta", "ordine", "stipendio", "premio"]
+    delivery: ["consegna", "pacco", "spedizione", "tracciamento", "dogana", "corriere", "giacenza"]
+    identity: ["identità", "identita"]
+  nl:
+    credential: ["inloggen", "aanmelden", "wachtwoord", "ontgrendelen", "herstel", "herstellen", "verificatiecode", "toegang"]
+    account: ["rekening", "account", "verifiëren", "verifieren", "verificatie", "bevestigen", "bijwerken", "factuuradres", "klant", "klantenservice", "resetten"]
+    urgency: ["geblokkeerd", "opgeschort", "beperkt", "verlopen", "dringend", "onmiddellijk", "waarschuwing", "ongebruikelijke activiteit", "gedeactiveerd"]
+    financial: ["factuur", "betaling", "terugbetaling", "restitutie", "belasting", "belastingdienst", "bank", "transactie", "bon", "bestelling", "salaris"]
+    delivery: ["levering", "pakket", "zending", "bezorging", "douane", "pakketdienst", "trackandtrace"]
+  pl:
+    credential: ["zaloguj", "logowanie", "hasło", "haslo", "odblokuj", "odzyskiwanie", "kod weryfikacyjny", "dostęp"]
+    account: ["konto", "zweryfikuj", "weryfikacja", "potwierdź", "potwierdzenie", "aktualizacja", "aktualizuj", "rozliczenia", "klient", "obsługa", "zresetuj"]
+    urgency: ["zablokowane", "zawieszone", "ograniczone", "wygasło", "pilne", "natychmiast", "ostrzeżenie", "nietypowa aktywność", "dezaktywowane"]
+    financial: ["faktura", "płatność", "platnosc", "zwrot", "podatek", "bank", "transakcja", "paragon", "zamówienie", "wypłata", "nagroda"]
+    delivery: ["dostawa", "paczka", "przesyłka", "przesylka", "śledzenie", "cło", "kurier", "doplata"]
+  ro:
+    credential: ["autentificare", "conectare", "parola", "parolă", "deblocare", "recuperare", "cod de verificare", "acces"]
+    account: ["cont", "verificare", "verifică", "confirmare", "confirmă", "actualizare", "facturare", "client", "suport", "resetare"]
+    urgency: ["blocat", "suspendat", "limitat", "expirat", "urgent", "imediat", "avertisment", "activitate neobișnuită", "dezactivat"]
+    financial: ["factura", "factură", "plata", "plată", "rambursare", "impozit", "banca", "bancă", "tranzacție", "comanda", "comandă", "premiu"]
+    delivery: ["livrare", "colet", "expediere", "urmărire", "vamă", "curier"]
+  cs:
+    credential: ["přihlášení", "prihlaseni", "přihlásit", "heslo", "odemknout", "obnovení", "ověřovací kód", "přístup"]
+    account: ["účet", "ucet", "ověřit", "overit", "ověření", "potvrdit", "aktualizace", "fakturace", "zákazník", "podpora", "obnovit"]
+    urgency: ["zablokováno", "pozastaveno", "omezeno", "vypršelo", "naléhavé", "okamžitě", "upozornění", "neobvyklá aktivita", "deaktivováno"]
+    financial: ["faktura", "platba", "vrácení", "daň", "banka", "transakce", "účtenka", "objednávka", "výhra"]
+    delivery: ["doručení", "balík", "zásilka", "sledování", "clo", "kurýr", "dobírka"]
+  ru:
+    credential: ["вход", "войти", "логин", "пароль", "разблокировать", "восстановление", "восстановить", "код подтверждения", "авторизация", "доступ"]
+    account: ["аккаунт", "учетная запись", "учётная запись", "проверка", "подтвердить", "подтверждение", "обновить", "обновление", "верификация", "клиент", "поддержка", "сброс"]
+    urgency: ["заблокирован", "заблокировано", "блокировка", "приостановлен", "ограничен", "истек", "истёк", "срочно", "немедленно", "предупреждение", "подозрительная активность", "деактивирован"]
+    financial: ["счет", "счёт", "оплата", "платеж", "платёж", "возврат", "налог", "банк", "транзакция", "чек", "заказ", "зарплата", "выигрыш", "компенсация"]
+    delivery: ["доставка", "посылка", "отправление", "отслеживание", "таможня", "курьер", "почта"]
+    identity: ["личность", "идентификация"]
+  uk:
+    credential: ["вхід", "увійти", "логін", "пароль", "розблокувати", "відновлення", "відновити", "код підтвердження", "авторизація", "доступ"]
+    account: ["акаунт", "обліковий запис", "перевірка", "підтвердити", "підтвердження", "оновити", "оновлення", "верифікація", "клієнт", "підтримка", "скидання"]
+    urgency: ["заблоковано", "блокування", "призупинено", "обмежено", "закінчився", "терміново", "негайно", "попередження", "підозріла активність", "деактивовано"]
+    financial: ["рахунок", "оплата", "платіж", "повернення", "податок", "банк", "транзакція", "чек", "замовлення", "виплата", "виграш", "компенсація"]
+    delivery: ["доставка", "посилка", "відправлення", "відстеження", "митниця", "кур'єр", "пошта"]
+  tr:
+    credential: ["giriş", "giris", "oturum aç", "şifre", "sifre", "parola", "kilidi aç", "kurtarma", "doğrulama kodu", "erişim"]
+    account: ["hesap", "hesab", "doğrula", "dogrula", "doğrulama", "onayla", "onay", "güncelle", "guncelle", "güncelleme", "fatura bilgileri", "müşteri", "destek", "sıfırla"]
+    urgency: ["askıya alındı", "askıya", "kilitlendi", "bloke", "sınırlı", "kısıtlı", "süresi doldu", "acil", "hemen", "uyarı", "olağandışı etkinlik", "devre dışı"]
+    financial: ["fatura", "ödeme", "odeme", "iade", "vergi", "banka", "işlem", "makbuz", "sipariş", "maaş", "ödül"]
+    delivery: ["teslimat", "kargo", "paket", "gönderi", "takip", "gümrük", "kurye"]
+    identity: ["kimlik", "kimlik doğrulama"]
+  ar:
+    credential: ["تسجيل الدخول", "دخول", "كلمة المرور", "كلمة السر", "فتح", "استعادة", "رمز التحقق", "المصادقة"]
+    account: ["حساب", "الحساب", "تحقق", "التحقق", "تأكيد", "تحديث", "الفواتير", "العميل", "الدعم", "إعادة تعيين"]
+    urgency: ["معلق", "تم تعليق", "محظور", "مقيد", "منتهي", "عاجل", "فورا", "فوراً", "تنبيه", "تحذير", "نشاط غير عادي", "تم تعطيل"]
+    financial: ["فاتورة", "دفع", "الدفع", "استرداد", "ضريبة", "بنك", "المصرف", "معاملة", "إيصال", "طلب", "راتب", "جائزة"]
+    delivery: ["توصيل", "طرد", "شحنة", "تتبع", "الجمارك", "مندوب", "بريد"]
+    identity: ["الهوية", "توثيق الهوية"]
+  fa:
+    credential: ["ورود", "ورود به حساب", "رمز عبور", "گذرواژه", "بازگشایی", "بازیابی", "کد تایید", "احراز هویت"]
+    account: ["حساب", "حساب کاربری", "تایید", "تأیید", "تأیید هویت", "به‌روزرسانی", "بروزرسانی", "صورتحساب", "مشتری", "پشتیبانی", "بازنشانی"]
+    urgency: ["مسدود", "معلق", "محدود", "منقضی", "فوری", "هشدار", "فعالیت غیرعادی", "غیرفعال"]
+    financial: ["فاکتور", "پرداخت", "بازپرداخت", "مالیات", "بانک", "تراکنش", "رسید", "سفارش", "حقوق", "جایزه"]
+    delivery: ["تحویل", "بسته", "مرسوله", "پیگیری", "گمرک", "پیک", "پست"]
+  hi:
+    credential: ["लॉगिन", "साइन इन", "पासवर्ड", "अनलॉक", "रिकवरी", "सत्यापन कोड", "प्रमाणीकरण", "ओटीपी"]
+    account: ["खाता", "अकाउंट", "सत्यापित", "सत्यापन", "पुष्टि", "अपडेट", "बिलिंग", "ग्राहक", "सहायता", "रीसेट"]
+    urgency: ["निलंबित", "बंद", "ब्लॉक", "सीमित", "समाप्त", "तत्काल", "जरूरी", "चेतावनी", "संदिग्ध गतिविधि", "निष्क्रिय"]
+    financial: ["बिल", "भुगतान", "रिफंड", "वापसी", "कर", "बैंक", "लेनदेन", "रसीद", "ऑर्डर", "वेतन", "इनाम", "पुरस्कार"]
+    delivery: ["डिलीवरी", "पार्सल", "पैकेज", "शिपमेंट", "ट्रैकिंग", "सीमा शुल्क", "कूरियर"]
+    identity: ["केवाईसी", "पहचान", "आधार", "पैन कार्ड"]
+  hi-Latn:
+    credential: ["login", "password", "otp", "unlock"]
+    account: ["khata", "account", "verify", "update", "band", "customer", "madad", "reset", "sampark"]
+    urgency: [{t: "turant", w: 0.6}, "jaldi", "zaroori", "suspend", "blocked", "block", "band ho jayega", "chetavani", "expire", "last chance"]
+    financial: ["bhugtan", "payment", "refund", "wapsi", "bank", "inam", "paisa", "paise", "lottery", "recharge", "cashback", "bill", "emi", "loan"]
+    delivery: ["delivery", "parcel", "courier", "tracking", "customs"]
+    identity: ["kyc", "aadhaar", "aadhar", "pan card", "pancard", "pan-card"]
+  bn:
+    credential: ["লগইন", "সাইন ইন", "পাসওয়ার্ড", "আনলক", "পুনরুদ্ধার", "যাচাইকরণ কোড", "ওটিপি"]
+    account: ["অ্যাকাউন্ট", "একাউন্ট", "হিসাব", "যাচাই", "নিশ্চিত", "আপডেট", "বিলিং", "গ্রাহক", "সহায়তা", "রিসেট"]
+    urgency: ["স্থগিত", "বন্ধ", "ব্লক", "সীমিত", "মেয়াদোত্তীর্ণ", "জরুরি", "অবিলম্বে", "সতর্কতা", "সন্দেহজনক কার্যকলাপ"]
+    financial: ["বিল", "পেমেন্ট", "পরিশোধ", "ফেরত", "কর", "ব্যাংক", "লেনদেন", "রসিদ", "অর্ডার", "বেতন", "পুরস্কার", "বিকাশ", "নগদ"]
+    delivery: ["ডেলিভারি", "পার্সেল", "প্যাকেজ", "চালান", "ট্র্যাকিং", "কাস্টমস", "কুরিয়ার"]
+    identity: ["কেওয়াইসি", "পরিচয়"]
+  ta:
+    credential: ["உள்நுழை", "உள்நுழைவு", "கடவுச்சொல்", "திறக்க", "மீட்பு", "சரிபார்ப்பு குறியீடு", "ஓடிபி"]
+    account: ["கணக்கு", "சரிபார்க்க", "சரிபார்ப்பு", "உறுதிப்படுத்து", "புதுப்பிக்க", "பில்லிங்", "வாடிக்கையாளர்", "ஆதரவு", "மீட்டமை"]
+    urgency: ["இடைநிறுத்தம்", "தடுக்கப்பட்டது", "முடக்கப்பட்டது", "வரையறுக்கப்பட்ட", "காலாவதி", "அவசரம்", "உடனடியாக", "எச்சரிக்கை", "சந்தேகத்திற்குரிய செயல்பாடு"]
+    financial: ["பில்", "கட்டணம்", "பணம் செலுத்து", "பணத்தைத் திரும்பப்பெற", "வரி", "வங்கி", "பரிவர்த்தனை", "ரசீது", "ஆர்டர்", "சம்பளம்", "பரிசு"]
+    delivery: ["டெலிவரி", "பார்சல்", "பொட்டலம்", "கண்காணிப்பு", "சுங்கம்", "கூரியர்"]
+    identity: ["கேஒய்சி", "அடையாளம்"]
+  zh-Hans:
+    credential: ["登录", "登陆", "密码", "解锁", "找回", "验证码", "身份验证", "认证", "口令"]
+    account: ["账户", "账号", "帐户", "帐号", "验证", "核实", "确认", "更新", "升级", "账单", "客户", "客服", "重置"]
+    urgency: ["冻结", "暂停", "封禁", "限制", "过期", "失效", "紧急", "立即", "警告", "异常", "停用", "涉嫌", "逾期"]
+    financial: ["发票", "付款", "支付", "退款", "退税", "税务", "银行", "交易", "收据", "订单", "工资", "奖励", "中奖", "补贴"]
+    delivery: ["快递", "包裹", "物流", "派送", "运单", "海关", "签收"]
+    identity: ["实名", "实名认证", "身份"]
+  zh-Hant:
+    credential: ["登入", "登錄", "密碼", "解鎖", "找回", "驗證碼", "身分驗證", "認證", "口令"]
+    account: ["帳戶", "帳號", "驗證", "核實", "確認", "更新", "升級", "帳單", "客戶", "客服", "重設"]
+    urgency: ["凍結", "暫停", "封鎖", "限制", "過期", "失效", "緊急", "立即", "警告", "異常", "停用", "逾期"]
+    financial: ["發票", "付款", "支付", "退款", "退稅", "稅務", "銀行", "交易", "收據", "訂單", "薪資", "獎勵", "中獎"]
+    delivery: ["快遞", "包裹", "物流", "派送", "運單", "海關", "簽收", "宅配"]
+    identity: ["實名", "實名認證", "身分"]
+  ja:
+    credential: ["ログイン", "サインイン", "パスワード", "ロック解除", "再設定", "認証コード", "認証", "ワンタイム"]
+    account: ["アカウント", "口座", "確認", "本人確認", "更新", "請求", "お客様", "サポート", "リセット"]
+    urgency: ["停止", "凍結", "制限", "利用制限", "期限切れ", "緊急", "至急", "警告", "不正利用", "異常", "無効"]
+    financial: ["請求書", "支払い", "お支払い", "返金", "還付", "税", "銀行", "取引", "領収書", "注文", "給与", "当選"]
+    delivery: ["配送", "宅配", "荷物", "お届け", "再配達", "不在", "追跡", "税関", "不在通知"]
+    identity: ["本人", "マイナンバー"]
+  ko:
+    credential: ["로그인", "비밀번호", "암호", "잠금해제", "복구", "인증번호", "인증코드", "본인인증", "인증"]
+    account: ["계정", "계좌", "확인", "업데이트", "갱신", "청구", "고객", "고객센터", "초기화", "재설정"]
+    urgency: ["정지", "중지", "차단", "제한", "만료", "긴급", "즉시", "경고", "이상", "비정상", "비활성"]
+    financial: ["청구서", "결제", "환불", "세금", "은행", "거래", "영수증", "주문", "급여", "당첨", "환급"]
+    delivery: ["배송", "택배", "소포", "운송장", "추적", "세관", "반송"]
+    identity: ["실명", "신원"]
+  vi:
+    credential: ["đăng nhập", "dang nhap", "mật khẩu", "mat khau", "mở khóa", "mo khoa", "khôi phục", "khoi phuc", "mã xác minh", "ma xac minh", "mã otp"]
+    account: ["tài khoản", "tai khoan", "xác minh", "xac minh", "xác thực", "xac thuc", "xác nhận", "xac nhan", "cập nhật", "cap nhat", "thanh toán hóa đơn", "khách hàng", "khach hang", "hỗ trợ", "ho tro", "đặt lại"]
+    urgency: ["bị khóa", "bi khoa", "tạm khóa", "tam khoa", "tạm ngưng", "hạn chế", "han che", "hết hạn", "het han", "khẩn cấp", "khan cap", "ngay lập tức", "cảnh báo", "canh bao", "hoạt động bất thường"]
+    financial: ["hóa đơn", "hoa don", "thanh toán", "thanh toan", "hoàn tiền", "hoan tien", "thuế", "thue", "ngân hàng", "ngan hang", "giao dịch", "giao dich", "biên lai", "đơn hàng", "don hang", "lương", "trúng thưởng", "trung thuong"]
+    delivery: ["giao hàng", "giao hang", "bưu phẩm", "buu pham", "kiện hàng", "kien hang", "vận đơn", "van don", "theo dõi", "hải quan", "hai quan", "bưu điện"]
+    identity: ["định danh", "dinh danh", "căn cước", "can cuoc"]
+  id:
+    credential: ["masuk", "login", "kata sandi", "sandi", "password", "buka blokir", "pemulihan", "kode verifikasi", "kode otp", "akses"]
+    account: ["akun", "rekening", "verifikasi", "konfirmasi", "perbarui", "pembaruan", "penagihan", "pelanggan", "bantuan", "atur ulang"]
+    urgency: ["diblokir", "dibekukan", "ditangguhkan", "dibatasi", "kedaluwarsa", "mendesak", "segera", "peringatan", "aktivitas mencurigakan", "dinonaktifkan"]
+    financial: ["tagihan", "faktur", "pembayaran", "bayar", "pengembalian dana", "pajak", "bank", "transaksi", "kuitansi", "pesanan", "gaji", "hadiah", "undian", "pinjaman"]
+    delivery: ["pengiriman", "paket", "kiriman", "resi", "lacak", "bea cukai", "kurir"]
+    identity: ["identitas", "ktp"]
+  ms:
+    credential: ["log masuk", "masuk", "kata laluan", "buka kunci", "pemulihan", "kod pengesahan", "akses"]
+    account: ["akaun", "sahkan", "pengesahan", "kemas kini", "pengebilan", "pelanggan", "sokongan", "tetap semula"]
+    urgency: ["disekat", "dibekukan", "digantung", "terhad", "tamat tempoh", "segera", "amaran", "aktiviti mencurigakan", "dinyahaktifkan"]
+    financial: ["invois", "bayaran", "pembayaran", "bayaran balik", "cukai", "bank", "transaksi", "resit", "pesanan", "gaji", "hadiah"]
+    delivery: ["penghantaran", "bungkusan", "bungkusan pos", "kiriman", "penjejakan", "kastam", "kurier"]
+  th:
+    credential: ["เข้าสู่ระบบ", "ล็อกอิน", "รหัสผ่าน", "ปลดล็อก", "กู้คืน", "รหัสยืนยัน", "ยืนยันตัวตน", "โอทีพี"]
+    account: ["บัญชี", "ยืนยัน", "ตรวจสอบ", "อัปเดต", "อัพเดท", "การเรียกเก็บเงิน", "ลูกค้า", "ฝ่ายสนับสนุน", "รีเซ็ต"]
+    urgency: ["ระงับ", "ถูกระงับ", "ถูกล็อก", "จำกัด", "หมดอายุ", "ด่วน", "ทันที", "คำเตือน", "ผิดปกติ", "ปิดใช้งาน"]
+    financial: ["ใบแจ้งหนี้", "ชำระเงิน", "จ่ายเงิน", "คืนเงิน", "ภาษี", "ธนาคาร", "ธุรกรรม", "ใบเสร็จ", "คำสั่งซื้อ", "เงินเดือน", "รางวัล", "เงินกู้"]
+    delivery: ["จัดส่ง", "พัสดุ", "ติดตาม", "ศุลกากร", "ขนส่ง", "ไปรษณีย์", "เลขพัสดุ"]
+    identity: ["ยืนยันตัวตน", "บัตรประชาชน"]
+  sw:
+    credential: ["ingia", "kuingia", "nenosiri", "neno la siri", "fungua", "kurejesha", "msimbo wa uthibitisho", "ufikiaji"]
+    account: ["akaunti", "thibitisha", "uthibitisho", "sasisha", "malipo ya bili", "mteja", "msaada", "weka upya"]
+    urgency: ["imezuiwa", "imesimamishwa", "imefungwa", "imepunguzwa", "imeisha muda", "haraka", "mara moja", "onyo", "shughuli isiyo ya kawaida"]
+    financial: ["ankara", "malipo", "kurejesha pesa", "kodi", "benki", "muamala", "risiti", "agizo", "mshahara", "zawadi", "mkopo", "mpesa"]
+    delivery: ["uwasilishaji", "kifurushi", "mzigo", "ufuatiliaji", "forodha", "mjumbe", "posta"]
+  tl:
+    credential: ["mag-login", "mag log in", "password", "i-unlock", "pagbawi", "verification code", "code ng pagpapatunay", "access"]
+    account: ["account", "akawnt", "i-verify", "patunayan", "kumpirmahin", "i-update", "pag-update", "billing", "customer", "suporta", "i-reset"]
+    urgency: ["na-block", "naka-block", "nasuspinde", "limitado", "nag-expire", "apurahan", "agad", "babala", "kahina-hinalang aktibidad", "na-deactivate"]
+    financial: ["invoice", "bayad", "pagbabayad", "refund", "buwis", "bangko", "transaksyon", "resibo", "order", "sahod", "premyo", "utang", "gcash", "maya"]
+    delivery: ["paghahatid", "parsela", "package", "padala", "pagsubaybay", "customs", "kurier", "courier"]

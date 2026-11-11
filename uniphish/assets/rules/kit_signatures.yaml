@@ -1,0 +1,477 @@
+# Phishing-kit / AiTM / ClickFix DETECTION signatures.
+#
+# These are descriptions of *indicators* (like AV or Sigma rules) evaluated against a
+# parsed page by uniphish/analyzers/kits.py. Nothing here is, or contains, a working
+# kit, payload or credential.
+#
+# Schema (one list entry per signature):
+#   id               dotted lowercase id; the emitted Signal id is "kit.<id>"
+#   name             <= 70 chars, reads well after "Flagged because: ..."
+#   family           aitm_proxy | clickfix | bitb | cred_harvester | oauth_consent |
+#                    callback_toad | crypto_drainer | captcha_lure | generic_kit
+#   severity_weight  signed log-odds (see docs/dev/build-contract.md section 5)
+#   mitre            ATT&CK ids that exist in uniphish/core/mitre.py
+#   description      what the pattern means and why it is suspicious
+#   host_scope       optional {not_suffix: [...], require_url: bool}. The signature is
+#                    skipped when the page URL host is (a subdomain of) a listed suffix,
+#                    and, with require_url, when the page URL is unknown.
+#   all_of / any_of  lists of matchers. all_of: every matcher must hold. any_of: at least
+#                    min_any (default 1) must hold. Both must hold when both are given.
+#   min_any          see above
+#
+# Matcher kinds (each takes `not: true` to invert, and an optional `desc` used in the
+# human-readable detail):
+#   text_contains {terms, min}            normalised, lower-cased visible text
+#   html_regex {pattern, scope: html|text} bounded, ReDoS-linted regex (case-insens.)
+#   form_action_cross_origin {require_password, action_regex}
+#   has_clipboard_write {min}             JS clipboard-write call sites
+#   title_regex {pattern}
+#   resource_host_suffix {suffixes}       sub-resources loaded from another origin
+#   meta {field, equals|contains|regex|present}
+#   favicon_mmh3 {hashes}                 needs favicon hashes supplied by the caller
+#   script_src_regex {pattern}
+#   dom_pattern {selector, min}           CSS selector over the parsed DOM
+#
+# Favicon-hash matching is supported by the engine but no hash table ships here:
+# shipping unverified hashes would be fabricated intelligence.
+
+# --------------------------------------------------------------------------- AiTM
+- id: aitm.ms_ests_config
+  name: Proxied Microsoft sign-in page served from a non-Microsoft host
+  family: aitm_proxy
+  severity_weight: 7.0
+  mitre: [T1557, T1539, T1111, T1056.003]
+  description: >
+    The page still carries the Microsoft Entra sign-in page's internal configuration
+    keys (credential-type endpoint, flow-token name, API canary), which only the real
+    sign-in service emits, yet it is served from a host outside Microsoft's domains.
+    That is the telltale of a reverse proxy relaying the genuine portal to harvest
+    the password, MFA response and session cookie.
+  host_scope:
+    require_url: true
+    not_suffix: [microsoftonline.com, microsoft.com, live.com, office.com, msauth.net,
+                 msftauth.net, windows.net, azure.com]
+  any_of:
+    - {kind: html_regex, pattern: '"urlGetCredentialType"\s{0,3}:', desc: "credential-type endpoint key"}
+    - {kind: html_regex, pattern: '"sFTName"\s{0,3}:', desc: "flow-token name key"}
+    - {kind: html_regex, pattern: '"apiCanary"\s{0,3}:', desc: "API canary key"}
+  min_any: 2
+
+- id: aitm.ms_login_assets
+  name: Password page loads Microsoft sign-in assets from another host
+  family: aitm_proxy
+  severity_weight: 4.5
+  mitre: [T1557, T1539, T1056.003]
+  description: >
+    A page with a password field pulls Microsoft's sign-in CDN assets (logos,
+    scripts, styles) while being hosted elsewhere. Cloned and proxied Microsoft login
+    pages hot-link these assets from the genuine CDN.
+  host_scope:
+    require_url: true
+    not_suffix: [microsoftonline.com, microsoft.com, live.com, office.com, msauth.net,
+                 msftauth.net, windows.net, azure.com]
+  all_of:
+    - kind: resource_host_suffix
+      suffixes: [aadcdn.msauth.net, aadcdn.msftauth.net, logincdn.msauth.net, aadcdn.microsoftonline-p.com]
+    - {kind: html_regex, pattern: 'type\s{0,3}=\s{0,3}["'']?password', desc: "password input"}
+
+- id: aitm.google_accounts_assets
+  name: Password page loads Google Accounts sign-in assets from another host
+  family: aitm_proxy
+  severity_weight: 4.0
+  mitre: [T1557, T1539, T1056.003]
+  description: >
+    A page with a password field references the static asset path Google Accounts
+    uses for its own sign-in pages while being hosted outside Google. Proxied and
+    cloned Google sign-in pages keep those references.
+  host_scope:
+    require_url: true
+    not_suffix: [google.com, gstatic.com, youtube.com, googleusercontent.com]
+  all_of:
+    - {kind: html_regex, pattern: 'ssl\.gstatic\.com/accounts/', desc: "Google Accounts asset path"}
+    - {kind: html_regex, pattern: 'type\s{0,3}=\s{0,3}["'']?password', desc: "password input"}
+
+# ------------------------------------------------------------------------ ClickFix
+- id: clickfix.captcha_paste
+  name: Fake human-verification page tells you to paste a command (ClickFix)
+  family: clickfix
+  severity_weight: 7.5
+  mitre: [T1204.004, T1059.001, T1566.002]
+  description: >
+    The page presents a "verify you are human" step, silently writes to the clipboard
+    and instructs the visitor to paste into the Run dialog or a terminal. Legitimate
+    CAPTCHAs never ask you to run anything on your own computer.
+  all_of:
+    - {kind: has_clipboard_write, desc: "script writes to the clipboard"}
+    - kind: text_contains
+      desc: "human-verification lure"
+      terms: &verify_terms
+        - "verify you are human"
+        - "verify that you are human"
+        - "verify you're human"
+        - "verify you’re human"
+        - "verifying you are human"
+        - "verify you are not a robot"
+        - "i'm not a robot"
+        - "i’m not a robot"
+        - "i am not a robot"
+        - "human verification"
+        - "captcha verification"
+        - "verifica que eres humano"
+        - "bestätigen sie, dass sie ein mensch sind"
+        - "vérifiez que vous êtes humain"
+        - "подтвердите, что вы не робот"
+        - "подтвердите, что вы человек"
+  any_of:
+    - kind: html_regex
+      scope: text
+      desc: "Win+R / Run-dialog instruction"
+      pattern: &run_re '\bwin(?:dows)?(?:\s{0,3}key)?\s{0,3}\+\s{0,3}r\b|\brun\s{1,3}(?:dialog|box)\b|\bcmd\s{0,3}\+\s{0,3}space\b|\bpress\s{1,3}(?:the\s{1,3})?windows\s{1,3}(?:key|button)'
+    - kind: html_regex
+      scope: text
+      desc: "Ctrl+V / paste instruction"
+      pattern: &paste_re '(?:ctrl|control|cmd|command|⌘)\s{0,3}\+\s{0,3}v\b|\bpaste\b'
+
+- id: clickfix.run_dialog_clipboard
+  name: Page copies text to clipboard and tells you to paste it into Run
+  family: clickfix
+  severity_weight: 6.0
+  mitre: [T1204.004, T1059.001]
+  description: >
+    The page writes to the clipboard and its visible instructions walk the visitor
+    through opening the Run dialog (or a terminal) and pasting. This is the ClickFix
+    execution step even without a CAPTCHA pretext.
+  all_of:
+    - {kind: has_clipboard_write, desc: "script writes to the clipboard"}
+    - {kind: html_regex, scope: text, pattern: *run_re, desc: "Win+R / Run-dialog instruction"}
+    - {kind: html_regex, scope: text, pattern: *paste_re, desc: "Ctrl+V / paste instruction"}
+    - {kind: text_contains, not: true, terms: *verify_terms}
+
+- id: clickfix.run_dialog_text
+  name: Page instructs you to paste text into the Run dialog or a terminal
+  family: clickfix
+  severity_weight: 3.5
+  mitre: [T1204.004]
+  description: >
+    Visible instructions tell the visitor to open the Run dialog (or a terminal) and
+    paste something. No clipboard write was detected, which can mean the clipboard
+    step is hidden by obfuscation or that this is an explanatory article.
+  all_of:
+    - {kind: html_regex, scope: text, pattern: *run_re, desc: "Win+R / Run-dialog instruction"}
+    - {kind: html_regex, scope: text, pattern: *paste_re, desc: "Ctrl+V / paste instruction"}
+    - {kind: has_clipboard_write, not: true}
+
+- id: clickfix.command_staged
+  name: Clipboard script stages a download-and-run style command
+  family: clickfix
+  severity_weight: 3.0
+  mitre: [T1204.004, T1059.001]
+  description: >
+    The page both writes to the clipboard and contains a shell one-liner shaped like a
+    downloader (PowerShell web request, mshta URL, cmd /c start, curl piped to a
+    shell) next to a paste/Run-dialog or human-verification lure.
+  all_of:
+    - {kind: has_clipboard_write, desc: "script writes to the clipboard"}
+    - kind: html_regex
+      desc: "downloader-style shell one-liner"
+      pattern: 'powershell[^\n<>]{0,120}?(?:iwr|irm|invoke-webrequest|invoke-restmethod|downloadstring|\biex\b)|mshta\s{1,3}["'']?(?:https?|hxxps?)://|cmd(?:\.exe)?\s{1,3}/c\s{1,3}["'']?(?:start|curl|powershell|mshta)|curl[^\n<>]{0,100}?\|\s{0,3}(?:ba)?sh\b'
+  any_of:
+    - {kind: html_regex, scope: text, pattern: *run_re, desc: "Win+R / Run-dialog instruction"}
+    - {kind: text_contains, terms: *verify_terms, desc: "human-verification lure"}
+
+# ------------------------------------------------------------------- fake CAPTCHA
+- id: captcha.fake_gate
+  name: '"Verify you are human" page without any real CAPTCHA provider'
+  family: captcha_lure
+  severity_weight: 2.5
+  mitre: [T1566.002]
+  description: >
+    The page shows a human-verification or browser-check prompt but loads no
+    Cloudflare, reCAPTCHA, hCaptcha, Arkose or GeeTest challenge. Kits use such
+    fake gates to look trustworthy and to filter out scanners.
+  all_of:
+    - {kind: text_contains, terms: *verify_terms, desc: "human-verification prompt"}
+    - {kind: has_clipboard_write, not: true}
+    - {kind: script_src_regex, not: true, pattern: 'challenges\.cloudflare\.com|google\.com/recaptcha|gstatic\.com/recaptcha|hcaptcha\.com|arkoselabs\.com|funcaptcha|geetest'}
+    - {kind: html_regex, not: true, pattern: '/cdn-cgi/challenge-platform/|challenges\.cloudflare\.com|recaptcha|hcaptcha|turnstile'}
+
+# ------------------------------------------------------------ Browser-in-the-Browser
+- id: bitb.fake_window
+  name: Fake browser window with its own address bar and a password field
+  family: bitb
+  severity_weight: 5.0
+  mitre: [T1056.003, T1566.002, T1656]
+  description: >
+    The page draws a pop-up window inside the page (window controls, a painted
+    address bar showing a trusted URL) and asks for a password in it. A real browser
+    window's address bar cannot be styled by the page; this is the
+    Browser-in-the-Browser spoof of an SSO pop-up.
+  all_of:
+    - {kind: html_regex, pattern: '(?:url|address|location)[-_ ]?bar', desc: "address-bar class name"}
+    - kind: dom_pattern
+      desc: "painted address bar"
+      selector: '[class*="url-bar" i], [class*="urlbar" i], [class*="address-bar" i], [class*="addressbar" i], [id*="url-bar" i], [id*="address-bar" i]'
+    - kind: dom_pattern
+      desc: "fake window controls"
+      selector: '[class*="traffic-light" i], [class*="window-controls" i], [class*="window-buttons" i], [class*="titlebar" i], [class*="title-bar" i]'
+    - {kind: dom_pattern, selector: 'input[type="password" i]', desc: "password input"}
+
+# --------------------------------------------------------- OAuth / device-code lures
+- id: oauth.device_code_lure
+  name: Page asks you to enter a code at a device-login address
+  family: oauth_consent
+  severity_weight: 3.5
+  mitre: [T1528, T1566.002]
+  description: >
+    A third-party page tells the visitor to go to a device-login address and enter a
+    code. In device-code phishing the attacker's code authorises the attacker's
+    session once the victim approves it.
+  host_scope:
+    require_url: true
+    not_suffix: [microsoft.com, microsoftonline.com, live.com, google.com]
+  all_of:
+    - kind: text_contains
+      desc: "device-login address"
+      terms: ["microsoft.com/devicelogin", "aka.ms/devicelogin", "microsoftonline.com/common/oauth2/deviceauth", "google.com/device"]
+    - kind: text_contains
+      desc: "code-entry instruction"
+      terms: ["enter the code", "enter this code", "enter code", "copy code", "copy the code"]
+
+- id: oauth.consent_clone
+  name: Imitation of an OAuth "Permissions requested" consent screen
+  family: oauth_consent
+  severity_weight: 5.0
+  mitre: [T1528, T1566.002]
+  description: >
+    The page reproduces the wording of the Microsoft consent prompt (permissions
+    requested plus mail/file/offline-access scopes) on a non-Microsoft host. OAuth
+    consent phishing tricks users into granting a malicious app persistent access.
+  host_scope:
+    require_url: true
+    not_suffix: [microsoft.com, microsoftonline.com, live.com, office.com, windows.net]
+  all_of:
+    - {kind: text_contains, terms: ["permissions requested"], desc: "consent heading"}
+    - kind: text_contains
+      desc: "consent scope wording"
+      terms:
+        - "maintain access to data you have given it access to"
+        - "read your mail"
+        - "read and write access to your mail"
+        - "read your files"
+        - "send mail as you"
+        - "read all files that you can access"
+        - "view your basic profile"
+
+# ------------------------------------------------------------- callback (TOAD) pages
+- id: toad.billing_callback
+  name: Fake charge or subscription notice urging you to phone a number
+  family: callback_toad
+  severity_weight: 3.5
+  mitre: [T1566.004]
+  description: >
+    The page claims a charge, renewal or order and tells the reader to call a phone
+    number to cancel or dispute it. Telephone-oriented attack delivery (TOAD) moves
+    the victim to a live scammer who then steers them into remote access or payment.
+  all_of:
+    - kind: html_regex
+      scope: text
+      desc: "phone number"
+      pattern: '(?<!\d)(?:\+?1[\s.-]{1,2})?\(?[2-9]\d{2}\)?[\s.-]{1,2}\d{3}[\s.-]{1,2}\d{4}(?!\d)|\+\d{1,3}[\s.-]{0,2}\(?\d{2,4}\)?[\s.-]{0,2}\d{3,4}[\s.-]{0,2}\d{3,4}'
+    - kind: text_contains
+      min: 2
+      desc: "dispute/cancel call-to-action"
+      terms:
+        - "if you did not authorize"
+        - "if you did not make this"
+        - "to cancel your subscription"
+        - "to cancel this order"
+        - "to dispute this charge"
+        - "to dispute the charge"
+        - "call our customer"
+        - "call our billing"
+        - "contact our billing"
+        - "billing department"
+        - "toll-free"
+        - "will be automatically charged"
+        - "has been renewed"
+        - "auto-renewal"
+
+- id: toad.tech_support
+  name: Fake virus or security alert urging you to call "support"
+  family: callback_toad
+  severity_weight: 4.5
+  mitre: [T1566.004]
+  description: >
+    The page imitates a system-security alert (infection, blocked computer, do not
+    close this window) and gives a support phone number. This is the classic
+    tech-support-scam lure.
+  all_of:
+    - kind: html_regex
+      scope: text
+      desc: "phone number"
+      pattern: '(?<!\d)(?:\+?1[\s.-]{1,2})?\(?[2-9]\d{2}\)?[\s.-]{1,2}\d{3}[\s.-]{1,2}\d{4}(?!\d)|\+\d{1,3}[\s.-]{0,2}\(?\d{2,4}\)?[\s.-]{0,2}\d{3,4}[\s.-]{0,2}\d{3,4}'
+    - kind: text_contains
+      min: 3
+      desc: "scareware wording"
+      terms:
+        - "your computer has been infected"
+        - "your computer is infected"
+        - "your pc is infected"
+        - "do not close this window"
+        - "do not restart your computer"
+        - "your computer has been blocked"
+        - "your system has been compromised"
+        - "virus detected"
+        - "windows defender alert"
+        - "call microsoft"
+        - "microsoft support"
+        - "apple support"
+        - "call now"
+
+# ---------------------------------------------------------------- crypto drainers
+- id: drainer.seed_phrase_form
+  name: Page asks you to type a wallet recovery (seed) phrase into a form
+  family: crypto_drainer
+  severity_weight: 5.5
+  mitre: [T1657, T1056.003]
+  description: >
+    A wallet-themed page mentions a recovery or seed phrase and offers an input for
+    it. No legitimate site asks for a seed phrase in a web form; anyone who has it
+    controls the wallet.
+  all_of:
+    - kind: text_contains
+      desc: "recovery-phrase wording"
+      terms: ["recovery phrase", "seed phrase", "secret phrase", "secret recovery", "mnemonic phrase", "12-word", "24-word", "12 word", "24 word"]
+    - kind: text_contains
+      desc: "wallet action wording"
+      terms: ["import wallet", "validate", "verify", "synchron", "restore", "rectify", "connect", "recover"]
+    - kind: dom_pattern
+      desc: "phrase input field"
+      selector: 'textarea, input[name*="seed" i], input[name*="mnemonic" i], input[name*="phrase" i], input[placeholder*="phrase" i]'
+
+- id: drainer.approval_flow
+  name: Wallet-connect page with token-approval calls and a claim lure
+  family: crypto_drainer
+  severity_weight: 4.0
+  mitre: [T1657, T1566.002]
+  description: >
+    The page connects to a browser wallet, contains unlimited-approval or off-chain
+    signature request calls and frames the action as a claim, airdrop or free mint.
+    Wallet drainers use that combination to obtain spending approval over the
+    victim's assets.
+  all_of:
+    - kind: html_regex
+      desc: "wallet provider access"
+      pattern: 'window\s{0,3}\.\s{0,3}ethereum|eth_requestAccounts|window\s{0,3}\.\s{0,3}solana|wallet_switchEthereumChain'
+    - kind: html_regex
+      desc: "token approval / signature request calls"
+      pattern: 'setApprovalForAll|increaseAllowance|eth_signTypedData(?:_v[34])?|\bpermit2?\b'
+    - kind: text_contains
+      desc: "claim lure"
+      terms: ["claim", "airdrop", "free mint", "whitelist", "reward"]
+
+- id: drainer.connect_lure
+  name: '"Connect/validate your wallet to claim" lure text'
+  family: crypto_drainer
+  severity_weight: 2.5
+  mitre: [T1657]
+  description: >
+    The page uses wording typical of wallet-drainer and wallet-validation scams
+    (claim an airdrop, validate or synchronise your wallet, resolve a wallet issue).
+  any_of:
+    - kind: text_contains
+      desc: "wallet-scam wording"
+      terms:
+        - "claim your airdrop"
+        - "claim airdrop"
+        - "connect wallet to claim"
+        - "connect your wallet to claim"
+        - "verify your wallet"
+        - "validate your wallet"
+        - "wallet validation"
+        - "wallet synchronization"
+        - "synchronize your wallet"
+        - "rectify wallet"
+        - "resolve wallet issue"
+    - kind: title_regex
+      desc: "wallet-scam title"
+      pattern: '(?:claim|airdrop).{0,20}(?:wallet|token)|wallet\s{1,3}(?:validation|verification|synchroni[sz]ation)'
+
+# --------------------------------------------------- generic credential-harvest kits
+- id: generic.telegram_exfil
+  name: Password page contains a Telegram bot API endpoint for exfiltration
+  family: cred_harvester
+  severity_weight: 6.0
+  mitre: [T1567, T1102, T1056.003]
+  description: >
+    A page with a password field embeds an api.telegram.org bot endpoint. Phishing
+    kits commonly send captured credentials to the operator through a Telegram bot.
+  all_of:
+    - {kind: html_regex, pattern: 'api\.telegram\.org/bot', desc: "Telegram bot API endpoint"}
+    - {kind: html_regex, pattern: 'type\s{0,3}=\s{0,3}["'']?password', desc: "password input"}
+
+- id: generic.discord_webhook_exfil
+  name: Password page contains a Discord webhook for exfiltration
+  family: cred_harvester
+  severity_weight: 5.5
+  mitre: [T1567, T1102, T1056.003]
+  description: >
+    A page with a password field embeds a Discord webhook URL, a common drop point
+    for credentials captured by phishing kits.
+  all_of:
+    - {kind: html_regex, pattern: 'discord(?:app)?\.com/api/webhooks/[0-9]{5,25}/', desc: "Discord webhook URL"}
+    - {kind: html_regex, pattern: 'type\s{0,3}=\s{0,3}["'']?password', desc: "password input"}
+
+- id: generic.form_handler_script
+  name: Password form posts to a kit-style handler script on another site
+  family: cred_harvester
+  severity_weight: 3.5
+  mitre: [T1056.003, T1567]
+  description: >
+    A password form submits to another site's generically named server script
+    (post.php, next.php, verify.php and similar), the collector pattern used by
+    commodity phishing kits.
+  all_of:
+    - kind: form_action_cross_origin
+      require_password: true
+      action_regex: '/(?:post|next|verify|send|submit|login|log|result|results|mail|sendmail|handler|process|validate|auth)\.php(?:\?|$)'
+      desc: "cross-site password form to a handler script"
+
+- id: generic.cloned_page_comment
+  name: 'Cloned login page ("saved from url" comment) with a password field'
+  family: generic_kit
+  severity_weight: 2.0
+  mitre: [T1056.003]
+  description: >
+    The markup keeps the browser's "saved from url" comment left by saving a page to
+    disk, so the page is a local copy of another site, and it asks for a password.
+  all_of:
+    - {kind: html_regex, pattern: 'saved from url\s{0,3}=\s{0,3}\(\d{4}\)', desc: "'saved from url' comment"}
+    - {kind: html_regex, pattern: 'type\s{0,3}=\s{0,3}["'']?password', desc: "password input"}
+
+- id: generic.devtools_block
+  name: Login page blocks right-click and developer tools
+  family: generic_kit
+  severity_weight: 2.0
+  description: >
+    Script on a password page disables the context menu and the developer-tools
+    shortcut. Phishing kits do this to hinder inspection.
+  all_of:
+    - {kind: html_regex, pattern: 'type\s{0,3}=\s{0,3}["'']?password', desc: "password input"}
+  any_of:
+    - {kind: html_regex, pattern: 'contextmenu.{0,200}preventDefault', desc: "context menu disabled"}
+    - {kind: html_regex, pattern: '(?:keyCode|which)\s{0,3}={2,3}\s{0,3}123|\bF12\b|ctrlKey.{0,60}shiftKey.{0,60}\b(?:73|74)\b', desc: "devtools shortcut blocked"}
+  min_any: 2
+
+- id: generic.victim_email_fragment
+  name: Page decodes the victim's address from the URL fragment
+  family: generic_kit
+  severity_weight: 3.0
+  mitre: [T1056.003]
+  description: >
+    Script on a password page base64-decodes data from the URL fragment or query to
+    pre-fill the victim's e-mail address. Mass phishing campaigns personalise links
+    this way.
+  all_of:
+    - {kind: html_regex, pattern: 'type\s{0,3}=\s{0,3}["'']?password', desc: "password input"}
+    - {kind: html_regex, pattern: 'atob\s{0,3}\(\s{0,3}(?:window\s{0,3}\.\s{0,3})?location\s{0,3}\.\s{0,3}(?:hash|search)|location\s{0,3}\.\s{0,3}hash.{0,60}atob', desc: "address decoded from URL"}

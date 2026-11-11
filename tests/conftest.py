@@ -32,7 +32,7 @@ def _is_local(host) -> bool:
     if host in _LOCAL_NAMES:
         return True
     try:
-        ip = ipaddress.ip_address(host)
+        ipaddress.ip_address(host)
     except ValueError:
         return False
     return True  # IP *literals* never trigger DNS; connect() is checked separately

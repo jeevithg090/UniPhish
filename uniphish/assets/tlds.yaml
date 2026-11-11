@@ -1,0 +1,105 @@
+# Abused / high-abuse-rate TLDs with a calibrated risk weight (signed log-odds,
+# 0.3 .. 1.5 on the UniPhish signal scale: weak-to-moderate contextual evidence).
+#
+# A TLD alone is never proof of phishing; the weight is a prior shift reflecting how
+# over-represented the TLD is among phishing/malware registrations relative to its size
+# in public abuse research (Spamhaus "most abused TLDs", Interisle Phishing Landscape
+# reports, Netcraft/Cloudflare/SURBL abuse-rate summaries). Weights are deliberately
+# conservative so legitimate sites on cheap TLDs are not flagged by this alone.
+#
+# tier: free   - freely/near-free registered, historically dominated by abuse (Freenom)
+#       cheap  - sub-$2 promotional registrations at scale, high abuse share
+#       gtld   - new gTLD with elevated phishing share
+#       confusing - file-extension look-alike TLDs (.zip/.mov) that confuse URL parsing
+version: 1
+tlds:
+  # --- freely registered (Freenom family) ---
+  tk: {risk: 1.3, tier: free, note: "Freenom free TLD; long-running top abuse source"}
+  ml: {risk: 1.3, tier: free, note: "Freenom free TLD"}
+  ga: {risk: 1.3, tier: free, note: "Freenom free TLD"}
+  cf: {risk: 1.3, tier: free, note: "Freenom free TLD"}
+  gq: {risk: 1.3, tier: free, note: "Freenom free TLD"}
+  # --- cheap promotional gTLDs, heavily abused ---
+  top: {risk: 1.2, tier: cheap, note: "Consistently among most-abused TLDs (Spamhaus)"}
+  xyz: {risk: 0.8, tier: cheap, note: "Very large, cheap; high absolute phishing volume"}
+  icu: {risk: 1.4, tier: cheap, note: "Cheap; top phishing and spam TLD in Interisle data"}
+  cfd: {risk: 1.4, tier: cheap, note: "Cheap; ecommerce-scam and phishing heavy"}
+  sbs: {risk: 1.4, tier: cheap, note: "Cheap; high abuse share"}
+  bond: {risk: 1.3, tier: cheap, note: "Cheap; high abuse share"}
+  cyou: {risk: 1.3, tier: cheap, note: "Cheap; high abuse share"}
+  buzz: {risk: 1.2, tier: cheap, note: "Cheap; high abuse share"}
+  rest: {risk: 1.2, tier: cheap, note: "Cheap; frequent in scam campaigns"}
+  click: {risk: 1.2, tier: cheap, note: "Cheap; common in smishing and redirect chains"}
+  link: {risk: 1.0, tier: cheap, note: "Cheap; common in lure and redirect infrastructure"}
+  monster: {risk: 1.3, tier: cheap, note: "Cheap; high abuse share"}
+  quest: {risk: 1.2, tier: cheap, note: "Cheap; high abuse share"}
+  lol: {risk: 0.9, tier: cheap, note: "Cheap; elevated abuse share"}
+  mom: {risk: 0.9, tier: cheap, note: "Cheap; elevated abuse share"}
+  pw: {risk: 1.1, tier: cheap, note: "Historically spam/phishing heavy"}
+  cam: {risk: 1.0, tier: cheap, note: "Elevated abuse share"}
+  live: {risk: 0.7, tier: gtld, note: "Elevated phishing share, also heavy legitimate use"}
+  shop: {risk: 0.7, tier: gtld, note: "Fake-store and parcel-fee scams; heavy legitimate use"}
+  online: {risk: 0.7, tier: gtld, note: "Elevated phishing share; heavy legitimate use"}
+  site: {risk: 0.7, tier: gtld, note: "Elevated phishing share; heavy legitimate use"}
+  store: {risk: 0.6, tier: gtld, note: "Fake-store scams"}
+  website: {risk: 0.6, tier: gtld, note: "Elevated abuse share"}
+  space: {risk: 0.6, tier: gtld, note: "Elevated abuse share"}
+  tech: {risk: 0.4, tier: gtld, note: "Mildly elevated"}
+  vip: {risk: 0.9, tier: cheap, note: "Elevated abuse share"}
+  win: {risk: 1.1, tier: cheap, note: "Historically abuse heavy"}
+  bid: {risk: 1.0, tier: cheap, note: "Historically abuse heavy"}
+  loan: {risk: 1.0, tier: cheap, note: "Historically abuse heavy"}
+  work: {risk: 0.9, tier: cheap, note: "Elevated abuse share"}
+  date: {risk: 0.9, tier: cheap, note: "Elevated abuse share"}
+  download: {risk: 0.9, tier: cheap, note: "Malware/phishing distribution"}
+  stream: {risk: 0.8, tier: cheap, note: "Elevated abuse share"}
+  review: {risk: 0.8, tier: cheap, note: "Elevated abuse share"}
+  racing: {risk: 0.8, tier: cheap, note: "Elevated abuse share"}
+  party: {risk: 0.9, tier: cheap, note: "Elevated abuse share"}
+  trade: {risk: 0.8, tier: cheap, note: "Elevated abuse share"}
+  science: {risk: 0.8, tier: cheap, note: "Elevated abuse share"}
+  accountant: {risk: 0.9, tier: cheap, note: "Elevated abuse share"}
+  cricket: {risk: 0.8, tier: cheap, note: "Elevated abuse share"}
+  faith: {risk: 0.8, tier: cheap, note: "Elevated abuse share"}
+  men: {risk: 0.8, tier: cheap, note: "Elevated abuse share"}
+  gdn: {risk: 0.8, tier: cheap, note: "Elevated abuse share"}
+  ink: {risk: 0.5, tier: gtld, note: "Mildly elevated"}
+  digital: {risk: 0.4, tier: gtld, note: "Mildly elevated"}
+  wang: {risk: 0.8, tier: cheap, note: "Elevated abuse share"}
+  ru: {risk: 0.3, tier: gtld, note: "Elevated phishing-kit hosting share; huge legitimate base"}
+  su: {risk: 0.6, tier: gtld, note: "Legacy Soviet ccTLD; elevated abuse share"}
+  cn: {risk: 0.3, tier: gtld, note: "Elevated abuse share; huge legitimate base"}
+  ws: {risk: 0.6, tier: gtld, note: "Historically abuse heavy"}
+  cc: {risk: 0.6, tier: gtld, note: "Historically abuse heavy"}
+  club: {risk: 0.5, tier: gtld, note: "Mildly elevated"}
+  info: {risk: 0.5, tier: gtld, note: "Long-standing spam/phishing share"}
+  biz: {risk: 0.5, tier: gtld, note: "Long-standing spam/phishing share"}
+  email: {risk: 0.5, tier: gtld, note: "Elevated phishing share"}
+  support: {risk: 0.6, tier: gtld, note: "Support-scam phishing"}
+  help: {risk: 0.5, tier: gtld, note: "Support-scam phishing"}
+  center: {risk: 0.4, tier: gtld, note: "Mildly elevated"}
+  today: {risk: 0.4, tier: gtld, note: "Mildly elevated"}
+  world: {risk: 0.4, tier: gtld, note: "Mildly elevated"}
+  fun: {risk: 0.6, tier: cheap, note: "Elevated abuse share"}
+  life: {risk: 0.4, tier: gtld, note: "Mildly elevated"}
+  fit: {risk: 0.5, tier: cheap, note: "Elevated abuse share"}
+  uno: {risk: 0.7, tier: cheap, note: "Elevated abuse share"}
+  beauty: {risk: 0.7, tier: cheap, note: "Fake-store scams"}
+  hair: {risk: 0.6, tier: cheap, note: "Fake-store scams"}
+  skin: {risk: 0.5, tier: cheap, note: "Fake-store scams"}
+  makeup: {risk: 0.5, tier: cheap, note: "Fake-store scams"}
+  autos: {risk: 0.6, tier: cheap, note: "Fake-store scams"}
+  boats: {risk: 0.5, tier: cheap, note: "Fake-store scams"}
+  homes: {risk: 0.5, tier: cheap, note: "Fake-store scams"}
+  yachts: {risk: 0.5, tier: cheap, note: "Fake-store scams"}
+  mobi: {risk: 0.4, tier: gtld, note: "Mildly elevated"}
+  tokyo: {risk: 0.4, tier: gtld, note: "Mildly elevated"}
+  best: {risk: 0.6, tier: cheap, note: "Elevated abuse share"}
+  one: {risk: 0.4, tier: gtld, note: "Mildly elevated"}
+  pro: {risk: 0.3, tier: gtld, note: "Mildly elevated"}
+  bio: {risk: 0.4, tier: gtld, note: "Mildly elevated"}
+  llc: {risk: 0.4, tier: gtld, note: "Mildly elevated"}
+  ltd: {risk: 0.4, tier: gtld, note: "Mildly elevated"}
+  # --- file-extension look-alike TLDs ---
+  zip: {risk: 1.3, tier: confusing, note: "Looks like a file name; enables 'file.zip@host' style confusion"}
+  mov: {risk: 1.3, tier: confusing, note: "Looks like a file name; enables confusion attacks"}

@@ -33,9 +33,17 @@ def _read_text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
+# Prefer libyaml's C loader when available: a cold parse of the 150 KB+ brand
+# knowledge base is ~10x faster with it (~0.3 s vs ~3 s), which keeps the first URL
+# scan inside the per-analyzer time budget.
+_YAML_LOADER = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
+
+
 @lru_cache(maxsize=128)
 def load_yaml(*parts: str) -> Any:
-    return yaml.safe_load(_read_text(asset_path(*parts)))
+    # _YAML_LOADER is CSafeLoader/SafeLoader (never the unsafe full loader); ruff cannot
+    # see that statically.
+    return yaml.load(_read_text(asset_path(*parts)), Loader=_YAML_LOADER)  # noqa: S506
 
 
 @lru_cache(maxsize=128)

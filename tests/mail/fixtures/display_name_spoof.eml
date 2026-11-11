@@ -1,0 +1,15 @@
+Received: from mail.freemail.example (mail.freemail.example [203.0.113.55]) by mx.recipient.test with ESMTP id z1; Wed, 05 Nov 2025 10:00:03 +0000
+Authentication-Results: mx.recipient.test;
+ spf=pass smtp.mailfrom=sender@freemail.example;
+ dkim=pass header.d=freemail.example header.s=s1;
+ dmarc=pass (p=NONE) header.from=freemail.example
+From: "support@paypal.com" <account.help9921@freemail.example>
+Reply-To: "Account Help" <recover@collector.test>
+To: victim@recipient.test
+Subject: Action required: confirm your account
+Date: Wed, 05 Nov 2025 10:00:00 +0000
+Message-ID: <spoof1@freemail.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+
+Dear customer, verify now at hxxp://secure-login.example/verify or visit www.account-check.test/login today.

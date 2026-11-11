@@ -1,0 +1,16 @@
+Received: from relay.badhost.invalid (relay.badhost.invalid [203.0.113.99]) by mx.recipient.test with ESMTP id q9; Thu, 06 Nov 2025 08:00:03 +0000
+Authentication-Results: mx.recipient.test;
+ spf=fail (domain of bounce@badhost.invalid does not designate 203.0.113.99) smtp.mailfrom=bounce@badhost.invalid;
+ dkim=none;
+ dmarc=fail (p=REJECT sp=REJECT dis=NONE) header.from=corp.example
+Received-SPF: fail (mx.recipient.test: domain of bounce@badhost.invalid does not designate 203.0.113.99 as permitted sender) client-ip=203.0.113.99; envelope-from=bounce@badhost.invalid; helo=relay.badhost.invalid;
+Return-Path: <bounce@badhost.invalid>
+From: "Pat Director" <ceo@corp.example>
+To: finance@recipient.test
+Subject: Urgent wire request
+Date: Thu, 06 Nov 2025 08:00:00 +0000
+Message-ID: <wire1@badhost.invalid>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Please process the attached invoice today. Keep this confidential.

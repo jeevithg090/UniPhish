@@ -1,0 +1,31 @@
+From: Helpful Colleague <colleague@recipient.test>
+To: it-security@recipient.test
+Subject: FW: suspicious message
+Date: Fri, 07 Nov 2025 12:00:00 +0000
+Message-ID: <fwd1@recipient.test>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="OUTER"
+
+--OUTER
+Content-Type: text/plain; charset=utf-8
+
+Is this real? See attached.
+
+--OUTER
+Content-Type: message/rfc822
+Content-Disposition: attachment; filename="suspicious.eml"
+
+Received: from smtp.phish.invalid (smtp.phish.invalid [203.0.113.200]) by mx.recipient.test with SMTP; Fri, 07 Nov 2025 11:00:03 +0000
+From: "Example Bank Security" <security@examp1e-bank.test>
+Reply-To: <help@collector.test>
+To: colleague@recipient.test
+Subject: Your account is locked
+Date: Fri, 07 Nov 2025 11:00:00 +0000
+Message-ID: <inner1@phish.invalid>
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+
+<html><body><p>Your account is locked.</p>
+<a href="https://examp1e-bank.test/unlock">https://www.example-bank.test/unlock</a></body></html>
+
+--OUTER--
