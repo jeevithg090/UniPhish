@@ -18,6 +18,17 @@ workflow:
 
 default:
   interruptible: true
+  # Auto-retry only infrastructure flakes (e.g. the runner timing out while pulling
+  # its helper image), never a script/test failure — so a real test regression still
+  # fails the pipeline instead of being masked by a retry.
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - scheduler_failure
+      - api_failure
+      - unknown_failure
 
 variables:
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
