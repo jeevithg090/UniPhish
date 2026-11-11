@@ -23,8 +23,10 @@ from __future__ import annotations
 import ipaddress
 import json
 import logging
+import random
 import sqlite3
 import threading
+import time
 import uuid
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from contextlib import contextmanager, suppress
@@ -224,7 +226,19 @@ class Store:
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA busy_timeout=30000")
         if self.path != ":memory:":
-            self._conn.execute("PRAGMA journal_mode=WAL")
+            # Flipping the journal mode to WAL needs a brief exclusive lock that
+            # busy_timeout does not cover, so when several processes open the same new
+            # file at once all but one raise "database is locked". Retry until WAL is set
+            # (afterwards the pragma is a cheap no-op).
+            for attempt in range(8):
+                try:
+                    mode = self._conn.execute("PRAGMA journal_mode=WAL").fetchone()
+                    if mode and str(mode[0]).lower() == "wal":
+                        break
+                except sqlite3.OperationalError as exc:
+                    if "lock" not in str(exc).lower():
+                        raise
+                time.sleep(0.05 * (attempt + 1) + random.uniform(0.0, 0.03))
         self._conn.execute("PRAGMA synchronous=NORMAL")
         self._conn.execute("PRAGMA foreign_keys=ON")
         self._migrate()

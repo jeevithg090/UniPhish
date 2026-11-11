@@ -21,6 +21,7 @@ import contextlib
 import functools
 import json
 import logging
+import random
 import re
 import sqlite3
 import threading
@@ -243,32 +244,73 @@ class DiskCache:
             conn.close()
 
     def _write(self, fn: Callable[[sqlite3.Connection], T]) -> T:
-        """Run a write ``fn(conn)`` with a bounded retry on SQLite lock contention, so a
-        contended write waits and succeeds rather than being silently dropped."""
+        """Run a write ``fn(conn)`` inside a ``BEGIN IMMEDIATE`` transaction, retrying on
+        lock contention, so a contended write waits and succeeds rather than being dropped.
+
+        ``BEGIN IMMEDIATE`` takes the write lock at the *start* of the transaction, so
+        ``busy_timeout`` reliably governs how long the writer waits. A deferred (default)
+        transaction acquires the write lock lazily and, when two connections each hold a
+        read lock and both try to upgrade, SQLite raises ``SQLITE_BUSY`` immediately —
+        bypassing ``busy_timeout`` — which is how a write could be dropped under
+        concurrency despite the timeout. The jittered backoff is a backstop that also
+        breaks up thundering-herd re-collisions."""
         last: sqlite3.OperationalError | None = None
-        for attempt in range(6):
+        for attempt in range(8):
+            conn = self._connect()
             try:
-                with self._session() as conn:
-                    return fn(conn)
+                conn.execute("BEGIN IMMEDIATE")
+                result = fn(conn)
+                conn.execute("COMMIT")
+                return result
+            except sqlite3.OperationalError as exc:
+                with contextlib.suppress(sqlite3.Error):
+                    conn.execute("ROLLBACK")
+                if "lock" not in str(exc).lower():
+                    raise
+                last = exc
+                time.sleep(0.05 * (attempt + 1) + random.uniform(0.0, 0.03))
+            except BaseException:
+                with contextlib.suppress(sqlite3.Error):
+                    conn.execute("ROLLBACK")
+                raise
+            finally:
+                conn.close()
+        raise last if last else sqlite3.OperationalError("write failed")
+
+    def _init_db(self) -> None:
+        """Set WAL mode and create the schema, retrying on lock contention.
+
+        Flipping the journal mode to WAL needs a brief exclusive lock on a fresh
+        database, and ``busy_timeout`` does not govern that change — so when several
+        connections open the same new file at once, all but one raise "database is
+        locked". Retrying rides that out; once any connection has set WAL the pragma is a
+        cheap no-op, and ``CREATE ... IF NOT EXISTS`` is idempotent."""
+        last: sqlite3.OperationalError | None = None
+        for attempt in range(8):
+            conn = self._connect()
+            try:
+                mode = conn.execute("PRAGMA journal_mode=WAL").fetchone()
+                if not mode or str(mode[0]).lower() != "wal":
+                    # Another connection holds the header lock; back off and retry.
+                    raise sqlite3.OperationalError("database is locked")
+                conn.execute("PRAGMA synchronous=NORMAL")
+                conn.execute(
+                    "CREATE TABLE IF NOT EXISTS kv ("
+                    "  key TEXT PRIMARY KEY,"
+                    "  value TEXT NOT NULL,"
+                    "  expires_at REAL NOT NULL"
+                    ")"
+                )
+                conn.execute("CREATE INDEX IF NOT EXISTS kv_expires ON kv(expires_at)")
+                return
             except sqlite3.OperationalError as exc:
                 if "lock" not in str(exc).lower():
                     raise
                 last = exc
-                time.sleep(0.02 * (attempt + 1))
-        raise last if last else sqlite3.OperationalError("write failed")
-
-    def _init_db(self) -> None:
-        with self._session() as conn:
-            conn.execute("PRAGMA journal_mode=WAL")       # persistent (DB header)
-            conn.execute("PRAGMA synchronous=NORMAL")
-            conn.execute(
-                "CREATE TABLE IF NOT EXISTS kv ("
-                "  key TEXT PRIMARY KEY,"
-                "  value TEXT NOT NULL,"
-                "  expires_at REAL NOT NULL"
-                ")"
-            )
-            conn.execute("CREATE INDEX IF NOT EXISTS kv_expires ON kv(expires_at)")
+                time.sleep(0.05 * (attempt + 1) + random.uniform(0.0, 0.03))
+            finally:
+                conn.close()
+        raise last if last else sqlite3.OperationalError("init failed")
 
     def get(self, key: str, default: Any = None) -> Any:
         now = time.time()
