@@ -1,0 +1,24 @@
+# Source distribution contents. The wheel gets its data files through
+# [tool.setuptools.package-data] in pyproject.toml *and* these rules
+# (include_package_data is on), so the two are belt and braces: a data directory that
+# one forgets, the other still ships.
+
+include LICENSE README.md MODEL_CARD.md pyproject.toml
+include uniphish/py.typed
+
+# Packaged data: brand KB, lexicons, rules, TLD/LOTS lists, Unicode tables, CNN weights ...
+graft uniphish/assets
+# Built SOC dashboard (npm run build in web/ writes here) and report templates (Jinja2)
+graft uniphish/server/static
+graft uniphish/server/templates
+
+# Documentation, the labelled synthetic corpus and the test-suite travel with the sdist
+graft docs
+graft examples
+graft tests
+
+# Never ship caches, bytecode, local databases or build leftovers
+global-exclude *.py[cod] __pycache__ .DS_Store *.so *.sqlite *.sqlite3 *.db
+prune tests/**/__pycache__
+prune .hypothesis
+prune uniphish.egg-info

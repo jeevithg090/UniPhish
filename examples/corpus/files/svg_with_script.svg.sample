@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200" viewBox="0 0 400 200">
+  <rect width="400" height="200" fill="#f3f3f3"/>
+  <text x="20" y="60" font-size="20">Secure document - loading...</text>
+  <script type="text/javascript"><![CDATA[
+    // INERT corpus sample: navigates to a reserved host only if opened in a browser.
+    window.location = "https://login-portal.test/session?doc=1";
+  ]]></script>
+</svg>

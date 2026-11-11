@@ -1,0 +1,15 @@
+Authentication-Results: mx.corpus.example; spf=pass smtp.mailfrom=corpus.example;
+	dkim=pass header.d=corpus.example; dmarc=pass header.from=corpus.example
+Received: from mail.shop.example.com (mail.shop.example.com [192.0.2.25])
+	by mx.corpus.example with ESMTPS id AA11; Mon, 02 Mar 2026 09:14:02 +0000
+From: "Sam Okafor" <sam.okafor@corpus.example>
+To: team@corpus.example
+Subject: Sprint review moved to 3pm
+Date: Mon, 02 Mar 2026 11:20:00 +0000
+Message-ID: <0009@corpus.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Hi all, the sprint review is now at 3pm in the usual room. Slides are in the team drive. See you there.
+
+Sam

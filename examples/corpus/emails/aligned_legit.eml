@@ -1,0 +1,17 @@
+Authentication-Results: mx.corpus.example; spf=pass smtp.mailfrom=shop.example.com;
+	dkim=pass header.d=example.com; dmarc=pass header.from=example.com
+Received: from mail.shop.example.com (mail.shop.example.com [192.0.2.25])
+	by mx.corpus.example with ESMTPS id AA11; Mon, 02 Mar 2026 09:14:02 +0000
+From: "Example Shop" <orders@example.com>
+To: customer@corpus.example
+Subject: Your order 100234 has shipped
+Date: Mon, 02 Mar 2026 09:14:00 +0000
+Message-ID: <0004@example.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Hello,
+
+Your order 100234 shipped today and should arrive on Thursday. You can view the details at https://www.example.com/orders/100234 at any time.
+
+Thanks for shopping with us.
