@@ -1,0 +1,18 @@
+Authentication-Results: mx.corpus.example; spf=pass smtp.mailfrom=news.example.org;
+	dkim=pass header.d=example.org; dmarc=pass header.from=example.org
+Received: from mail.shop.example.com (mail.shop.example.com [192.0.2.25])
+	by mx.corpus.example with ESMTPS id AA11; Mon, 02 Mar 2026 09:14:02 +0000
+From: "Example Weekly" <newsletter@example.org>
+To: customer@corpus.example
+Subject: This week: three articles on gardening
+Date: Mon, 02 Mar 2026 07:00:00 +0000
+Message-ID: <0008@example.org>
+List-Unsubscribe: <https://www.example.org/unsubscribe>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Hello gardeners,
+
+This week we cover composting, pruning roses and spring planting. Read more at https://www.example.org/weekly/2026-09.
+
+To stop receiving this newsletter use the link in the header.

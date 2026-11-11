@@ -1,0 +1,57 @@
+{
+  "name": "uniphish-byte-cnn",
+  "version": "2.0.0",
+  "task": "binary URL phishing classification (phishing probability in [0, 1])",
+  "description": "Unicode-native, byte-level 1D-CNN from the UniPhish IEEE paper, re-implemented as a pure-NumPy forward pass so the platform needs no TensorFlow at runtime. UTF-8 byte sequence (256-token vocab, no [UNK]) truncated/zero-padded to 600, byte embedding (256x64), five parallel Conv1D branches (kernels 2..6, 128 filters each) + ReLU + global-max-pool, dense head 640->256->128->1 (sigmoid).",
+  "architecture": {
+    "max_len": 600,
+    "vocab_size": 256,
+    "embed_dim": 64,
+    "kernels": [2, 3, 4, 5, 6],
+    "filters": 128,
+    "fc": [256, 128],
+    "pad_byte": 0,
+    "activation": "relu",
+    "output": "sigmoid"
+  },
+  "param_count": 377985,
+  "param_count_breakdown": {
+    "embedding": 16384,
+    "conv": 164480,
+    "fc1": 164096,
+    "fc2": 32896,
+    "output": 129,
+    "note": "Components sum to 377985. The paper's Table III headline of 847,425 does not match its own described components; this implementation uses the reproducible 377,985 (see docs/paper_vs_reality.md section 1)."
+  },
+  "io": {
+    "input": "URL string (any Unicode script)",
+    "output": "phishing probability in [0, 1]",
+    "tiers": {"safe": "< 0.5", "warn": ">= 0.5 and < 0.9", "block": ">= 0.9"}
+  },
+  "provenance": {
+    "origin": "Trained with TensorFlow/Keras; weights exported to a float32 blob + JSON manifest by scripts/export_web.py for zero-dependency inference. This NumPy runtime reproduces the exact extension/model.js forward pass.",
+    "training_data": "Reproducible blend of a multilingual synthesizer (6 script families, realistic phishing construction) + real public feeds: OpenPhish + URLhaus (phishing/malicious), Cisco Umbrella top-1M (benign). Balanced (~46% phishing), per-domain capped, SHA-256 deduplicated. Adversarial min-max training on Unicode homoglyph substitutions. See data/DATASHEET.md.",
+    "weights_format": "float32 little-endian, C-order, concatenated per manifest.tensors",
+    "weights_bytes": 1511940,
+    "source_files": ["MODEL_CARD.md", "docs/paper_vs_reality.md", "extension/model.js", "scripts/export_web.py"]
+  },
+  "metrics": {
+    "in_distribution_macro_f1": 0.9991,
+    "cross_dataset_real_holdout": {"n": 7199, "f1": 0.9954, "fnr": 0.0090},
+    "in_distribution_fnr": 0.0026,
+    "in_distribution_fpr": 0.0000,
+    "accuracy_at_20pct_homoglyph_substitution": 0.995,
+    "tflite_size_mb_int8": 0.40,
+    "tflite_latency_ms_mac_cpu_1thread": 0.76
+  },
+  "caveats": [
+    "Overconfident outputs: probabilities cluster near 0 and 1. Calibrate (temperature) before using thresholds other than 0.5/0.9 in production.",
+    "The raw model may over-score long, legitimate URLs and over-rely on suspicious TLDs (TLD swap to .com is the strongest single-model evasion, ~10% detection drop). The fused UniPhish engine compensates: the rules/brand/reputation layers and log-odds fusion recover most of this, so use this model as one weighted signal, never as the sole verdict.",
+    "Source separability: benign (Umbrella bare domains) vs phishing (URLhaus full URLs) differ structurally, so headline accuracy overstates pure phishing-semantic skill (docs/paper_vs_reality.md section 2/4).",
+    "No general multilingual accuracy advantage over an ASCII-CNN was reproduced on this data; byte-level's benefit is expected to be narrow (pure homoglyph/IDN evasion), not a blanket gain (docs/paper_vs_reality.md section 2).",
+    "Trained largely on synthetic + a few real feeds; not a substitute for a production threat-intel dataset. Not a sole basis for blocking without human/secondary review.",
+    "The model only sees the URL string: it cannot resolve shorteners (bit.ly/...) without an upstream redirect-follow."
+  ],
+  "default_temperature": 1.0,
+  "license_note": "Defensive/educational reference implementation. No malicious infrastructure is built; synthetic phishing strings are for training/testing only."
+}

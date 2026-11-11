@@ -1,0 +1,530 @@
+# UniPhish multilingual social-engineering lexicons (lexical, deterministic).
+#
+# Consumed by uniphish/nlp/social_engineering.py. Every phrase below is SYNTHETIC,
+# generic and inert: short manipulation cues of the kind phishing / BEC / smishing
+# messages share. There are no brands, domains, numbers or payloads in this file.
+#
+# Layout
+#   tactics.<tactic>.weight   default log-odds-style weight of one hit (0.1 .. 5)
+#   tactics.<tactic>.terms    mapping  lang -> list of phrases
+#
+# Phrase syntax
+#   "phrase"          matched after normalisation (case-fold, Latin accents stripped,
+#                     Arabic diacritics stripped, NFKC, digits -> ASCII, whitespace
+#                     collapsed). Latin / Cyrillic / Greek phrases are token-aware
+#                     (matched on word boundaries); every other script is matched as
+#                     a substring because those scripts do not separate words.
+#   "phrase @0.6"     overrides the tactic's default weight for this phrase.
+#   "stem*"           open right edge (matches inflected forms: "stem", "stems", ...).
+#
+# Each phrase becomes one lexicon entry {tactic, lang, weight, term}. Identical
+# normalised phrases within a tactic are de-duplicated (first language wins).
+# Language tags: BCP-47-ish; "hi-Latn" is romanised Hindi (Hinglish).
+
+version: 1
+
+scoring:
+  # Hits inside one tactic: distinct phrases sorted by weight, each next one worth
+  # `within_decay` times the previous; the tactic total is capped.
+  within_decay: 0.65
+  tactic_cap: 4.0
+  # Tactics sorted by strength; the i-th strongest is scaled by cross_decay[i]
+  # (different tactics add up, but with diminishing returns).
+  cross_decay: [1.0, 0.8, 0.65, 0.5, 0.4, 0.3, 0.25, 0.2]
+  combo_cap: 4.0
+  logit_cap: 12.0
+  # score = 1 - exp(-log_odds / score_scale)
+  score_scale: 3.0
+  # Long texts need proportionally more evidence: pressure language in a lure is dense.
+  density_ref_chars: 2000
+  density_slope: 0.5
+  # A hit counts as an "ask" flag only at or above these weights.
+  credential_ask_min_weight: 1.0
+  payment_ask_min_weight: 0.8
+  # Combinations that are more than the sum of their parts. `requires` entries are
+  # tactic names (or "phone" = a phone number was extracted); a nested list means
+  # "any of".
+  combos:
+    - {requires: [urgency, credential], bonus: 1.0}
+    - {requires: [threat, urgency, [credential, cta, otp]], bonus: 0.6}
+    - {requires: [authority, threat], bonus: 0.6}
+    - {requires: [secrecy, payment], bonus: 1.5}
+    - {requires: [authority, payment, urgency], bonus: 1.0}
+    - {requires: [otp, [urgency, threat, authority]], bonus: 1.0}
+    - {requires: [techsupport, phone], bonus: 1.5}
+    - {requires: [[threat, payment, tax], phone], bonus: 0.8}
+    - {requires: [delivery, [payment, cta]], bonus: 0.5}
+    - {requires: [crypto, [credential, cta]], bonus: 1.0}
+    - {requires: [reward, [credential, payment]], bonus: 0.8}
+
+# Words just before / after an OTP phrase that turn an ask into a warning
+# ("never share the code"). Latin / Cyrillic words are matched as whole tokens.
+negators:
+  window_before: 24
+  window_after: 14
+  before:
+    - "do not"
+    - "don't"
+    - "dont"
+    - "never"
+    - "won't"
+    - "no compartas"
+    - "nunca"
+    - "nao"
+    - "jamais"
+    - "ne pas"
+    - "ne jamais"
+    - "nicht"
+    - "niemals"
+    - "mai"
+    - "non"
+    - "не"
+    - "никогда"
+    - "ніколи"
+    - "asla"
+    - "hicbir zaman"
+    - "nooit"
+    - "nigdy"
+    - "jangan"
+    - "đừng"
+    - "dung"
+    - "请勿"
+    - "不要"
+    - "切勿"
+    - "請勿"
+    - "絕不"
+    - "절대"
+    - "لا "
+    - "لن "
+    - "هرگز"
+    - "कभी"
+    - "आप न"
+    - "อย่า"
+    - "mat "
+  after:
+    - "ないでください"
+    - "しないで"
+    - "はいけません"
+    - "하지 마"
+    - "하지마"
+    - "하지 말"
+    - "않도록"
+    - "不要告诉"
+    - "不要透露"
+    - "不得"
+    - "にしないで"
+
+# Distinctive function words used for the lightweight language guess of Latin-script
+# text (normalised the same way as the text, so write them with or without accents).
+stopwords:
+  en: [the, and, your, you, is, to, of, this, that, with, for, are, have, will, be, we, our, please, has, from, not, if, or]
+  es: [el, la, los, las, de, que, y, en, su, tu, para, con, por, una, es, se, usted, para, ha, sus, del, al, favor]
+  pt: [o, os, as, de, que, em, seu, sua, para, com, uma, voce, nao, foi, ser, por, favor, ao, sao, dos, seus]
+  fr: [le, les, des, et, votre, vous, est, pour, avec, une, que, dans, nous, ce, cette, ou, sur, pas, au, vos, merci]
+  de: [der, die, das, und, ist, sie, ihr, ihre, nicht, mit, fur, ein, eine, zu, auf, bitte, wir, ihren, dem, den, wurde, wird]
+  it: [il, di, che, per, con, una, non, tuo, tua, sono, del, della, le, gli, nel, suo, sua, grazie, stato, ha, si]
+  tr: [ve, bir, bu, icin, ile, lutfen, olarak, da, de, ne, siz, sizin, hesabiniz, icinde, gibi, daha, veya, olan, degil]
+  vi: [va, cua, la, ban, cac, cho, khong, mot, duoc, nhung, trong, den, tai, khoan, da, bi, vui, long, nay, voi]
+  id: [yang, dan, di, anda, untuk, dengan, ini, itu, akan, tidak, dari, atau, segera, akun, telah, kami, pada, silakan, kepada]
+  nl: [de, het, een, en, van, uw, niet, voor, op, met, dat, u, wij, wordt, zijn, deze, uw, graag, heeft]
+  pl: [i, w, nie, na, z, do, to, sie, jest, ze, dla, twoje, twoj, prosze, ale, aby, oraz, zostalo, zostanie, pan]
+  hi-Latn: [aapka, aap, ka, ki, ko, hai, hain, mein, par, se, kripya, turant, kar, karein, nahi, ho, liye, apna, apni, aur, kyunki]
+
+# Characters that are (nearly) unique to a Latin-script language; each occurrence is
+# worth one extra stop-word point for that language.
+diacritics:
+  tr: "şğıİ"
+  pl: "ąęłśźżćń"
+  vi: "ăơưđạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ"
+  de: "ßä"
+  fr: "çœèêëîïôûù"
+  es: "ñ¿¡"
+  pt: "ãõ"
+  it: "ìò"
+
+# Characters that separate Simplified from Traditional Han text.
+han_variants:
+  hans: "国证验账户号码银码线网络钱银这个们为过时间务应该请点击确认录页码访问费订单邮发货红包恭庆赢奖钥钱包币"
+  hant: "國證驗帳戶號碼銀碼線網絡錢銀這個們為過時間務應該請點擊確認錄頁訪問費訂單郵發貨紅包恭慶贏獎鑰錢包幣"
+
+tactics:
+
+  # ----------------------------------------------------------------- urgency
+  urgency:
+    weight: 1.0
+    terms:
+      en: ["act now", "act immediately", "act fast", "immediate action required", "action required", "urgent @0.9", "urgently", "immediately @0.6", "within 24 hours @1.3", "within 48 hours @1.2", "within 72 hours", "expires today", "expires soon", "will expire", "last chance", "final notice", "final warning", "as soon as possible @0.5", "right away @0.6", "time sensitive", "time-sensitive", "do not delay", "before it is too late", "respond today", "respond immediately"]
+      es: ["actúa ahora", "actúe ahora", "urgente @0.9", "inmediatamente @0.6", "de inmediato @0.6", "dentro de 24 horas @1.3", "en las próximas 24 horas @1.3", "expira hoy", "último aviso", "aviso final", "no demores", "acción inmediata"]
+      pt: ["aja agora", "urgente @0.9", "imediatamente @0.6", "dentro de 24 horas @1.3", "expira hoje", "último aviso", "aviso final", "ação imediata", "não demore"]
+      fr: ["agissez maintenant", "urgent @0.9", "immédiatement @0.6", "sous 24 heures @1.3", "dans les 24 heures @1.3", "expire aujourd'hui", "dernier avertissement", "dernier rappel", "sans délai", "action immédiate"]
+      de: ["sofort handeln", "dringend @0.9", "umgehend @0.7", "innerhalb von 24 stunden @1.3", "innerhalb von 48 stunden @1.2", "läuft heute ab", "letzte mahnung", "letzte warnung", "ohne verzögerung", "sofortiges handeln"]
+      it: ["agisci ora", "agisca ora", "urgente @0.9", "immediatamente @0.6", "entro 24 ore @1.3", "scade oggi", "ultimo avviso", "ultimo sollecito", "senza indugio", "azione immediata"]
+      ru: ["срочно @0.9", "немедленно @0.8", "действуйте сейчас", "в течение 24 часов @1.3", "в течение 48 часов @1.2", "истекает сегодня", "последнее предупреждение", "последнее уведомление", "не откладывайте", "незамедлительно"]
+      uk: ["терміново @0.9", "негайно @0.8", "дійте зараз", "протягом 24 годин @1.3", "закінчується сьогодні", "останнє попередження", "не зволікайте"]
+      tr: ["hemen harekete geçin", "acil @0.9", "derhal", "hemen @0.5", "24 saat içinde @1.3", "48 saat içinde @1.2", "bugün sona eriyor", "son uyarı", "son ihtar", "gecikmeden"]
+      ar: ["عاجل @0.9", "على الفور @0.8", "فورا @0.7", "تصرف الآن", "خلال 24 ساعة @1.3", "ينتهي اليوم", "تحذير أخير", "إشعار أخير", "لا تتأخر"]
+      fa: ["فوری @0.9", "همین حالا اقدام کنید", "ظرف 24 ساعت @1.3", "ظرف 48 ساعت @1.2", "امروز منقضی می شود", "آخرین هشدار", "اخطار نهایی", "بدون تاخیر"]
+      hi: ["तुरंत @0.8", "अभी कार्रवाई करें", "तत्काल @0.8", "24 घंटे के भीतर @1.3", "24 घंटे में @1.2", "आज समाप्त हो रहा है", "अंतिम चेतावनी", "अंतिम सूचना", "देर न करें"]
+      hi-Latn: ["turant @0.8", "jaldi karein", "jaldi kijiye", "24 ghante mein @1.3", "aaj hi", "aakhri chetavni", "antim suchna", "der na karein"]
+      zh-Hans: ["立即 @0.8", "马上 @0.6", "紧急 @0.9", "请尽快 @0.7", "24小时内 @1.3", "48小时内 @1.2", "今日到期", "最后通知", "最后警告", "逾期将"]
+      zh-Hant: ["立即 @0.8", "馬上 @0.6", "緊急 @0.9", "請盡快 @0.7", "24小時內 @1.3", "48小時內 @1.2", "今日到期", "最後通知", "最後警告", "逾期將"]
+      ja: ["至急 @0.9", "今すぐ @0.8", "直ちに @0.8", "24時間以内 @1.3", "48時間以内 @1.2", "本日中 @0.8", "本日期限", "最終警告", "最終通知", "お急ぎください"]
+      ko: ["긴급 @0.9", "즉시 @0.7", "지금 바로 @0.8", "24시간 이내 @1.3", "48시간 이내 @1.2", "오늘 만료", "최종 경고", "최종 통지", "서둘러"]
+      vi: ["khẩn cấp @0.9", "ngay lập tức @0.7", "hành động ngay", "trong vòng 24 giờ @1.3", "hết hạn hôm nay", "cảnh báo cuối cùng", "thông báo cuối cùng", "không chậm trễ"]
+      id: ["segera @0.8", "sekarang juga", "bertindak sekarang", "dalam 24 jam @1.3", "dalam waktu 24 jam @1.3", "berakhir hari ini", "peringatan terakhir", "pemberitahuan terakhir", "mendesak @0.9"]
+      th: ["ด่วน @0.9", "ทันที @0.7", "ภายใน 24 ชั่วโมง @1.3", "ภายใน 48 ชั่วโมง @1.2", "หมดอายุวันนี้", "คำเตือนสุดท้าย", "แจ้งเตือนครั้งสุดท้าย", "รีบดำเนินการ"]
+      nl: ["handel nu", "dringend @0.9", "onmiddellijk @0.7", "binnen 24 uur @1.3", "binnen 48 uur @1.2", "vervalt vandaag", "laatste waarschuwing", "laatste aanmaning", "zonder uitstel"]
+      pl: ["działaj teraz", "pilne @0.9", "natychmiast @0.7", "w ciągu 24 godzin @1.3", "w ciągu 48 godzin @1.2", "wygasa dzisiaj", "ostatnie ostrzeżenie", "ostateczne wezwanie", "bezzwłocznie"]
+
+  # ------------------------------------------------------------ threat / fear
+  threat:
+    weight: 1.4
+    terms:
+      en: ["account has been suspended", "account will be suspended", "account suspended", "account has been locked", "account is locked", "account will be closed", "account has been limited", "account has been disabled", "unauthorized login", "unauthorised login", "unauthorized access", "unauthorised access", "unusual activity", "unusual sign-in", "suspicious activity", "suspicious sign-in", "suspicious login", "will be deleted", "permanently deleted", "legal action", "lawsuit @1.0", "arrest warrant", "failure to comply", "will be terminated", "security alert @1.0", "your account is at risk", "has been compromised"]
+      es: ["su cuenta ha sido suspendida", "tu cuenta ha sido suspendida", "cuenta suspendida", "cuenta bloqueada", "su cuenta será cerrada", "tu cuenta será cerrada", "acceso no autorizado", "inicio de sesión no autorizado", "actividad sospechosa", "será eliminada", "será eliminado", "acciones legales", "orden de arresto", "alerta de seguridad @1.0"]
+      pt: ["sua conta foi suspensa", "conta suspensa", "conta bloqueada", "sua conta será encerrada", "acesso não autorizado", "atividade suspeita", "será excluída", "será excluído", "ação judicial", "mandado de prisão", "alerta de segurança @1.0"]
+      fr: ["votre compte a été suspendu", "compte suspendu", "compte bloqué", "votre compte sera fermé", "accès non autorisé", "connexion non autorisée", "activité suspecte", "sera supprimé", "poursuites judiciaires", "mandat d'arrêt", "alerte de sécurité @1.0"]
+      de: ["ihr konto wurde gesperrt", "konto gesperrt", "konto wird gesperrt", "ihr konto wird geschlossen", "unbefugter zugriff", "unbefugte anmeldung", "verdächtige aktivität", "wird gelöscht", "rechtliche schritte", "haftbefehl", "sicherheitswarnung @1.0"]
+      it: ["il tuo account è stato sospeso", "il suo account è stato sospeso", "account sospeso", "account bloccato", "il suo account sarà chiuso", "accesso non autorizzato", "attività sospetta", "sarà eliminato", "azioni legali", "mandato di arresto", "avviso di sicurezza @1.0"]
+      ru: ["ваш аккаунт заблокирован", "аккаунт заблокирован", "учетная запись заблокирована", "ваш аккаунт будет удален", "несанкционированный доступ", "подозрительная активность", "подозрительный вход", "будет удален", "судебное разбирательство", "судебный иск", "уголовное дело", "оповещение безопасности @1.0"]
+      uk: ["ваш акаунт заблоковано", "акаунт заблоковано", "обліковий запис заблоковано", "несанкціонований доступ", "підозріла активність", "буде видалено", "судовий позов", "кримінальна справа"]
+      tr: ["hesabınız askıya alındı", "hesabınız askıya alınacak", "hesabınız bloke", "hesabınız kapatılacak", "yetkisiz erişim", "yetkisiz giriş", "şüpheli etkinlik", "silinecek", "yasal işlem", "icra takibi", "yakalama kararı", "güvenlik uyarısı @1.0"]
+      ar: ["تم تعليق حسابك", "تم إيقاف حسابك", "تم حظر حسابك", "سيتم إغلاق حسابك", "دخول غير مصرح به", "نشاط مشبوه", "سيتم حذف", "إجراء قانوني", "مذكرة توقيف", "تنبيه أمني @1.0"]
+      fa: ["حساب شما مسدود شد", "حساب شما معلق شد", "حساب کاربری شما مسدود", "دسترسی غیرمجاز", "ورود مشکوک", "فعالیت مشکوک", "حذف خواهد شد", "پیگرد قانونی", "حکم جلب", "هشدار امنیتی @1.0"]
+      hi: ["आपका खाता निलंबित", "आपका खाता बंद कर दिया जाएगा", "आपका खाता ब्लॉक", "अनधिकृत पहुंच", "संदिग्ध गतिविधि", "हटा दिया जाएगा", "कानूनी कार्रवाई", "गिरफ्तारी वारंट", "सुरक्षा चेतावनी @1.0"]
+      hi-Latn: ["aapka account band", "aapka account block", "aapka khata band", "account suspend ho", "sandigdh gatividhi", "kanooni karwai", "giraftari warrant", "aapka khata block"]
+      zh-Hans: ["您的账户已被冻结", "账户已被冻结", "账号已被封", "账户已被暂停", "账号异常", "异常登录", "未经授权的访问", "可疑活动", "将被删除", "法律责任", "法律诉讼", "涉嫌洗钱", "逮捕令", "安全警告 @1.0"]
+      zh-Hant: ["您的帳戶已被凍結", "帳戶已被凍結", "帳號已被停用", "帳戶已被暫停", "帳號異常", "異常登入", "未經授權的存取", "可疑活動", "將被刪除", "法律責任", "法律訴訟", "涉嫌洗錢", "拘捕令", "安全警告 @1.0"]
+      ja: ["アカウントが停止", "アカウントがロック", "アカウントは凍結", "不正アクセス", "不正ログイン", "不審なログイン", "不審な活動", "削除されます", "法的措置", "利用停止", "逮捕"]
+      ko: ["계정이 정지", "계정이 잠겼", "계정이 차단", "계정이 삭제될", "무단 접근", "무단 로그인", "의심스러운 활동", "삭제됩니다", "법적 조치", "체포 영장", "이용 제한"]
+      vi: ["tài khoản của bạn đã bị khóa", "tài khoản bị khóa", "tài khoản bị tạm ngưng", "tài khoản sẽ bị đóng", "truy cập trái phép", "đăng nhập bất thường", "hoạt động đáng ngờ", "sẽ bị xóa", "truy cứu trách nhiệm", "lệnh bắt"]
+      id: ["akun anda telah diblokir", "akun anda diblokir", "akun anda ditangguhkan", "akun akan ditutup", "akses tidak sah", "login mencurigakan", "aktivitas mencurigakan", "akan dihapus", "tindakan hukum", "surat penangkapan"]
+      th: ["บัญชีของคุณถูกระงับ", "บัญชีถูกล็อก", "บัญชีของคุณจะถูกปิด", "เข้าถึงโดยไม่ได้รับอนุญาต", "การเข้าสู่ระบบที่น่าสงสัย", "กิจกรรมที่น่าสงสัย", "จะถูกลบ", "ดำเนินคดี", "หมายจับ", "ฟอกเงิน"]
+      nl: ["uw account is geblokkeerd", "account geblokkeerd", "account opgeschort", "uw account wordt gesloten", "ongeautoriseerde toegang", "ongeautoriseerde aanmelding", "verdachte activiteit", "wordt verwijderd", "juridische stappen", "aanhoudingsbevel", "beveiligingswaarschuwing @1.0"]
+      pl: ["twoje konto zostało zablokowane", "konto zostało zawieszone", "konto zablokowane", "twoje konto zostanie zamknięte", "nieautoryzowany dostęp", "nieautoryzowane logowanie", "podejrzana aktywność", "zostanie usunięte", "kroki prawne", "nakaz aresztowania", "alert bezpieczeństwa @1.0"]
+
+  # ---------------------------------------------------------------- authority
+  authority:
+    weight: 0.5
+    terms:
+      en: ["it department", "help desk", "helpdesk", "security team", "system administrator", "ceo @0.5", "chief executive", "bank @0.3", "government @0.4", "compliance @0.4", "human resources @0.4", "hr department", "customer support @0.3", "fraud department @0.8", "fraud prevention team @0.8", "microsoft support @0.8", "law enforcement @0.6", "tax authority @0.6", "official notice @0.6"]
+      es: ["departamento de ti", "equipo de seguridad", "administrador del sistema", "director general", "su banco @0.3", "gobierno @0.4", "cumplimiento normativo @0.4", "soporte técnico @0.4", "recursos humanos @0.4", "policía @0.5", "departamento de fraude @0.8"]
+      pt: ["departamento de ti", "equipe de segurança", "administrador do sistema", "diretor executivo", "seu banco @0.3", "governo @0.4", "suporte técnico @0.4", "recursos humanos @0.4", "polícia federal @0.6", "departamento de fraude @0.8"]
+      fr: ["service informatique", "équipe de sécurité", "administrateur système", "directeur général", "votre banque @0.3", "gouvernement @0.4", "conformité @0.4", "support technique @0.4", "ressources humaines @0.4", "gendarmerie @0.6", "service anti-fraude @0.8"]
+      de: ["it-abteilung", "sicherheitsteam", "systemadministrator", "geschäftsführer", "ihre bank @0.3", "behörde @0.4", "compliance @0.4", "kundensupport @0.3", "personalabteilung @0.4", "polizei @0.5", "betrugsabteilung @0.8"]
+      it: ["reparto it", "team di sicurezza", "amministratore di sistema", "amministratore delegato", "la tua banca @0.3", "governo @0.4", "conformità @0.4", "assistenza tecnica @0.4", "risorse umane @0.4", "polizia postale @0.6", "guardia di finanza @0.6", "ufficio antifrode @0.8"]
+      ru: ["служба безопасности", "it-отдел", "системный администратор", "генеральный директор", "ваш банк @0.3", "центральный банк @0.5", "госуслуги @0.6", "налоговая служба @0.6", "следственный комитет @0.8", "техническая поддержка @0.4", "отдел кадров @0.4", "полиция @0.5"]
+      uk: ["служба безпеки", "it-відділ", "системний адміністратор", "генеральний директор", "ваш банк @0.3", "податкова служба @0.6", "технічна підтримка @0.4", "відділ кадрів @0.4", "поліція @0.5"]
+      tr: ["bt departmanı", "güvenlik ekibi", "sistem yöneticisi", "genel müdür", "bankanız @0.3", "hükümet @0.4", "teknik destek @0.4", "insan kaynakları @0.4", "polis @0.5", "emniyet @0.5", "savcılık @0.7"]
+      ar: ["قسم تكنولوجيا المعلومات", "فريق الأمان", "مدير النظام", "المدير التنفيذي", "البنك @0.3", "الحكومة @0.4", "الدعم الفني @0.4", "الموارد البشرية @0.4", "الشرطة @0.5", "هيئة الزكاة @0.6"]
+      fa: ["واحد فناوری اطلاعات", "تیم امنیتی", "مدیر سیستم", "مدیرعامل", "بانک @0.3", "پلیس فتا @0.7", "سازمان مالیاتی @0.6", "پشتیبانی فنی @0.4", "منابع انسانی @0.4", "دادگستری @0.6"]
+      hi: ["आईटी विभाग", "सुरक्षा टीम", "सिस्टम एडमिनिस्ट्रेटर", "मुख्य कार्यकारी", "आपका बैंक @0.3", "सरकार @0.4", "तकनीकी सहायता @0.4", "मानव संसाधन @0.4", "पुलिस @0.5", "आयकर विभाग @0.6"]
+      hi-Latn: ["bank se bol raha", "bank se bol rahi", "police station @0.6", "income tax department @0.6", "customer care @0.4", "it department", "rbi @0.4", "cyber crime @0.7"]
+      zh-Hans: ["信息技术部", "安全团队", "系统管理员", "总经理", "银行 @0.3", "公安局 @0.7", "法院 @0.5", "客服中心 @0.3", "人力资源 @0.4", "税务局 @0.6", "官方客服 @0.5"]
+      zh-Hant: ["資訊科技部", "安全團隊", "系統管理員", "總經理", "銀行 @0.3", "警政署 @0.7", "法院 @0.5", "客服中心 @0.3", "人力資源 @0.4", "稅務局 @0.6", "國稅局 @0.6"]
+      ja: ["情報システム部", "セキュリティチーム", "システム管理者", "代表取締役", "社長 @0.4", "銀行 @0.3", "警察 @0.5", "裁判所 @0.5", "国税庁 @0.6", "カスタマーサポート @0.3", "人事部 @0.4", "金融庁 @0.6", "税務署 @0.6"]
+      ko: ["it 부서", "보안팀", "시스템 관리자", "대표이사", "은행 @0.3", "경찰 @0.5", "검찰 @0.7", "법원 @0.5", "고객센터 @0.3", "인사팀 @0.4", "국세청 @0.6", "금융감독원 @0.7"]
+      vi: ["bộ phận it", "đội ngũ bảo mật", "quản trị viên hệ thống", "giám đốc điều hành", "ngân hàng @0.3", "công an @0.6", "tòa án @0.5", "chăm sóc khách hàng @0.3", "nhân sự @0.4", "cục thuế @0.6", "cơ quan điều tra @0.8"]
+      id: ["departemen it", "tim keamanan", "administrator sistem", "direktur utama", "bank anda @0.3", "pemerintah @0.4", "polisi @0.5", "pengadilan @0.5", "layanan pelanggan @0.3", "ditjen pajak @0.6", "ojk @0.5"]
+      th: ["แผนกไอที", "ทีมรักษาความปลอดภัย", "ผู้ดูแลระบบ", "ธนาคาร @0.3", "ตำรวจ @0.5", "ศาล @0.4", "ศูนย์บริการลูกค้า @0.3", "ฝ่ายบุคคล @0.4", "กรมสรรพากร @0.6", "กรมศุลกากร @0.5", "ปปง @0.6"]
+      nl: ["it-afdeling", "beveiligingsteam", "systeembeheerder", "algemeen directeur", "uw bank @0.3", "overheid @0.4", "klantenservice @0.3", "personeelszaken @0.4", "politie @0.5", "belastingdienst @0.6", "compliance @0.4"]
+      pl: ["dział it", "zespół bezpieczeństwa", "administrator systemu", "prezes zarządu", "twój bank @0.3", "rząd @0.4", "obsługa klienta @0.3", "dział kadr @0.4", "policja @0.5", "urząd skarbowy @0.6", "prokuratura @0.7"]
+
+  # ------------------------------------------------------------- reward/greed
+  reward:
+    weight: 1.2
+    terms:
+      en: ["you have won", "you won", "you've won", "congratulations @0.9", "claim your prize", "claim your reward", "prize @0.9", "refund @0.8", "free gift card", "gift card reward", "inheritance", "lottery", "winner @0.8", "free iphone", "cash reward", "selected to receive", "you have been selected", "unclaimed funds"]
+      es: ["has ganado", "ha ganado", "felicidades @0.9", "reclama tu premio", "reclame su premio", "reembolso @0.8", "herencia @0.9", "lotería", "ganador @0.8", "has sido seleccionado"]
+      pt: ["você ganhou", "parabéns @0.9", "resgate seu prêmio", "reembolso @0.8", "herança @0.9", "sorteio @0.9", "vencedor @0.8", "você foi selecionado"]
+      fr: ["vous avez gagné", "félicitations @0.9", "réclamez votre prix", "remboursement @0.8", "héritage @0.9", "loterie", "gagnant @0.8", "vous avez été sélectionné"]
+      de: ["sie haben gewonnen", "herzlichen glückwunsch @0.9", "gewinn abholen", "erstattung @0.8", "erbschaft @0.9", "lotterie", "gewinner @0.8", "sie wurden ausgewählt"]
+      it: ["hai vinto", "congratulazioni @0.9", "riscuoti il premio", "rimborso @0.8", "eredità @0.9", "lotteria", "vincitore @0.8", "sei stato selezionato"]
+      ru: ["вы выиграли", "поздравляем @0.9", "получите приз", "возврат средств @0.8", "наследство @0.9", "лотерея", "победитель @0.8", "вы были выбраны"]
+      uk: ["ви виграли", "вітаємо @0.9", "отримайте приз", "повернення коштів @0.8", "спадщина @0.9", "лотерея", "переможець @0.8"]
+      tr: ["kazandınız", "tebrikler @0.9", "ödülünüzü alın", "iade @0.7", "miras @0.7", "çekiliş @0.9", "kazanan @0.8", "seçildiniz"]
+      ar: ["لقد فزت", "مبروك @0.9", "اطلب جائزتك", "استرداد @0.7", "ميراث @0.8", "يانصيب", "الفائز @0.8"]
+      fa: ["شما برنده شده اید", "تبریک @0.9", "جایزه خود را دریافت کنید", "بازپرداخت @0.8", "ارث @0.7", "قرعه کشی", "برنده @0.8"]
+      hi: ["आपने जीता है", "बधाई हो @0.9", "इनाम प्राप्त करें", "रिफंड @0.8", "विरासत @0.8", "लॉटरी", "विजेता @0.8"]
+      hi-Latn: ["aapne jeeta", "badhai ho @0.9", "inaam @0.9", "refund milega", "lottery", "cashback @0.7", "aap winner hain"]
+      zh-Hans: ["恭喜您中奖", "恭喜您获得", "领取奖品", "退款 @0.7", "遗产 @0.8", "抽奖 @0.9", "中奖"]
+      zh-Hant: ["恭喜您中獎", "恭喜您獲得", "領取獎品", "退款 @0.7", "遺產 @0.8", "抽獎 @0.9", "中獎"]
+      ja: ["当選", "おめでとうございます @0.9", "賞品", "返金 @0.8", "遺産 @0.8", "抽選 @0.9", "プレゼント @0.7"]
+      ko: ["당첨", "축하합니다 @0.9", "상품을 받", "환급 @0.8", "상속 @0.8", "추첨 @0.9", "이벤트 당첨"]
+      vi: ["bạn đã trúng thưởng", "chúc mừng @0.9", "nhận giải thưởng", "hoàn tiền @0.8", "thừa kế @0.8", "xổ số", "người chiến thắng @0.8"]
+      id: ["anda memenangkan", "selamat anda @0.9", "klaim hadiah", "pengembalian dana @0.8", "warisan @0.8", "undian @0.9", "pemenang @0.8"]
+      th: ["คุณได้รับรางวัล", "ยินดีด้วย @0.9", "รับรางวัล", "คืนเงิน @0.8", "มรดก @0.8", "สลากกินแบ่ง", "ผู้โชคดี"]
+      nl: ["u heeft gewonnen", "gefeliciteerd @0.9", "claim uw prijs", "terugbetaling @0.8", "erfenis @0.9", "loterij", "winnaar @0.8"]
+      pl: ["wygrałeś", "wygrałaś", "gratulacje @0.9", "odbierz nagrodę", "zwrot środków @0.8", "spadek @0.8", "loteria", "zwycięzca @0.8"]
+
+  # ----------------------------------------------------------------- scarcity
+  scarcity:
+    weight: 0.7
+    terms:
+      en: ["limited time", "limited offer", "only today", "only a few left", "while supplies last", "limited spots", "offer ends", "exclusive offer", "one-time offer", "today only"]
+      es: ["oferta limitada", "tiempo limitado", "solo hoy", "últimas unidades", "plazas limitadas"]
+      pt: ["oferta limitada", "tempo limitado", "somente hoje", "últimas unidades", "vagas limitadas"]
+      fr: ["offre limitée", "durée limitée", "aujourd'hui seulement", "dernières places", "quantité limitée"]
+      de: ["begrenztes angebot", "nur für kurze zeit", "nur heute", "nur noch wenige", "zeitlich begrenzt"]
+      it: ["offerta limitata", "tempo limitato", "solo oggi", "ultimi posti", "ultimi pezzi"]
+      ru: ["ограниченное предложение", "только сегодня", "осталось мало", "ограниченное количество мест", "ограниченное время"]
+      uk: ["обмежена пропозиція", "тільки сьогодні", "залишилось мало", "обмежений час"]
+      tr: ["sınırlı süre", "sınırlı teklif", "sadece bugün", "son birkaç", "stoklarla sınırlı"]
+      ar: ["عرض محدود", "لفترة محدودة", "اليوم فقط", "الكمية محدودة"]
+      fa: ["پیشنهاد محدود", "فقط امروز", "ظرفیت محدود", "برای مدت محدود"]
+      hi: ["सीमित समय", "सीमित ऑफर", "केवल आज", "सीमित स्थान"]
+      hi-Latn: ["sirf aaj", "limited offer", "seemit samay", "kuch hi bache hain"]
+      zh-Hans: ["限时优惠", "限时", "仅限今天", "名额有限", "数量有限"]
+      zh-Hant: ["限時優惠", "限時", "僅限今天", "名額有限", "數量有限"]
+      ja: ["期間限定", "限定オファー", "本日限り", "残りわずか", "数量限定"]
+      ko: ["한정 기간", "한정 특가", "오늘만", "수량 한정", "선착순"]
+      vi: ["ưu đãi có hạn", "chỉ hôm nay", "số lượng có hạn", "thời gian có giới hạn"]
+      id: ["penawaran terbatas", "hanya hari ini", "stok terbatas", "waktu terbatas"]
+      th: ["ข้อเสนอจำกัด", "เฉพาะวันนี้", "จำนวนจำกัด", "จำกัดเวลา"]
+      nl: ["beperkte tijd", "tijdelijke aanbieding", "alleen vandaag", "beperkte voorraad"]
+      pl: ["oferta ograniczona", "ograniczony czas", "tylko dziś", "ostatnie sztuki", "ograniczona liczba miejsc"]
+
+  # --------------------------------------------------------- secrecy/isolation
+  secrecy:
+    weight: 1.3
+    terms:
+      en: ["confidential @0.8", "keep this confidential", "do not tell anyone", "don't tell anyone", "do not share this with", "keep this between us", "strictly between us", "do not discuss this", "i am in a meeting", "i'm in a meeting", "can't talk right now", "cannot take calls", "don't call me", "handle this discreetly", "need a favor @0.9", "need a favour @0.9", "are you available @0.5", "are you at your desk @0.7", "keep it private", "this is a private matter"]
+      es: ["confidencial @0.8", "no se lo digas a nadie", "no se lo diga a nadie", "mantén esto entre nosotros", "no lo comentes", "estoy en una reunión", "no puedo hablar", "necesito un favor @0.9", "esto es privado"]
+      pt: ["confidencial @0.8", "não conte a ninguém", "mantenha isso entre nós", "estou em reunião", "não posso falar", "preciso de um favor @0.9", "isso é sigiloso"]
+      fr: ["confidentiel @0.8", "n'en parlez à personne", "gardez cela entre nous", "je suis en réunion", "je ne peux pas parler", "j'ai besoin d'un service @0.9", "ne dites rien à personne"]
+      de: ["vertraulich @0.8", "sagen sie niemandem", "das bleibt unter uns", "ich bin in einer besprechung", "ich kann nicht telefonieren", "ich brauche einen gefallen @0.9", "streng vertraulich"]
+      it: ["riservato @0.8", "non dirlo a nessuno", "resta tra noi", "sono in riunione", "non posso parlare", "ho bisogno di un favore @0.9", "strettamente confidenziale"]
+      ru: ["конфиденциально @0.8", "никому не говорите", "это останется между нами", "я на совещании", "не могу говорить", "мне нужна услуга @0.9", "не сообщайте никому"]
+      uk: ["конфіденційно @0.8", "нікому не кажіть", "це залишиться між нами", "я на нараді", "не можу говорити", "мені потрібна послуга @0.9"]
+      tr: ["gizli @0.7", "kimseye söylemeyin", "bu aramızda kalsın", "toplantıdayım", "konuşamıyorum", "bir iyiliğe ihtiyacım var @0.9", "kimseyle paylaşmayın"]
+      ar: ["سري @0.7", "لا تخبر أحدا", "هذا بيني وبينك", "أنا في اجتماع", "لا أستطيع التحدث", "أحتاج خدمة @0.9"]
+      fa: ["محرمانه @0.8", "به کسی نگویید", "بین خودمان بماند", "در جلسه هستم", "نمی توانم صحبت کنم", "یک لطفی لازم دارم @0.9"]
+      hi: ["गोपनीय @0.8", "किसी को न बताएं", "यह हमारे बीच रहेगा", "मैं मीटिंग में हूं", "बात नहीं कर सकता", "मुझे एक एहसान चाहिए @0.9"]
+      hi-Latn: ["kisi ko mat batana", "kisi ko na batayen", "gopniya @0.8", "yeh humare beech", "meeting mein hoon", "ek favour chahiye @0.9"]
+      zh-Hans: ["请保密", "不要告诉任何人", "这件事只有我们知道", "我在开会", "不方便接电话", "帮我一个忙 @0.9", "此事保密"]
+      zh-Hant: ["請保密", "不要告訴任何人", "這件事只有我們知道", "我在開會", "不方便接電話", "幫我一個忙 @0.9", "此事保密"]
+      ja: ["内密に", "誰にも言わないで", "他言無用", "ここだけの話", "会議中 @0.8", "電話に出られない", "お願いがあります @0.9"]
+      ko: ["비밀로 해", "아무에게도 말하지", "우리끼리", "회의 중 @0.8", "통화할 수 없", "부탁이 있습니다 @0.9"]
+      vi: ["bảo mật @0.7", "đừng nói với ai", "chuyện này chỉ giữa chúng ta", "tôi đang họp", "không thể nghe máy", "nhờ bạn một việc @0.9"]
+      id: ["rahasia @0.8", "jangan beri tahu siapa pun", "ini hanya antara kita", "saya sedang rapat", "tidak bisa bicara", "tolong bantu saya @0.7"]
+      th: ["เป็นความลับ", "อย่าบอกใคร", "เรื่องนี้ระหว่างเราสองคน", "ฉันอยู่ในที่ประชุม", "คุยไม่ได้", "ขอร้องให้ช่วย @0.9"]
+      nl: ["vertrouwelijk @0.8", "vertel het aan niemand", "dit blijft tussen ons", "ik zit in een vergadering", "ik kan niet bellen", "ik heb een gunst nodig @0.9"]
+      pl: ["poufne @0.8", "nikomu nie mów", "to zostaje między nami", "jestem na spotkaniu", "nie mogę rozmawiać", "potrzebuję przysługi @0.9"]
+
+  # --------------------------------------------------------- payment / action
+  payment:
+    weight: 1.0
+    terms:
+      en: ["wire transfer", "wire the funds", "bank transfer", "gift cards @1.3", "buy gift cards @1.8", "purchase gift cards @1.8", "pay the invoice", "pay invoice", "outstanding invoice", "update your payment", "update payment information", "payment method @0.6", "payment failed", "billing information @0.8", "new bank details", "change of bank account", "send payment", "make a payment @0.8", "pay now @0.8", "processing fee", "customs fee", "delivery fee @0.8", "bitcoin payment", "pay a fee"]
+      es: ["transferencia bancaria", "transferencia urgente", "tarjetas de regalo @1.3", "compra tarjetas de regalo @1.8", "paga la factura", "factura pendiente", "actualiza tu método de pago", "datos bancarios", "nuevo número de cuenta", "pago pendiente @0.8", "realiza el pago @0.8", "gastos de envío @0.8"]
+      pt: ["transferência bancária", "cartões presente @1.3", "compre cartões presente @1.8", "pague a fatura", "fatura em aberto", "atualize seu pagamento", "dados bancários", "novos dados bancários", "pagamento pendente @0.8", "taxa de importação @0.9", "faça o pagamento @0.8"]
+      fr: ["virement bancaire", "virement urgent", "cartes cadeaux @1.3", "achetez des cartes cadeaux @1.8", "payez la facture", "facture impayée", "mettez à jour votre paiement", "coordonnées bancaires", "nouveau rib", "paiement en attente @0.8", "frais de livraison @0.8", "frais de dédouanement"]
+      de: ["überweisung @0.8", "dringende überweisung", "geschenkkarten @1.3", "kaufen sie geschenkkarten @1.8", "rechnung bezahlen", "offene rechnung", "zahlungsmethode aktualisieren", "bankverbindung @0.8", "neue kontonummer", "zahlung ausstehend @0.8", "zahlungsinformationen @0.8", "zollgebühr"]
+      it: ["bonifico bancario", "bonifico urgente", "carte regalo @1.3", "acquista carte regalo @1.8", "paga la fattura", "fattura scaduta", "aggiorna il metodo di pagamento", "coordinate bancarie", "nuovo iban", "pagamento in sospeso @0.8", "spese di spedizione @0.8"]
+      ru: ["банковский перевод", "срочный перевод", "подарочные карты @1.3", "купите подарочные карты @1.8", "оплатите счет", "неоплаченный счет", "обновите платежные данные", "банковские реквизиты", "новые реквизиты", "ожидает оплаты @0.8", "комиссия за @0.7"]
+      uk: ["банківський переказ", "терміновий переказ", "подарункові картки @1.3", "купіть подарункові картки @1.8", "оплатіть рахунок", "несплачений рахунок", "оновіть платіжні дані", "банківські реквізити", "нові реквізити", "очікує оплати @0.8"]
+      tr: ["havale @0.8", "acil havale", "hediye kartı alın @1.8", "faturayı ödeyin", "ödenmemiş fatura", "ödeme bilgilerinizi güncelleyin", "yeni hesap bilgileri", "ödeme bekleniyor @0.8", "kargo ücreti @0.8", "gümrük ücreti"]
+      ar: ["حوالة مصرفية", "تحويل عاجل", "بطاقات هدايا @1.3", "اشتر بطاقات هدايا @1.8", "سدد الفاتورة", "فاتورة غير مدفوعة", "حدث بيانات الدفع", "بيانات الحساب البنكي", "رسوم الشحن @0.8", "رسوم الجمارك"]
+      fa: ["حواله بانکی", "انتقال فوری", "کارت هدیه بخرید @1.8", "فاکتور را پرداخت کنید", "صورتحساب پرداخت نشده", "اطلاعات پرداخت را به روز کنید", "شماره حساب جدید", "هزینه ارسال @0.8"]
+      hi: ["बैंक ट्रांसफर", "तुरंत ट्रांसफर करें", "गिफ्ट कार्ड खरीदें @1.8", "बिल का भुगतान करें", "बकाया बिल", "भुगतान विवरण अपडेट करें", "बैंक खाता विवरण", "नया खाता नंबर", "भुगतान लंबित @0.8"]
+      hi-Latn: ["paise bhejo", "paisa transfer", "gift card kharido @1.8", "bill ka bhugtan", "upi pin @1.2", "payment pending @0.8", "bank transfer", "naya account number", "processing fee"]
+      zh-Hans: ["银行转账", "紧急转账", "购买礼品卡 @1.8", "支付发票", "未付款 @0.7", "更新付款信息", "银行账户信息", "新的银行账号", "支付手续费", "付款 @0.4"]
+      zh-Hant: ["銀行轉帳", "緊急轉帳", "購買禮品卡 @1.8", "支付發票", "未付款 @0.7", "更新付款資訊", "銀行帳戶資訊", "新的銀行帳號", "支付手續費", "匯款 @0.6"]
+      ja: ["銀行振込", "至急振込", "ギフトカードを購入 @1.8", "請求書の支払い", "未払い @0.8", "支払い情報を更新", "口座情報", "新しい口座", "お支払い方法 @0.6", "支払い期限 @0.7", "手数料 @0.6"]
+      ko: ["계좌 이체", "긴급 송금", "기프트 카드를 구매 @1.8", "청구서 결제", "미납 @0.8", "결제 정보 업데이트", "계좌 정보", "새 계좌", "결제 수단 @0.6", "수수료 @0.6"]
+      vi: ["chuyển khoản @0.8", "chuyển khoản gấp", "mua thẻ quà tặng @1.8", "thanh toán hóa đơn", "hóa đơn chưa thanh toán", "cập nhật thông tin thanh toán", "thông tin tài khoản ngân hàng", "số tài khoản mới", "phí xử lý", "phí vận chuyển @0.8"]
+      id: ["transfer bank", "transfer segera", "beli kartu hadiah @1.8", "bayar tagihan", "tagihan belum dibayar", "perbarui informasi pembayaran", "rekening baru", "pembayaran tertunda @0.8", "biaya admin @0.8", "biaya pengiriman @0.8"]
+      th: ["โอนเงิน @0.8", "โอนเงินด่วน", "ซื้อบัตรของขวัญ @1.8", "ชำระใบแจ้งหนี้", "ค้างชำระ @0.8", "อัปเดตข้อมูลการชำระเงิน", "บัญชีธนาคารใหม่", "ค่าธรรมเนียม @0.6", "ค่าจัดส่ง @0.7"]
+      nl: ["overschrijving @0.8", "spoedoverschrijving", "cadeaubonnen kopen @1.8", "betaal de factuur", "openstaande factuur", "betaalgegevens bijwerken", "nieuw rekeningnummer", "betaling in behandeling @0.8", "verzendkosten @0.8", "betaalverzoek"]
+      pl: ["przelew bankowy", "pilny przelew", "kup karty podarunkowe @1.8", "opłać fakturę", "niezapłacona faktura", "zaktualizuj dane płatności", "nowy numer konta", "oczekuje na płatność @0.8", "dopłata @0.8", "opłata za doręczenie @0.8"]
+
+  # ------------------------------------------------------- credential / verify
+  credential:
+    weight: 1.6
+    terms:
+      en: ["verify your account", "verify your identity", "confirm your identity", "confirm your account", "re-enter your password", "enter your password", "reset your password", "update your password", "password will expire", "password expires", "sign in to", "log in to your account", "login to verify", "validate your account", "account verification", "verify your email", "confirm your credentials", "security question @1.0", "card number @1.0", "social security number @2.0", "login credentials", "confirm your details", "update your account"]
+      es: ["verifica tu cuenta", "verifique su cuenta", "confirma tu identidad", "confirme su identidad", "introduce tu contraseña", "restablece tu contraseña", "tu contraseña caducará", "validar su cuenta", "número de tarjeta @1.0", "datos de acceso", "actualice sus datos"]
+      pt: ["verifique sua conta", "confirme sua identidade", "digite sua senha", "redefina sua senha", "sua senha expira", "validar sua conta", "número do cartão @1.0", "dados de acesso", "atualize seus dados"]
+      fr: ["vérifiez votre compte", "confirmez votre identité", "saisissez votre mot de passe", "réinitialisez votre mot de passe", "votre mot de passe expire", "valider votre compte", "numéro de carte @1.0", "identifiants de connexion", "mettez à jour vos informations"]
+      de: ["bestätigen sie ihre identität", "verifizieren sie ihr konto", "konto verifizieren", "geben sie ihr passwort ein", "passwort zurücksetzen", "ihr passwort läuft ab", "konto bestätigen", "kartennummer @1.0", "zugangsdaten @1.2", "aktualisieren sie ihre daten"]
+      it: ["verifica il tuo account", "conferma la tua identità", "inserisci la tua password", "reimposta la password", "la tua password scadrà", "convalida il tuo account", "numero della carta @1.0", "credenziali di accesso", "aggiorna i tuoi dati"]
+      ru: ["подтвердите свой аккаунт", "подтвердите вашу личность", "введите пароль", "сбросьте пароль", "срок действия пароля истекает", "верифицируйте аккаунт", "номер карты @1.0", "данные для входа", "подтвердите данные"]
+      uk: ["підтвердіть акаунт", "підтвердіть вашу особу", "введіть пароль", "скиньте пароль", "термін дії пароля закінчується", "верифікуйте акаунт", "номер картки @1.0", "дані для входу"]
+      tr: ["hesabınızı doğrulayın", "kimliğinizi doğrulayın", "şifrenizi girin", "şifrenizi sıfırlayın", "şifrenizin süresi dolacak", "hesabınızı onaylayın", "kart numarası @1.0", "giriş bilgileri @1.2", "bilgilerinizi güncelleyin"]
+      ar: ["تحقق من حسابك", "أكد هويتك", "أدخل كلمة المرور", "أعد تعيين كلمة المرور", "ستنتهي صلاحية كلمة المرور", "تأكيد الحساب", "رقم البطاقة @1.0", "بيانات الدخول @1.2", "حدث بياناتك"]
+      fa: ["حساب خود را تایید کنید", "هویت خود را تایید کنید", "رمز عبور را وارد کنید", "رمز عبور خود را بازنشانی کنید", "رمز عبور شما منقضی می شود", "احراز هویت @1.0", "شماره کارت @1.0", "اطلاعات ورود @1.2", "رمز دوم @1.8"]
+      hi: ["अपना खाता सत्यापित करें", "अपनी पहचान सत्यापित करें", "अपना पासवर्ड दर्ज करें", "पासवर्ड रीसेट करें", "आपका पासवर्ड समाप्त हो जाएगा", "केवाईसी अपडेट", "केवाईसी @1.2", "कार्ड नंबर @1.0", "लॉगिन विवरण @1.2", "पैन कार्ड @1.0"]
+      hi-Latn: ["apna account verify", "kyc update", "kyc verify", "password dalein", "password reset", "apni pehchan", "card number @1.0", "pan card update", "aadhaar @1.0"]
+      zh-Hans: ["验证您的账户", "验证身份", "确认您的身份", "输入密码", "重置密码", "密码即将过期", "账户验证", "银行卡号 @1.8", "登录信息 @1.2", "身份证号 @1.8"]
+      zh-Hant: ["驗證您的帳戶", "驗證身分", "確認您的身分", "輸入密碼", "重設密碼", "密碼即將過期", "帳戶驗證", "信用卡號 @1.8", "登入資訊 @1.2", "身分證字號 @1.8"]
+      ja: ["アカウントを確認", "本人確認", "パスワードを入力", "パスワードを再設定", "パスワードの有効期限", "認証してください", "カード番号 @1.0", "ログイン情報 @1.2", "暗証番号 @1.8"]
+      ko: ["계정을 확인", "본인 확인", "본인 인증", "비밀번호를 입력", "비밀번호 재설정", "비밀번호가 만료", "카드 번호 @1.0", "로그인 정보 @1.2", "주민등록번호 @1.8"]
+      vi: ["xác minh tài khoản", "xác thực tài khoản", "xác nhận danh tính", "nhập mật khẩu", "đặt lại mật khẩu", "mật khẩu sắp hết hạn", "số thẻ @1.0", "thông tin đăng nhập @1.2", "căn cước công dân @1.4", "cập nhật thông tin @1.0"]
+      id: ["verifikasi akun anda", "konfirmasi identitas anda", "masukkan kata sandi", "atur ulang kata sandi", "kata sandi anda akan kedaluwarsa", "nomor kartu @1.0", "data login @1.2", "perbarui data anda @1.0"]
+      th: ["ยืนยันบัญชีของคุณ", "ยืนยันตัวตน", "กรอกรหัสผ่าน", "รีเซ็ตรหัสผ่าน", "รหัสผ่านของคุณจะหมดอายุ", "หมายเลขบัตร @1.0", "ข้อมูลเข้าสู่ระบบ @1.2", "เลขบัตรประชาชน @1.8"]
+      nl: ["verifieer uw account", "bevestig uw identiteit", "voer uw wachtwoord in", "wachtwoord opnieuw instellen", "uw wachtwoord verloopt", "kaartnummer @1.0", "inloggegevens @1.2", "bevestig uw account"]
+      pl: ["zweryfikuj swoje konto", "potwierdź swoją tożsamość", "wprowadź hasło", "zresetuj hasło", "twoje hasło wygasa", "numer karty @1.0", "dane logowania @1.2", "potwierdź konto"]
+
+  # ---------------------------------------------------------- delivery/parcel
+  delivery:
+    weight: 0.6
+    terms:
+      en: ["your package", "parcel @0.5", "delivery attempt", "delivery failed", "failed delivery", "unable to deliver", "tracking number", "reschedule delivery", "reschedule your delivery", "shipment @0.4", "customs @0.4", "redelivery", "address incomplete", "package is on hold", "package on hold"]
+      es: ["su paquete", "tu paquete", "intento de entrega", "entrega fallida", "número de seguimiento", "reprogramar la entrega", "aduana @0.4", "envío retenido"]
+      pt: ["sua encomenda", "seu pacote", "tentativa de entrega", "entrega falhou", "código de rastreio", "reagendar a entrega", "alfândega @0.4", "encomenda retida"]
+      fr: ["votre colis", "tentative de livraison", "livraison échouée", "numéro de suivi", "reprogrammer la livraison", "douane @0.4", "colis en attente"]
+      de: ["ihr paket", "zustellversuch", "zustellung fehlgeschlagen", "sendungsnummer", "lieferung neu planen", "zoll @0.3", "paket wartet"]
+      it: ["il tuo pacco", "tentativo di consegna", "consegna fallita", "numero di tracciamento", "riprogramma la consegna", "dogana @0.4", "pacco in giacenza"]
+      ru: ["ваша посылка", "попытка доставки", "доставка не удалась", "трек-номер", "перенести доставку", "таможня @0.4", "посылка задержана"]
+      uk: ["ваша посилка", "спроба доставки", "доставка не вдалася", "номер відстеження", "перенести доставку", "митниця @0.4", "посилка затримана"]
+      tr: ["paketiniz", "teslimat girişimi", "teslimat başarısız", "takip numarası", "teslimatı yeniden planlayın", "gümrük @0.4", "kargonuz"]
+      ar: ["شحنتك", "طردك", "محاولة التسليم", "فشل التسليم", "رقم التتبع", "إعادة جدولة التسليم", "الجمارك @0.4"]
+      fa: ["بسته شما", "مرسوله شما", "تلاش برای تحویل", "تحویل ناموفق", "کد رهگیری", "زمان بندی مجدد تحویل", "گمرک @0.4"]
+      hi: ["आपका पार्सल", "डिलीवरी असफल", "डिलीवरी का प्रयास", "ट्रैकिंग नंबर", "डिलीवरी पुनर्निर्धारित", "कस्टम @0.3"]
+      hi-Latn: ["aapka parcel", "delivery fail", "tracking number", "customs @0.4", "delivery ki koshish"]
+      zh-Hans: ["您的包裹", "快递 @0.4", "派送失败", "配送失败", "物流单号", "重新安排配送", "海关 @0.4", "包裹被扣留"]
+      zh-Hant: ["您的包裹", "快遞 @0.4", "派送失敗", "配送失敗", "物流單號", "重新安排配送", "海關 @0.4", "包裹被扣留", "宅配 @0.4"]
+      ja: ["お荷物 @0.5", "配達できませんでした", "再配達", "追跡番号", "配送業者 @0.4", "税関 @0.4", "荷物をお預かり", "不在 @0.3"]
+      ko: ["택배 @0.4", "배송 실패", "배송 시도", "운송장 번호", "재배송", "세관 @0.4", "주소 불명"]
+      vi: ["gói hàng của bạn", "kiện hàng @0.4", "giao hàng không thành công", "mã vận đơn", "lên lịch giao lại", "hải quan @0.4", "đơn hàng bị giữ"]
+      id: ["paket anda", "percobaan pengiriman", "pengiriman gagal", "nomor resi", "jadwalkan ulang pengiriman", "bea cukai @0.4", "paket tertahan"]
+      th: ["พัสดุของคุณ", "จัดส่งไม่สำเร็จ", "พยายามจัดส่ง", "หมายเลขติดตามพัสดุ", "นัดส่งใหม่", "ศุลกากร @0.4", "พัสดุถูกระงับ"]
+      nl: ["uw pakket", "bezorgpoging", "bezorging mislukt", "trackingnummer", "bezorging opnieuw plannen", "douane @0.4", "pakket vastgehouden"]
+      pl: ["twoja paczka", "próba doręczenia", "doręczenie nie powiodło się", "numer przesyłki", "zaplanuj ponowne doręczenie", "cło @0.3", "paczka wstrzymana"]
+
+  # ---------------------------------------------------------- tax / government
+  tax:
+    weight: 0.9
+    terms:
+      en: ["tax refund", "tax return @0.6", "tax authority", "unpaid taxes", "overdue taxes", "revenue service", "refund is pending", "eligible for a refund", "stimulus payment", "tax rebate"]
+      es: ["devolución de impuestos", "reembolso de impuestos", "agencia tributaria", "hacienda @0.6", "declaración de la renta @0.6", "impuestos pendientes"]
+      pt: ["restituição do imposto", "receita federal", "imposto de renda @0.6", "reembolso de impostos", "impostos pendentes"]
+      fr: ["remboursement d'impôt", "avis d'imposition", "déclaration de revenus @0.6", "trésor public", "impôts impayés"]
+      de: ["steuererstattung", "steuerrückerstattung", "finanzamt @0.6", "steuererklärung @0.6", "steuerschulden"]
+      it: ["rimborso fiscale", "agenzia delle entrate", "dichiarazione dei redditi @0.6", "imposte non pagate"]
+      ru: ["налоговый вычет", "возврат налога", "налоговая декларация @0.6", "задолженность по налогам"]
+      uk: ["повернення податку", "податкова декларація @0.6", "заборгованість по податках"]
+      tr: ["vergi iadesi", "vergi dairesi @0.6", "gelir idaresi", "vergi borcu"]
+      ar: ["استرداد ضريبي", "الضريبة المستحقة", "هيئة الضرائب @0.6", "إقرار ضريبي @0.6"]
+      fa: ["بازگشت مالیات", "مالیات معوق", "اداره مالیات @0.6", "اظهارنامه مالیاتی @0.6"]
+      hi: ["टैक्स रिफंड", "आयकर रिफंड", "बकाया कर", "आयकर रिटर्न @0.6"]
+      hi-Latn: ["tax refund", "income tax refund", "baki tax"]
+      zh-Hans: ["退税", "税务退款", "欠税", "个人所得税 @0.6"]
+      zh-Hant: ["退稅", "稅務退款", "欠稅", "綜合所得稅 @0.6"]
+      ja: ["税金の還付", "還付金", "未納 @0.5", "納税 @0.5"]
+      ko: ["세금 환급", "미납 세금", "종합소득세 @0.6", "연말정산 환급"]
+      vi: ["hoàn thuế", "thuế chưa nộp", "quyết toán thuế @0.6"]
+      id: ["pengembalian pajak", "pajak belum dibayar", "kantor pajak @0.6", "spt tahunan @0.6"]
+      th: ["คืนภาษี", "ภาษีค้างชำระ", "ยื่นภาษี @0.6"]
+      nl: ["belastingteruggave", "onbetaalde belasting", "belastingaangifte @0.6"]
+      pl: ["zwrot podatku", "zaległy podatek", "zeznanie podatkowe @0.6"]
+
+  # ------------------------------------------------------------- tech support
+  techsupport:
+    weight: 1.8
+    terms:
+      en: ["your computer is infected", "your device is infected", "your pc is infected", "virus detected", "malware detected", "call this number", "call us immediately", "call technical support", "call microsoft", "your pc has been blocked", "windows defender alert", "remote access @1.2", "toll-free @0.8", "do not restart your computer", "trojan detected"]
+      es: ["su equipo está infectado", "tu dispositivo está infectado", "virus detectado", "llame a este número", "llama a este número", "llama al soporte técnico", "acceso remoto @1.2"]
+      pt: ["seu computador está infectado", "vírus detectado", "ligue para este número", "ligue para o suporte técnico", "acesso remoto @1.2"]
+      fr: ["votre ordinateur est infecté", "virus détecté", "appelez ce numéro", "appelez le support technique", "accès à distance @1.2"]
+      de: ["ihr computer ist infiziert", "virus erkannt", "rufen sie diese nummer an", "rufen sie den support an", "fernzugriff @1.2"]
+      it: ["il tuo computer è infetto", "virus rilevato", "chiama questo numero", "chiama l'assistenza tecnica", "accesso remoto @1.2"]
+      ru: ["ваш компьютер заражен", "обнаружен вирус", "позвоните по номеру", "позвоните в службу поддержки", "удаленный доступ @1.2"]
+      uk: ["ваш комп'ютер заражено", "виявлено вірус", "зателефонуйте за номером", "зателефонуйте в службу підтримки", "віддалений доступ @1.2"]
+      tr: ["bilgisayarınız virüslü", "virüs tespit edildi", "bu numarayı arayın", "teknik destek hattını arayın", "uzaktan erişim @1.2"]
+      ar: ["جهازك مصاب", "تم اكتشاف فيروس", "اتصل على هذا الرقم", "اتصل بالدعم الفني", "الوصول عن بعد @1.2"]
+      fa: ["رایانه شما آلوده است", "ویروس شناسایی شد", "با این شماره تماس بگیرید", "با پشتیبانی تماس بگیرید", "دسترسی از راه دور @1.2"]
+      hi: ["आपका कंप्यूटर संक्रमित", "वायरस का पता चला", "इस नंबर पर कॉल करें", "तकनीकी सहायता को कॉल करें", "रिमोट एक्सेस @1.2"]
+      hi-Latn: ["aapka computer infected", "virus detect", "is number par call karein", "remote access @1.2", "tech support ko call karein"]
+      zh-Hans: ["您的电脑已感染病毒", "检测到病毒", "请拨打此号码", "拨打技术支持", "远程控制 @1.2", "远程访问 @1.2"]
+      zh-Hant: ["您的電腦已感染病毒", "偵測到病毒", "請撥打此號碼", "撥打技術支援", "遠端控制 @1.2", "遠端存取 @1.2"]
+      ja: ["コンピュータがウイルスに感染", "ウイルスが検出", "この番号に電話", "サポートセンターに電話", "リモートアクセス @1.2", "ウイルス感染"]
+      ko: ["컴퓨터가 감염", "바이러스가 감지", "이 번호로 전화", "기술 지원에 전화", "원격 접속 @1.2", "원격 제어 @1.2"]
+      vi: ["máy tính của bạn bị nhiễm", "phát hiện virus", "gọi đến số này", "gọi bộ phận hỗ trợ kỹ thuật", "truy cập từ xa @1.2"]
+      id: ["komputer anda terinfeksi", "virus terdeteksi", "hubungi nomor ini", "hubungi dukungan teknis", "akses jarak jauh @1.2"]
+      th: ["คอมพิวเตอร์ของคุณติดไวรัส", "ตรวจพบไวรัส", "โทรไปที่หมายเลขนี้", "โทรหาฝ่ายสนับสนุน", "การเข้าถึงระยะไกล @1.2"]
+      nl: ["uw computer is geïnfecteerd", "virus gedetecteerd", "bel dit nummer", "bel de technische ondersteuning", "toegang op afstand @1.2"]
+      pl: ["twój komputer jest zainfekowany", "wykryto wirusa", "zadzwoń pod ten numer", "zadzwoń do wsparcia technicznego", "zdalny dostęp @1.2"]
+
+  # ------------------------------------------------------------------- crypto
+  crypto:
+    weight: 1.8
+    terms:
+      en: ["seed phrase", "recovery phrase", "secret recovery phrase", "private key", "wallet validation", "validate your wallet", "connect your wallet", "wallet connect @1.0", "airdrop @1.2", "claim your airdrop", "synchronize your wallet", "wallet has been compromised", "crypto giveaway", "12-word phrase", "24-word phrase"]
+      es: ["frase semilla", "frase de recuperación", "clave privada", "validación de billetera", "conecta tu billetera", "sincroniza tu wallet", "sorteo de criptomonedas"]
+      pt: ["frase semente", "frase de recuperação", "chave privada", "validação de carteira", "conecte sua carteira", "sincronize sua carteira"]
+      fr: ["phrase secrète", "phrase de récupération", "clé privée", "validation du portefeuille", "connectez votre portefeuille", "synchronisez votre portefeuille"]
+      de: ["seed-phrase", "wiederherstellungsphrase", "privater schlüssel", "wallet-validierung", "wallet verbinden", "wallet synchronisieren"]
+      it: ["frase seed", "frase di recupero", "chiave privata", "convalida del wallet", "collega il tuo wallet", "sincronizza il wallet"]
+      ru: ["seed-фраза", "сид-фраза", "секретная фраза", "приватный ключ", "валидация кошелька", "подключите кошелек", "эирдроп @1.2", "синхронизируйте кошелек"]
+      uk: ["seed-фраза", "секретна фраза", "приватний ключ", "валідація гаманця", "підключіть гаманець", "синхронізуйте гаманець"]
+      tr: ["kurtarma ifadesi", "seed ifadesi", "özel anahtar", "cüzdan doğrulama", "cüzdanınızı bağlayın", "cüzdanınızı senkronize edin"]
+      ar: ["عبارة الاسترداد", "العبارة السرية", "المفتاح الخاص", "التحقق من المحفظة", "اربط محفظتك", "إيردروب @1.2"]
+      fa: ["عبارت بازیابی", "عبارت سید", "کلید خصوصی", "اعتبارسنجی کیف پول", "کیف پول خود را متصل کنید", "ایردراپ @1.2"]
+      hi: ["सीड फ्रेज़", "रिकवरी फ्रेज़", "प्राइवेट की", "वॉलेट सत्यापन", "अपना वॉलेट कनेक्ट करें", "एयरड्रॉप @1.2"]
+      hi-Latn: ["wallet verify", "wallet connect karein", "secret phrase batao", "private key batao"]
+      zh-Hans: ["助记词", "私钥", "钱包验证", "连接钱包", "空投 @1.2", "同步钱包", "恢复短语"]
+      zh-Hant: ["助記詞", "私鑰", "錢包驗證", "連接錢包", "空投 @1.2", "同步錢包", "恢復短語"]
+      ja: ["シードフレーズ", "リカバリーフレーズ", "秘密鍵", "ウォレット認証", "ウォレットを接続", "エアドロップ @1.2"]
+      ko: ["시드 문구", "복구 문구", "개인 키", "지갑 인증", "지갑을 연결", "에어드롭 @1.2"]
+      vi: ["cụm từ khôi phục", "khóa riêng tư", "xác thực ví", "kết nối ví", "đồng bộ ví"]
+      id: ["frasa pemulihan", "frasa seed", "kunci pribadi", "validasi dompet", "hubungkan dompet anda", "sinkronkan dompet"]
+      th: ["ซีดเฟรส", "วลีกู้คืน", "คีย์ส่วนตัว", "ยืนยันกระเป๋า", "เชื่อมต่อกระเป๋า", "แอร์ดรอป @1.2"]
+      nl: ["herstelzin", "privésleutel", "wallet validatie", "verbind uw wallet", "synchroniseer uw wallet"]
+      pl: ["fraza odzyskiwania", "klucz prywatny", "weryfikacja portfela", "połącz swój portfel", "fraza seed", "zsynchronizuj portfel"]
+
+  # ---------------------------------------------- one-time-code (OTP / 2FA) ask
+  # These are *requests* that the reader hand over / read back / reply with a code.
+  # "Your code is 123456" (a genuine delivery of a code) is deliberately not listed.
+  otp:
+    weight: 2.4
+    terms:
+      en: ["send me the code", "send the code", "share the code", "share your otp", "share your verification code", "reply with the code", "reply with your code", "reply with the otp", "provide the code", "provide your otp", "tell me the code", "read me the code", "give me the code", "forward the code", "enter the code you received @1.8", "enter the verification code @1.5", "enter your otp @1.5", "send the verification code", "what is the code", "code you just received", "the 6-digit code @1.5", "read back the code", "send me the otp", "send me your otp", "confirm the code @1.2", "send the 2fa code", "share the 2fa code"]
+      es: ["envíame el código", "comparte el código", "responde con el código", "dime el código", "proporcione el código", "código de verificación que recibió", "código que te llegó", "introduce el código de verificación @1.5", "envía el código"]
+      pt: ["envie o código", "me envie o código", "compartilhe o código", "responda com o código", "informe o código", "me passe o código", "código de verificação que você recebeu", "digite o código de verificação @1.5"]
+      fr: ["envoyez-moi le code", "communiquez le code", "partagez le code", "répondez avec le code", "donnez-moi le code", "code de vérification que vous avez reçu", "saisissez le code de vérification @1.5", "transmettez le code"]
+      de: ["senden sie mir den code", "teilen sie den code", "antworten sie mit dem code", "nennen sie mir den code", "verifizierungscode weitergeben", "bestätigungscode eingeben @1.5", "den code den sie erhalten haben", "schicken sie den code"]
+      it: ["inviami il codice", "condividi il codice", "rispondi con il codice", "dimmi il codice", "comunica il codice", "codice di verifica ricevuto", "inserisci il codice di verifica @1.5"]
+      ru: ["пришлите код", "сообщите код", "назовите код", "отправьте код из смс", "продиктуйте код", "ответьте кодом", "введите код подтверждения @1.5", "код из смс @1.5", "перешлите код"]
+      uk: ["надішліть код", "повідомте код", "назвіть код", "продиктуйте код", "введіть код підтвердження @1.5", "код з смс @1.5", "перешліть код"]
+      tr: ["kodu bana gönderin", "kodu paylaşın", "kodu yanıtlayın", "kodu söyleyin", "doğrulama kodunu girin @1.5", "sms ile gelen kod @1.5", "tek kullanımlık şifre @1.2"]
+      ar: ["أرسل لي الرمز", "شارك الرمز", "أرسل رمز التحقق", "قل لي الرمز", "أدخل رمز التحقق @1.5", "رمز التحقق الذي وصلك", "كلمة المرور لمرة واحدة @1.2"]
+      fa: ["کد را برای من بفرستید", "کد را به اشتراک بگذارید", "کد تایید را ارسال کنید", "کد را بگویید", "کد تایید را وارد کنید @1.5", "رمز یکبار مصرف @1.2", "رمز پویا @1.2", "کد پیامک شده @1.5"]
+      hi: ["ओटीपी साझा करें", "ओटीपी बताएं", "ओटीपी भेजें", "कोड भेजें", "कोड बताएं", "सत्यापन कोड दर्ज करें @1.5", "वन टाइम पासवर्ड @1.2"]
+      hi-Latn: ["otp batao", "otp bhejo", "otp share karein", "otp dijiye", "code batao", "code bhejo", "verification code batayein"]
+      zh-Hans: ["发送验证码", "告诉我验证码", "提供验证码", "把验证码发给", "回复验证码", "输入验证码 @1.5", "短信验证码 @1.5", "动态口令 @1.5", "一次性密码 @1.2"]
+      zh-Hant: ["發送驗證碼", "告訴我驗證碼", "提供驗證碼", "把驗證碼發給", "回覆驗證碼", "輸入驗證碼 @1.5", "簡訊驗證碼 @1.5", "動態密碼 @1.5", "一次性密碼 @1.2"]
+      ja: ["認証コードを送", "認証コードを教え", "ワンタイムパスワードを教え", "コードを教えて", "確認コードを入力 @1.5", "ワンタイムパスワード @1.2", "smsの認証コード @1.5", "コードを返信"]
+      ko: ["인증번호를 알려", "인증번호를 보내", "인증번호를 공유", "otp를 알려", "otp 번호 @1.5", "인증 코드를 입력 @1.5", "일회용 비밀번호 @1.2", "인증번호를 입력 @1.5", "코드를 알려주"]
+      vi: ["gửi mã otp", "cung cấp mã otp", "cho tôi mã", "cung cấp mã xác minh", "chia sẻ mã", "nhập mã xác minh @1.5", "gửi mã xác nhận", "mật khẩu một lần @1.2"]
+      id: ["kirim kode otp", "berikan kode otp", "bagikan kode", "kirimkan kode verifikasi", "sebutkan kode", "masukkan kode verifikasi @1.5", "balas dengan kode"]
+      th: ["ส่งรหัส otp", "บอกรหัส otp", "แชร์รหัส", "ส่งรหัสยืนยัน", "บอกรหัสให้", "กรอกรหัสยืนยัน @1.5", "รหัสผ่านใช้ครั้งเดียว @1.2", "ตอบกลับด้วยรหัส"]
+      nl: ["stuur me de code", "deel de code", "antwoord met de code", "geef me de code", "geef de verificatiecode", "voer de verificatiecode in @1.5", "eenmalig wachtwoord @1.2", "de code die u heeft ontvangen"]
+      pl: ["wyślij mi kod", "podaj kod", "udostępnij kod", "odpowiedz kodem", "podaj kod weryfikacyjny", "wprowadź kod weryfikacyjny @1.5", "hasło jednorazowe @1.2", "kod blik @2.0"]
+
+  # ------------------------------------------------------------ call to action
+  cta:
+    weight: 0.4
+    terms:
+      en: ["click here", "click the link", "click below", "tap the link", "follow this link", "open the attachment", "see attached @0.3", "log in @0.3", "sign in @0.3", "reply to this message", "call now", "scan the qr code", "open the link", "download the attachment"]
+      es: ["haz clic aquí", "haga clic aquí", "pulsa el enlace", "inicia sesión @0.3", "abre el archivo adjunto", "llama ahora", "escanea el código qr"]
+      pt: ["clique aqui", "clique no link", "faça login @0.3", "abra o anexo", "ligue agora", "escaneie o código qr"]
+      fr: ["cliquez ici", "cliquez sur le lien", "connectez-vous @0.3", "ouvrez la pièce jointe", "appelez maintenant", "scannez le code qr"]
+      de: ["hier klicken", "klicken sie hier", "klicken sie auf den link", "melden sie sich an @0.3", "öffnen sie den anhang", "jetzt anrufen", "scannen sie den qr-code"]
+      it: ["clicca qui", "clicca sul link", "accedi ora @0.3", "apri l'allegato", "chiama ora", "scansiona il codice qr"]
+      ru: ["нажмите здесь", "перейдите по ссылке", "войдите в аккаунт @0.3", "откройте вложение", "позвоните сейчас", "отсканируйте qr-код"]
+      uk: ["натисніть тут", "перейдіть за посиланням", "увійдіть в акаунт @0.3", "відкрийте вкладення", "зателефонуйте зараз"]
+      tr: ["buraya tıklayın", "bağlantıya tıklayın", "giriş yapın @0.3", "ekleri açın", "hemen arayın", "qr kodunu tarayın"]
+      ar: ["انقر هنا", "اضغط على الرابط", "سجل الدخول @0.3", "افتح المرفق", "اتصل الآن", "امسح رمز qr"]
+      fa: ["اینجا کلیک کنید", "روی لینک کلیک کنید", "وارد شوید @0.3", "پیوست را باز کنید", "همین الان تماس بگیرید"]
+      hi: ["यहां क्लिक करें", "लिंक पर क्लिक करें", "लॉग इन करें @0.3", "अटैचमेंट खोलें", "अभी कॉल करें"]
+      hi-Latn: ["yahan click karein", "link par click", "abhi call karein", "login karein @0.3"]
+      zh-Hans: ["点击这里", "点击链接", "点击下方", "立即登录", "打开附件", "立即致电", "扫描二维码"]
+      zh-Hant: ["點擊這裡", "點擊連結", "點擊下方", "立即登入", "開啟附件", "立即致電", "掃描二維碼"]
+      ja: ["こちらをクリック", "リンクをクリック", "今すぐログイン", "添付ファイルを開", "今すぐお電話", "qrコードを読み取"]
+      ko: ["여기를 클릭", "링크를 클릭", "지금 로그인", "첨부 파일을 열", "지금 전화", "qr 코드를 스캔"]
+      vi: ["nhấp vào đây", "bấm vào liên kết", "đăng nhập ngay", "mở tệp đính kèm", "gọi ngay", "quét mã qr"]
+      id: ["klik di sini", "klik tautan", "masuk sekarang", "buka lampiran", "hubungi sekarang", "pindai kode qr"]
+      th: ["คลิกที่นี่", "คลิกลิงก์", "เข้าสู่ระบบทันที", "เปิดไฟล์แนบ", "โทรเลย", "สแกน qr"]
+      nl: ["klik hier", "klik op de link", "log nu in @0.3", "open de bijlage", "bel nu", "scan de qr-code"]
+      pl: ["kliknij tutaj", "kliknij w link", "zaloguj się teraz @0.3", "otwórz załącznik", "zadzwoń teraz", "zeskanuj kod qr"]

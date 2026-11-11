@@ -1,37 +1,82 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <link rel="stylesheet" href="popup.css" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>UniPhish</title>
+  <link rel="stylesheet" href="popup.css">
 </head>
 <body>
-  <header>
-    <h1>UniPhish</h1>
-    <span id="status" class="status status--off" title="API status">API</span>
+  <header class="top">
+    <div class="brandline">
+      <img src="icons/icon32.png" alt="" width="22" height="22">
+      <strong>UniPhish</strong>
+    </div>
+    <span id="status" class="pill pill--off" data-i18n="privacy.on_device" title="">On-device</span>
+    <button id="open-options" class="link" type="button" data-i18n="popup.options">Settings</button>
   </header>
-  <p class="tag">Unicode-native multilingual phishing detection</p>
 
-  <div class="row">
-    <input id="url" type="text" placeholder="Paste a URL to scan…" spellcheck="false" />
-    <button id="scan">Scan</button>
-  </div>
+  <form id="form" class="scan" autocomplete="off">
+    <input id="url" type="text" inputmode="url" spellcheck="false" maxlength="2048"
+           data-i18n-placeholder="popup.placeholder" placeholder="Paste a link to check…" aria-label="URL">
+    <button id="scan" type="submit" data-i18n="popup.scan">Scan</button>
+  </form>
+  <div class="examples" id="examples" aria-label="examples"></div>
 
-  <div id="result" class="result hidden"></div>
+  <main id="result" class="result" hidden aria-live="polite">
+    <section class="verdict">
+      <div id="gauge" class="gauge" role="img"></div>
+      <div class="vtext">
+        <div id="tier" class="tier"></div>
+        <div id="brand" class="brand" hidden></div>
+        <div id="trusted" class="note" hidden></div>
+      </div>
+    </section>
 
-  <div class="examples">
-    <div class="examples__label">Try:</div>
-    <button class="ex" data-url="https://paypa1.xyz/login">paypa1.xyz</button>
-    <button class="ex" data-url="https://аpple.com/verify">аpple (Cyrillic)</button>
-    <button class="ex" data-url="https://www.sbi.co.in/">sbi.co.in</button>
-  </div>
+    <section>
+      <div id="urlview" class="urlview" dir="ltr" lang="und"></div>
+      <p class="hint" id="heathint" hidden></p>
+    </section>
 
-  <footer>
-    <button id="rescan" class="link">Re-scan links on this page</button>
-    <span id="pagestats"></span>
+    <section>
+      <h2 data-i18n="popup.reasons">Why</h2>
+      <ul id="reasons" class="reasons"></ul>
+    </section>
+
+    <section class="actions">
+      <button id="trust" type="button" class="secondary" hidden></button>
+    </section>
+  </main>
+
+  <section class="deep" id="deep">
+    <label class="switch">
+      <input id="deep-toggle" type="checkbox">
+      <span data-i18n="popup.deep">Deep analysis with my UniPhish server</span>
+    </label>
+    <div id="deep-note" class="note" hidden></div>
+    <div id="deep-result" class="deep-result" hidden></div>
+  </section>
+
+  <footer class="foot">
+    <span id="pagestats" class="note"></span>
+    <button id="rescan" class="link" type="button" data-i18n="popup.rescan">Re-scan page</button>
+    <span class="note" data-i18n="privacy.note">Nothing leaves your device.</span>
   </footer>
 
   <script src="model.js"></script>
-  <script src="analyze.js"></script>
+  <script src="lib/urlparse.js"></script>
+  <script src="lib/confusables.js"></script>
+  <script src="lib/lists.js"></script>
+  <script src="lib/brands.js"></script>
+  <script src="lib/rules.js"></script>
+  <script src="lib/fusion.js"></script>
+  <script src="lib/saliency.js"></script>
+  <script src="lib/engine.js"></script>
+  <script src="lib/i18n.js"></script>
+  <script src="lib/settings.js"></script>
+  <script src="lib/report.js"></script>
+  <script src="lib/boot.js"></script>
+  <script src="lib/ui.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>

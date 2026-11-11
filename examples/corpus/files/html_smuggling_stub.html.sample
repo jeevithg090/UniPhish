@@ -1,0 +1,14 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Shared document</title></head>
+<body><p>Your document is being prepared...</p>
+<script>
+// INERT corpus sample: the blob below is plain text, not an executable.
+var data = "SU5FUlQgQ09SUFVTIFNBTVBMRSAtIHBsYWluIHRleHQsIG5vdCBhIHByb2dyYW0uCg==";
+var bytes = Uint8Array.from(atob(data), function (c) { return c.charCodeAt(0); });
+var blob = new Blob([bytes], {type: "application/octet-stream"});
+var a = document.createElement("a");
+a.href = URL.createObjectURL(blob);
+a.download = "document.txt";
+document.body.appendChild(a);
+a.click();
+</script></body></html>

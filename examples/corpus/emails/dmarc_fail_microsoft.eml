@@ -1,0 +1,14 @@
+Authentication-Results: mx.corpus.example; spf=fail smtp.mailfrom=microsoft-notify.example;
+	dkim=fail header.d=microsoft-notify.example;
+	dmarc=fail header.from=microsoft-notify.example
+Received: from unknown (unknown [198.51.100.77])
+	by mx.corpus.example with SMTP id BB22; Mon, 02 Mar 2026 03:41:55 +0000
+From: "Microsoft Account Team" <security@microsoft-notify.example>
+To: customer@corpus.example
+Subject: Unusual sign-in activity on your Microsoft account
+Date: Mon, 02 Mar 2026 03:50:10 +0000
+Message-ID: <0002@microsoft-notify.example>
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+
+<html><body><p>We detected a sign-in from a new location. Review it right away or your account will be locked.</p><p><a href="https://login-microsoft365.example/review">https://www.microsoft.com/security</a></p></body></html>

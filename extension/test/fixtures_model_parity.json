@@ -1,0 +1,42 @@
+{
+ "urls": [
+  "https://example.com/",
+  "a.co",
+  "https://www.example.com/account/settings?ref=1",
+  "http://paypal.com.secure-login.example/verify",
+  "https://pаypal.example/login",
+  "https://пример.example/вход",
+  "https://بنك.example/تسجيل-الدخول",
+  "https://银行.example/登录",
+  "https://बैंक.example/लॉगिन",
+  "https://은행.example/로그인",
+  "http://xn--pypal-4ve.example/signin",
+  "http://0x7f.0.0.1/a",
+  "https://example.com/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/login",
+  "",
+  "x",
+  "https://login.microsoftonline.com.evil.example/oauth2/authorize?client_id=1",
+  "http://192.0.2.1/signin",
+  "https://example.org/%E4%B8%AD%E6%96%87?q=1#frag"
+ ],
+ "probs": [
+  1.155092945737124e-06,
+  2.2493151845992543e-05,
+  0.9999938607215881,
+  0.9999999403953552,
+  0.9999316334724426,
+  0.02609121985733509,
+  0.9899575114250183,
+  0.0022837426513433456,
+  0.002589423442259431,
+  0.0012482039164751768,
+  0.9999998807907104,
+  0.9994772672653198,
+  0.0004625089932233095,
+  0.000368597888154909,
+  8.335824531968683e-05,
+  0.9999971985816956,
+  0.9999991655349731,
+  5.679904643329792e-05
+ ]
+}

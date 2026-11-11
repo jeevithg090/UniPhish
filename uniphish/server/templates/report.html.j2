@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="generator" content="UniPhish {{ r.engine_version }}">
+<title>{{ r.title }}</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--fg:#1c2230;--muted:#5d677a;--line:#dfe3ea;--code:#eef1f5;
+--benign:#1f8f4e;--susp:#c77d0a;--mal:#c62828;--accent:#2f5fd0;--hl:#ffe08a;--hl-fg:#4a3500;
+--info:#6b7a90;--low:#4f8ccf;--medium:#c77d0a;--high:#d9541e;--critical:#c62828}
+@media (prefers-color-scheme:dark){:root{--bg:#10141c;--card:#171c27;--fg:#e6e9f0;--muted:#98a2b5;
+--line:#2a3243;--code:#1f2633;--benign:#4cc47f;--susp:#f0a63a;--mal:#ff6b66;--accent:#7fa3ff;
+--hl:#6b4f00;--hl-fg:#ffe9b0}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:1.45rem;margin:0 0 4px}
+h2{font-size:1.1rem;margin:0 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+section,header.top{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;margin:0 0 16px}
+.muted{color:var(--muted)}.small{font-size:.85rem}
+.head{display:grid;grid-template-columns:230px 1fr;gap:20px;align-items:center}
+@media (max-width:640px){.head{grid-template-columns:1fr}}
+.gauge{width:100%;max-width:230px;height:auto}
+.g-benign{stroke:var(--benign)}.g-susp{stroke:var(--susp)}.g-mal{stroke:var(--mal)}
+.g-needle{stroke:var(--fg)}.g-hub{fill:var(--fg)}.g-score{fill:var(--fg);font:700 30px system-ui,sans-serif}
+.badge{display:inline-block;padding:2px 10px;border-radius:999px;font-weight:700;font-size:.8rem;color:#fff;text-transform:uppercase;letter-spacing:.04em}
+.lvl-benign{background:var(--benign)}.lvl-suspicious{background:var(--susp)}.lvl-malicious{background:var(--mal)}
+.sev{font-size:.75rem;font-weight:700;text-transform:uppercase;color:var(--info)}
+.sev-low{color:var(--low)}.sev-medium{color:var(--medium)}.sev-high{color:var(--high)}.sev-critical{color:var(--critical)}
+.kv{display:flex;flex-wrap:wrap;gap:6px 18px;margin:8px 0 0}
+.kv span b{font-weight:600}
+.chip{display:inline-block;background:var(--code);border:1px solid var(--line);border-radius:6px;padding:0 7px;margin:2px 4px 2px 0;font:.82rem ui-monospace,Menlo,Consolas,monospace}
+.brandbox{margin-top:10px;padding:10px 12px;border-left:4px solid var(--mal);background:var(--code);border-radius:4px}
+.brandbox.official{border-left-color:var(--benign)}
+code,pre,.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+pre{background:var(--code);border:1px solid var(--line);border-radius:6px;padding:10px;overflow:auto;font-size:.8rem;margin:8px 0 0;white-space:pre-wrap;word-break:break-all;max-height:480px}
+.target{font:1rem/1.6 ui-monospace,Menlo,Consolas,monospace;word-break:break-all;background:var(--code);border:1px solid var(--line);border-radius:6px;padding:10px}
+mark.hl{background:var(--hl);color:var(--hl-fg);border-radius:2px;padding:0 1px}
+mark.na{background:transparent;color:var(--mal);text-decoration:underline wavy var(--mal)}
+mark.hl.na{background:var(--hl)}
+mark.inv{background:var(--mal);color:#fff;border-radius:2px;font-size:.8em}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pos{color:var(--mal)}.neg{color:var(--benign)}
+.table-wrap{overflow-x:auto}
+.waterfall{width:100%;height:auto}
+.w-label,.w-val{font:12px system-ui,sans-serif;fill:var(--fg)}.thr-l{font:10px system-ui,sans-serif;fill:var(--muted)}
+.thr{stroke:var(--muted);stroke-width:1;stroke-dasharray:3 3}
+.bar-pos{fill:var(--mal)}.bar-neg{fill:var(--benign)}.bar-prior{fill:var(--info)}.bar-other{fill:var(--muted)}.bar-total{fill:var(--accent)}
+.tree td{padding:4px 8px}.tree .tgt{padding-left:calc(8px + var(--d) * 1.1rem);word-break:break-all}
+.copy{user-select:all}
+.note{background:var(--code);border-left:4px solid var(--susp);padding:8px 12px;border-radius:4px;margin:0 0 10px;font-size:.88rem}
+footer{color:var(--muted);font-size:.8rem;text-align:center;margin-top:20px}
+@media print{body{background:#fff;color:#000}main{max-width:none;padding:0}
+section,header.top{break-inside:avoid-page;border-color:#bbb}pre{max-height:none}a{color:inherit}}
+</style>
+</head>
+<body>
+<main>
+<header class="top">
+  <h1>{{ r.title }}</h1>
+  <div class="muted small">Verdict <span class="mono">{{ r.id }}</span> &middot; created {{ r.created }} &middot; engine {{ r.engine_version }}{% if r.origin %} &middot; origin {{ r.origin }}{% endif %}</div>
+  <div class="head" style="margin-top:14px">
+    <div>{{ r.gauge }}</div>
+    <div>
+      <span class="badge lvl-{{ r.level }}">{{ r.level }}</span>
+      <span class="muted">recommended action: <b>{{ r.action }}</b></span>
+      <p style="margin:10px 0 0">{{ r.summary }}</p>
+      <div class="kv small">
+        <span>Score <b>{{ r.score }}/100</b></span><span>Risk <b>{{ r.risk_pct }}%</b></span>
+        <span>Log-odds <b>{{ r.logit }}</b></span><span>Confidence <b>{{ r.confidence_pct }}%</b></span>
+        <span>Kind <b>{{ r.kind }}</b></span><span>Analysis time <b>{{ r.duration_ms }} ms</b></span>
+      </div>
+      {% if r.brand %}
+      <div class="brandbox{% if r.brand.official %} official{% endif %}">
+        <b>{% if r.brand.official %}Official asset of{% else %}Impersonated brand:{% endif %} {{ r.brand.name }}</b>
+        <span class="muted small"> &middot; technique {{ r.brand.technique }} &middot; confidence {{ r.brand.confidence_pct }}%</span>
+        {% if r.brand.evidence %}<div class="small">{{ r.brand.evidence }}</div>{% endif %}
+        {% if r.brand.legit_domains %}<div class="small muted">Legitimate domains: {% for d in r.brand.legit_domains %}<span class="chip">{{ d }}</span>{% endfor %}</div>{% endif %}
+      </div>
+      {% endif %}
+      {% if r.techniques %}<div class="small" style="margin-top:10px"><span class="muted">Attack construction:</span> {% for t in r.techniques %}<span class="chip">{{ t }}</span>{% endfor %}</div>{% endif %}
+    </div>
+  </div>
+</header>
+
+<section>
+  <h2>Analysed {{ r.kind }}</h2>
+  <div class="target" role="text">{{ r.target }}</div>
+  {% if r.target_cut %}<p class="muted small">Display truncated.</p>{% endif %}
+  <p class="muted small">Defanged for safety. <mark class="hl">Highlighted</mark> text drove the verdict, <mark class="na">underlined</mark> characters are non-ASCII, <mark class="inv">&lt;U+XXXX&gt;</mark> tokens are invisible or control characters made visible.</p>
+  {% if r.span_rows %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Highlighted text</th><th>Why</th><th>Source</th></tr></thead>
+    <tbody>{% for s in r.span_rows %}<tr><td class="mono">{{ s.text }}</td><td>{{ s.title }}</td><td>{{ "model saliency" if s.salient else "signal span" }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% endif %}
+  {% if r.facts %}
+  <h2 style="margin-top:18px">Artifact facts</h2>
+  <div class="table-wrap"><table><tbody>{% for k, v in r.facts %}<tr><th>{{ k }}</th><td class="mono">{{ v }}</td></tr>{% endfor %}</tbody></table></div>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Why this score: signal contribution waterfall</h2>
+  <p class="muted small">Starts at the base rate and adds each signal's damped log-odds contribution. Right of the dashed lines the verdict becomes suspicious, then malicious.</p>
+  {{ r.waterfall }}
+  <h2 style="margin-top:18px">Signals ({{ r.signals_total }})</h2>
+  {% if r.signals %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Severity</th><th>Signal</th><th>Category</th><th class="num">Weight</th><th class="num">Contribution</th><th>MITRE</th></tr></thead>
+    <tbody>
+    {% for s in r.signals %}
+    <tr><td><span class="sev sev-{{ s.severity }}">{{ s.severity }}</span></td>
+        <td><b>{{ s.title }}</b> <span class="muted mono small">{{ s.id }}</span>{% if s.detail %}<div class="small">{{ s.detail }}</div>{% endif %}</td>
+        <td>{{ s.category }}</td><td class="num">{{ s.weight }}</td>
+        <td class="num {{ 'pos' if s.positive else 'neg' }}">{{ s.contribution }}</td>
+        <td>{% for m in s.mitre %}<span class="chip">{{ m }}</span>{% endfor %}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+  {% if r.signals_total > r.signals|length %}<p class="muted small">Showing the strongest {{ r.signals|length }} of {{ r.signals_total }} signals.</p>{% endif %}
+  {% else %}<p class="muted">No signals were raised.</p>{% endif %}
+</section>
+
+<section>
+  <h2>Indicators of compromise ({{ r.iocs_total }})</h2>
+  <p class="muted small">All values are defanged. Re-fang them (<span class="mono">hxxp</span> to <span class="mono">http</span>, <span class="mono">[.]</span> to <span class="mono">.</span>) in a controlled tool before blocking or hunting.</p>
+  {% if r.iocs %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Type</th><th>Value</th><th>Role</th><th>Judged malicious</th></tr></thead>
+    <tbody>{% for i in r.iocs %}<tr><td>{{ i.type }}</td><td class="mono" style="word-break:break-all">{{ i.value }}</td><td>{{ i.role }}</td><td>{{ "yes" if i.malicious else ("no" if i.malicious == false else "-") }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% if r.iocs_total > r.iocs|length %}<p class="muted small">Showing {{ r.iocs|length }} of {{ r.iocs_total }}.</p>{% endif %}
+  <h2 style="margin-top:18px">Copy-friendly list</h2>
+  <pre class="copy">{{ r.ioc_list }}</pre>
+  {% else %}<p class="muted">No indicators were extracted.</p>{% endif %}
+</section>
+
+<section>
+  <h2>MITRE ATT&amp;CK / ATLAS</h2>
+  {% if r.mitre %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Technique</th><th>Name</th><th>Tactic</th><th>Framework</th><th>Raised by</th></tr></thead>
+    <tbody>{% for m in r.mitre %}
+    <tr><td class="mono">{% if m.url %}<a href="{{ m.url }}" rel="noopener noreferrer nofollow" target="_blank">{{ m.id }}</a>{% else %}{{ m.id }}{% endif %}</td>
+        <td>{{ m.name }}</td><td>{{ m.tactic }}</td><td>{{ "ATLAS" if m.framework == "atlas" else ("ATT&CK" if m.framework == "attack" else m.framework) }}</td>
+        <td class="small mono">{{ m.signals|join(", ") }}</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="muted">No techniques were mapped.</p>{% endif %}
+</section>
+
+<section>
+  <h2>Artifact tree</h2>
+  <div class="table-wrap"><table class="tree">
+    <thead><tr><th>Artifact</th><th>Origin</th><th>Verdict</th><th class="num">Score</th><th class="num">Signals</th></tr></thead>
+    <tbody>{% for t in r.tree %}
+    <tr><td class="tgt mono" style="--d:{{ t.depth }}">{% if t.depth %}&#8627; {% endif %}<span class="muted">{{ t.kind }}</span> {{ t.target }}{% if t.brand %} <span class="chip">{{ t.brand }}</span>{% endif %}</td>
+        <td>{{ t.origin }}</td><td><span class="badge lvl-{{ t.level }}">{{ t.level }}</span></td>
+        <td class="num">{{ t.score }}</td><td class="num">{{ t.signals }}</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% if r.tree_truncated %}<p class="muted small">Tree truncated for display.</p>{% endif %}
+</section>
+
+<section>
+  <h2>Analyzer runs</h2>
+  {% if r.runs %}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Analyzer</th><th>Status</th><th class="num">Time (ms)</th><th class="num">Signals</th><th>Error</th></tr></thead>
+    <tbody>{% for a in r.runs %}<tr><td class="mono">{{ a.name }}</td><td>{{ a.status }}</td><td class="num">{{ a.duration_ms }}</td><td class="num">{{ a.signals }}</td><td class="small">{{ a.error }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="muted">No analyzer run records.</p>{% endif %}
+</section>
+
+{% if r.narrative %}
+<section>
+  <h2>Analyst narrative</h2>
+  <p class="note">Machine-generated summary. Verify against the signals above before acting.</p>
+  {% for p in r.narrative %}<p>{{ p }}</p>{% endfor %}
+</section>
+{% endif %}
+
+<section>
+  <h2>Appendix</h2>
+  {% if r.stix_pattern %}
+  <h3 style="font-size:.95rem;margin:0">STIX 2.1 pattern</h3>
+  <p class="muted small">URL schemes are defanged for display.</p>
+  <pre class="copy">{{ r.stix_pattern }}</pre>
+  {% endif %}
+  <h3 style="font-size:.95rem;margin:14px 0 0">Raw verdict (JSON)</h3>
+  <p class="muted small">URL strings are defanged; non-ASCII characters are shown as \u escapes so look-alikes stay visible.{% if r.json_truncated %} Truncated.{% endif %}</p>
+  <pre>{{ r.raw_json }}</pre>
+</section>
+<footer>Generated by UniPhish {{ r.engine_version }}. Self-contained: no scripts, no external resources.</footer>
+</main>
+</body>
+</html>

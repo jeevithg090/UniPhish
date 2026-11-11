@@ -1,0 +1,53 @@
+# Well-known open-redirect / link-wrapping endpoints on reputable domains that attackers
+# abuse to launder a malicious destination behind a trusted hostname (and that secure
+# email gateways rewrite on purpose). Some are intended features (link wrappers), not
+# vulnerabilities; the signal is "the displayed host is not where the user lands".
+#
+# Only endpoints whose destination parameter is publicly documented or widely reported
+# are listed. Entries whose destination cannot be recovered offline are marked
+# `opaque` (the wrapper is still a laundering hop worth flagging).
+#
+# match:    host suffix, label-boundary safe.
+# path:     required path prefix of the endpoint ('' = any path).
+# param:    query parameter(s) carrying the destination (first present wins).
+# encoding: url (percent-encoded URL, default) | base64url (optional 2-char version
+#           prefix, e.g. Bing "a1") | pathtail (destination is the remainder of the
+#           path, optionally still percent-encoded) | proofpoint_v2 | proofpoint_v3 |
+#           opaque (token only; destination not recoverable offline).
+# Sources: vendor documentation for the wrappers (Google, Microsoft, Proofpoint,
+# Facebook, X/Twitter, LinkedIn, Mimecast, Barracuda) and public phishing write-ups
+# (e.g. Cofense, Sophos, Check Point, Trustwave) documenting their abuse.
+version: 1
+entries:
+  - {name: Google URL redirector, match: google.com, path: /url, param: [q, url]}
+  - {name: Google URL redirector (UK), match: google.co.uk, path: /url, param: [q, url]}
+  - {name: Google URL redirector (DE), match: google.de, path: /url, param: [q, url]}
+  - {name: Google URL redirector (FR), match: google.fr, path: /url, param: [q, url]}
+  - {name: Google URL redirector (BR), match: google.com.br, path: /url, param: [q, url]}
+  - {name: Google URL redirector (IN), match: google.co.in, path: /url, param: [q, url]}
+  - {name: Google URL redirector (CA), match: google.ca, path: /url, param: [q, url]}
+  - {name: Google URL redirector (AU), match: google.com.au, path: /url, param: [q, url]}
+  - {name: Google Ads click, match: googleadservices.com, path: /pagead/aclk, param: [adurl]}
+  - {name: Google Translate proxy, match: translate.google.com, path: /translate, param: [u]}
+  - {name: Bing click redirector, match: bing.com, path: /ck/a, param: [u], encoding: base64url}
+  - {name: YouTube redirect, match: youtube.com, path: /redirect, param: [q]}
+  - {name: YouTube attribution link, match: youtube.com, path: /attribution_link, param: [u]}
+  - {name: X/Twitter t.co wrapper, match: t.co, path: /, param: [], encoding: opaque}
+  - {name: Facebook link shim, match: l.facebook.com, path: /l.php, param: [u]}
+  - {name: Facebook link shim (lm), match: lm.facebook.com, path: /l.php, param: [u]}
+  - {name: Messenger link shim, match: l.messenger.com, path: /l.php, param: [u]}
+  - {name: Instagram link shim, match: l.instagram.com, path: /, param: [u]}
+  - {name: LinkedIn redirect, match: linkedin.com, path: /redir/redirect, param: [url]}
+  - {name: Microsoft Defender Safe Links, match: safelinks.protection.outlook.com, path: /, param: [url]}
+  - {name: Microsoft Defender Safe Links (US Gov), match: safelinks.protection.office365.us, path: /, param: [url]}
+  - {name: Proofpoint URL Defense v1, match: urldefense.proofpoint.com, path: /v1/url, param: [u]}
+  - {name: Proofpoint URL Defense v2, match: urldefense.proofpoint.com, path: /v2/url, param: [u], encoding: proofpoint_v2}
+  - {name: Proofpoint URL Defense v3, match: urldefense.com, path: /v3/, param: [], encoding: proofpoint_v3}
+  - {name: Proofpoint URL Defense v3 (proofpoint.com), match: urldefense.proofpoint.com, path: /v3/, param: [], encoding: proofpoint_v3}
+  - {name: Mimecast URL Protect, match: mimecast.com, path: /s/, param: [], encoding: opaque}
+  - {name: Barracuda link protect, match: linkprotect.cudasvc.com, path: /url, param: [a]}
+  - {name: Cisco Secure Email link, match: secure-web.cisco.com, path: /, param: [], encoding: opaque}
+  - {name: Slack link redirect, match: slack-redir.net, path: /link, param: [url]}
+  - {name: Steam link filter, match: steamcommunity.com, path: /linkfilter, param: [url, u]}
+  - {name: VK away page, match: vk.com, path: /away.php, param: [to]}
+  - {name: AWS SES click tracking, match: awstrack.me, path: /, param: [], encoding: pathtail}

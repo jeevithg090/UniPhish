@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #070b14;
+  --color-panel: #0e1424;
+  --color-panel2: #131b30;
+  --color-line: #222c47;
+  --color-ink: #e6ebf7;
+  --color-mute: #93a0bf;
+  --color-accent: #5eead4;
+  --color-ok: #4ade80;
+  --color-warn: #fbbf24;
+  --color-bad: #fb7185;
+  --color-info: #60a5fa;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+html { color-scheme: dark; }
+body {
+  margin: 0;
+  background:
+    radial-gradient(1200px 500px at 10% -10%, rgb(94 234 212 / 0.07), transparent 60%),
+    radial-gradient(900px 500px at 100% 0%, rgb(96 165 250 / 0.06), transparent 60%),
+    var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+::selection { background: rgb(94 234 212 / 0.3); }
+
+:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+@keyframes pulse-dot { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+.pulse-dot { animation: pulse-dot 1.6s ease-in-out infinite; }
+@keyframes slide-in { from { opacity: 0; transform: translateY(-6px) } to { opacity: 1; transform: none } }
+.slide-in { animation: slide-in .25s ease-out; }
+@keyframes spin { to { transform: rotate(360deg) } }
+.spin { animation: spin .8s linear infinite; }
+
+.scroll-thin { scrollbar-width: thin; scrollbar-color: var(--color-line) transparent; }

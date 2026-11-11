@@ -1,0 +1,111 @@
+# GitLab CI — mirror of .github/workflows/ci.yml.
+#
+# Offline, deterministic, no secrets: the suite never touches the network
+# (tests/conftest.py blocks it) and never needs an API key. Safe on any runner.
+#
+# This project is hosted on both GitLab and GitHub; GitHub Actions ignores this
+# file and GitLab ignores .github/. Keep the two in sync.
+
+stages: [lint, test, package]
+
+# Run one branch pipeline per push (and for tags) and never a separate detached
+# merge-request pipeline, so an open MR shows the full suite as its single pipeline
+# instead of splitting rule-bearing jobs into a second, partial one.
+workflow:
+  rules:
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+default:
+  interruptible: true
+  # Auto-retry only infrastructure flakes (e.g. the runner timing out while pulling
+  # its helper image), never a script/test failure — so a real test regression still
+  # fails the pipeline instead of being masked by a retry.
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      - scheduler_failure
+      - api_failure
+      - unknown_failure
+
+variables:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PYTHONDONTWRITEBYTECODE: "1"
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.pip-cache"
+  # Same lint scope as `make lint` and the GitHub workflow (newlines are treated as
+  # whitespace by the shell, so this expands to a single argument list). Keep in sync.
+  LINT_PATHS: |-
+    uniphish/__init__.py uniphish/core uniphish/url uniphish/page uniphish/mail
+    uniphish/files uniphish/nlp uniphish/intel uniphish/agent uniphish/hunt uniphish/export
+    uniphish/ai uniphish/store uniphish/server uniphish/cli uniphish/integrations uniphish/eval
+    uniphish/analyzers uniphish/assets bot
+    tests/integration tests/test_smoke.py tests/agent tests/ai tests/analyzers tests/assets
+    tests/bot tests/cli tests/core tests/eval tests/export tests/files tests/hunt
+    tests/integrations tests/intel tests/mail tests/nlp tests/page tests/server tests/store
+    tests/url
+
+cache:
+  key: "$CI_JOB_NAME"
+  paths: [.pip-cache]
+
+lint:
+  stage: lint
+  image: python:3.12-slim
+  script:
+    - python -m pip install "ruff>=0.5"
+    - ruff check $LINT_PATHS --output-format=gitlab > gl-code-quality.json || ruff check $LINT_PATHS
+  artifacts:
+    reports:
+      codequality: gl-code-quality.json
+    when: always
+
+test:
+  stage: test
+  image: "python:$PY-slim"
+  parallel:
+    matrix:
+      - PY: ["3.10", "3.11", "3.12"]
+  before_script:
+    # opencv-python-headless (the 'vision' extra) still links libglib at import time.
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends libglib2.0-0
+  script:
+    - python -m pip install -e ".[dev]"
+    # tests/test_baselines.py imports TensorFlow (the 'train' extra) at collection time.
+    - >-
+      python -m pytest -m "not network and not slow"
+      --ignore=tests/test_baselines.py -ra --durations=15
+
+web:
+  stage: test
+  image: node:22
+  rules:
+    - exists: [web/package-lock.json]
+  script:
+    - cd web
+    - npm ci
+    - npm run build
+    - npm test
+  artifacts:
+    paths: [uniphish/server/static/]
+    expire_in: 1 week
+
+extension:
+  stage: test
+  image: node:22
+  script:
+    - cd extension
+    - npm test
+
+package:
+  stage: package
+  image: python:3.12-slim
+  needs: ["lint", "test"]
+  script:
+    - python -m pip install build twine
+    - python -m build
+    - python -m twine check dist/*
+  artifacts:
+    paths: [dist/]
+    expire_in: 1 week

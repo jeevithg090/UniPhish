@@ -1,0 +1,34 @@
+Authentication-Results: mx.corpus.example; spf=pass smtp.mailfrom=corpus.example;
+	dkim=pass header.d=corpus.example; dmarc=pass header.from=corpus.example
+Received: from mail.shop.example.com (mail.shop.example.com [192.0.2.25])
+	by mx.corpus.example with ESMTPS id AA11; Mon, 02 Mar 2026 09:14:02 +0000
+From: "Priya Raman" <priya.raman@corpus.example>
+To: abuse@corpus.example
+Subject: Fwd: Confirm your payroll details
+Date: Mon, 02 Mar 2026 10:05:00 +0000
+Message-ID: <0005@corpus.example>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="BOUND-FWD"
+
+--BOUND-FWD
+Content-Type: text/plain; charset=utf-8
+
+Hi security team, this looks off to me. Can you check it?
+
+--BOUND-FWD
+Content-Type: message/rfc822
+Content-Disposition: attachment; filename="original.eml"
+
+Authentication-Results: mx.corpus.example; spf=fail smtp.mailfrom=hr-portal.example;
+	dkim=none; dmarc=fail header.from=hr-portal.example
+From: "HR Department" <payroll@hr-portal.example>
+To: priya.raman@corpus.example
+Subject: Confirm your payroll details
+Date: Mon, 02 Mar 2026 04:12:00 +0000
+Message-ID: <0006@hr-portal.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Your salary payment is on hold. Verify your login and bank details today or payment will be delayed: https://hr-portal-login.example/payroll/verify
+
+--BOUND-FWD--

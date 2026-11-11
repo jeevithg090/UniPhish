@@ -1,0 +1,13 @@
+Authentication-Results: mx.corpus.example; spf=softfail smtp.mailfrom=billing-desk.example;
+	dkim=none; dmarc=none header.from=billing-desk.example
+Received: from unknown (unknown [198.51.100.77])
+	by mx.corpus.example with SMTP id BB22; Mon, 02 Mar 2026 03:41:55 +0000
+From: "Geek Squad Billing" <invoice@billing-desk.example>
+To: customer@corpus.example
+Subject: Invoice 88231 - your subscription has been renewed
+Date: Mon, 02 Mar 2026 05:30:00 +0000
+Message-ID: <0007@billing-desk.example>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Thank you for your order. Your annual protection plan of $449.99 has been renewed and charged to your card. If you did not authorize this charge, call our billing desk immediately on 1-888-555-0173 to cancel and receive a full refund.

@@ -1,0 +1,13 @@
+From: Tester <tester@example.com>
+To: you@example.org
+Subject: Scan this
+Date: Sat, 08 Nov 2025 13:00:00 +0000
+Message-ID: <img1@example.com>
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+
+<html><head><meta http-equiv="refresh" content="0; url=https://redirect.example/next"></head>
+<body><p>Scan to continue</p>
+<img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==" alt="qr">
+<form action="https://collector.test/post" method="post"><input name="u"></form>
+</body></html>

@@ -1,0 +1,230 @@
+# "Living off trusted sites" (LOTS): legitimate, reputable platforms whose free tiers,
+# user-content or tunnelling features are routinely abused to host phishing pages,
+# payloads and redirectors. Content on these hosts inherits the platform's reputation,
+# so reputation / top-site legitimacy credit MUST NOT be granted to them, and a
+# credential-harvesting page on one is far more suspicious than the host alone suggests.
+#
+# match: host suffix (label-boundary safe: "pages.dev" matches "x.pages.dev", never
+#        "evilpages.dev"). path: optional path prefix that must also match (used where
+#        only one path of a major domain is user content, e.g. dropbox.com/scl).
+# kind:  hosting | serverless | forms | storage | docs | ipfs | tunnel | blog |
+#        site_builder | file_share
+# Sources: public vendor abuse reports, Cloudflare/Microsoft/Google threat write-ups,
+# Proofpoint/Cofense/Netskope/Unit 42 research on abused hosting platforms.
+version: 1
+entries:
+  # --- serverless / edge / app platforms ---
+  - {match: pages.dev, kind: serverless, name: Cloudflare Pages}
+  - {match: workers.dev, kind: serverless, name: Cloudflare Workers}
+  - {match: r2.dev, kind: storage, name: Cloudflare R2 public buckets}
+  - {match: web.app, kind: hosting, name: Firebase Hosting}
+  - {match: firebaseapp.com, kind: hosting, name: Firebase Hosting}
+  - {match: firebasestorage.googleapis.com, kind: storage, name: Firebase Storage}
+  - {match: appspot.com, kind: serverless, name: Google App Engine}
+  - {match: run.app, kind: serverless, name: Google Cloud Run}
+  - {match: cloudfunctions.net, kind: serverless, name: Google Cloud Functions}
+  - {match: netlify.app, kind: hosting, name: Netlify}
+  - {match: netlify.com, kind: hosting, name: Netlify}
+  - {match: vercel.app, kind: hosting, name: Vercel}
+  - {match: now.sh, kind: hosting, name: Vercel (legacy)}
+  - {match: github.io, kind: hosting, name: GitHub Pages}
+  - {match: githubusercontent.com, kind: storage, name: GitHub raw content}
+  - {match: gitlab.io, kind: hosting, name: GitLab Pages}
+  - {match: bitbucket.io, kind: hosting, name: Bitbucket Pages}
+  - {match: glitch.me, kind: hosting, name: Glitch}
+  - {match: glitch.com, kind: hosting, name: Glitch}
+  - {match: repl.co, kind: hosting, name: Replit}
+  - {match: replit.app, kind: hosting, name: Replit}
+  - {match: replit.dev, kind: hosting, name: Replit}
+  - {match: herokuapp.com, kind: hosting, name: Heroku}
+  - {match: onrender.com, kind: hosting, name: Render}
+  - {match: fly.dev, kind: hosting, name: Fly.io}
+  - {match: railway.app, kind: hosting, name: Railway}
+  - {match: up.railway.app, kind: hosting, name: Railway}
+  - {match: surge.sh, kind: hosting, name: Surge}
+  - {match: stackblitz.io, kind: hosting, name: StackBlitz}
+  - {match: codesandbox.io, kind: hosting, name: CodeSandbox}
+  - {match: csb.app, kind: hosting, name: CodeSandbox}
+  - {match: deno.dev, kind: serverless, name: Deno Deploy}
+  - {match: val.run, kind: serverless, name: Val Town}
+  - {match: web.val.run, kind: serverless, name: Val Town}
+  - {match: edgeone.app, kind: hosting, name: Tencent EdgeOne Pages}
+  - {match: framer.app, kind: site_builder, name: Framer}
+  - {match: framer.website, kind: site_builder, name: Framer}
+  - {match: framer.ai, kind: site_builder, name: Framer}
+  - {match: azurewebsites.net, kind: hosting, name: Azure App Service}
+  - {match: azurestaticapps.net, kind: hosting, name: Azure Static Web Apps}
+  - {match: windows.net, kind: storage, name: Azure endpoints}
+  - {match: blob.core.windows.net, kind: storage, name: Azure Blob Storage}
+  - {match: web.core.windows.net, kind: hosting, name: Azure Storage static website}
+  - {match: azureedge.net, kind: hosting, name: Azure CDN}
+  - {match: cloudapp.azure.com, kind: hosting, name: Azure VM DNS names}
+  - {match: trafficmanager.net, kind: hosting, name: Azure Traffic Manager}
+  - {match: amazonaws.com, kind: storage, name: AWS (S3 and others)}
+  - {match: s3.amazonaws.com, kind: storage, name: AWS S3}
+  - {match: cloudfront.net, kind: hosting, name: AWS CloudFront}
+  - {match: awsapps.com, kind: hosting, name: AWS apps}
+  - {match: amplifyapp.com, kind: hosting, name: AWS Amplify}
+  - {match: execute-api.amazonaws.com, kind: serverless, name: AWS API Gateway}
+  - {match: lambda-url.amazonaws.com, kind: serverless, name: AWS Lambda URLs}
+  - {match: digitaloceanspaces.com, kind: storage, name: DigitalOcean Spaces}
+  - {match: ondigitalocean.app, kind: hosting, name: DigitalOcean App Platform}
+  - {match: storage.googleapis.com, kind: storage, name: Google Cloud Storage}
+  - {match: storage.cloud.google.com, kind: storage, name: Google Cloud Storage}
+  - {match: googleapis.com, kind: storage, name: Google APIs content}
+  - {match: googleusercontent.com, kind: storage, name: Google user content}
+  - {match: backblazeb2.com, kind: storage, name: Backblaze B2}
+  - {match: wasabisys.com, kind: storage, name: Wasabi}
+  - {match: linodeobjects.com, kind: storage, name: Linode Object Storage}
+  - {match: supabase.co, kind: serverless, name: Supabase}
+  - {match: bubbleapps.io, kind: hosting, name: Bubble}
+  - {match: retool.com, kind: hosting, name: Retool}
+  - {match: streamlit.app, kind: hosting, name: Streamlit Community Cloud}
+  - {match: hf.space, kind: hosting, name: Hugging Face Spaces}
+  - {match: huggingface.co, kind: hosting, name: Hugging Face}
+  - {match: pythonanywhere.com, kind: hosting, name: PythonAnywhere}
+  - {match: wixstudio.io, kind: site_builder, name: Wix Studio}
+  - {match: 000webhostapp.com, kind: hosting, name: 000webhost (free)}
+  - {match: infinityfreeapp.com, kind: hosting, name: InfinityFree}
+  - {match: epizy.com, kind: hosting, name: InfinityFree legacy}
+  - {match: rf.gd, kind: hosting, name: InfinityFree legacy}
+  - {match: byethost.com, kind: hosting, name: Byet free hosting}
+  - {match: freewebhostmost.com, kind: hosting, name: Free web host}
+  - {match: wuaze.com, kind: hosting, name: Free web host}
+  - {match: kesug.com, kind: hosting, name: Free web host}
+  # --- site builders / blogs ---
+  - {match: weebly.com, kind: site_builder, name: Weebly}
+  - {match: wixsite.com, kind: site_builder, name: Wix}
+  - {match: webflow.io, kind: site_builder, name: Webflow}
+  - {match: notion.site, kind: site_builder, name: Notion Sites}
+  - {match: notion.so, kind: docs, name: Notion}
+  - {match: canva.site, kind: site_builder, name: Canva Sites}
+  - {match: my.canva.site, kind: site_builder, name: Canva Sites}
+  - {match: godaddysites.com, kind: site_builder, name: GoDaddy Websites}
+  - {match: square.site, kind: site_builder, name: Square Online}
+  - {match: squarespace.com, kind: site_builder, name: Squarespace}
+  - {match: carrd.co, kind: site_builder, name: Carrd}
+  - {match: strikingly.com, kind: site_builder, name: Strikingly}
+  - {match: jimdosite.com, kind: site_builder, name: Jimdo}
+  - {match: myshopify.com, kind: site_builder, name: Shopify stores}
+  - {match: wordpress.com, kind: blog, name: WordPress.com}
+  - {match: blogspot.com, kind: blog, name: Blogger}
+  - {match: medium.com, kind: blog, name: Medium}
+  - {match: substack.com, kind: blog, name: Substack}
+  - {match: tumblr.com, kind: blog, name: Tumblr}
+  - {match: telegra.ph, kind: blog, name: Telegraph}
+  - {match: sites.google.com, kind: site_builder, name: Google Sites}
+  - {match: sway.office.com, kind: site_builder, name: Microsoft Sway}
+  - {match: sway.cloud.microsoft, kind: site_builder, name: Microsoft Sway}
+  - {match: beehiiv.com, kind: blog, name: Beehiiv}
+  - {match: ghost.io, kind: blog, name: Ghost(Pro)}
+  - {match: bravesites.com, kind: site_builder, name: Bravesites}
+  - {match: mystrikingly.com, kind: site_builder, name: Strikingly}
+  - {match: site123.me, kind: site_builder, name: Site123}
+  - {match: webself.net, kind: site_builder, name: Webself}
+  - {match: yolasite.com, kind: site_builder, name: Yola}
+  - {match: ucoz.com, kind: site_builder, name: uCoz}
+  - {match: tilda.ws, kind: site_builder, name: Tilda}
+  # --- forms / surveys ---
+  - {match: forms.gle, kind: forms, name: Google Forms short links}
+  - {match: docs.google.com, path: /forms, kind: forms, name: Google Forms}
+  - {match: forms.office.com, kind: forms, name: Microsoft Forms}
+  - {match: forms.microsoft.com, kind: forms, name: Microsoft Forms}
+  - {match: typeform.com, kind: forms, name: Typeform}
+  - {match: jotform.com, kind: forms, name: Jotform}
+  - {match: surveymonkey.com, kind: forms, name: SurveyMonkey}
+  - {match: airtable.com, kind: forms, name: Airtable forms}
+  - {match: formstack.com, kind: forms, name: Formstack}
+  - {match: wufoo.com, kind: forms, name: Wufoo}
+  - {match: formspree.io, kind: forms, name: Formspree}
+  - {match: hubspotforms.com, kind: forms, name: HubSpot forms}
+  - {match: qualtrics.com, kind: forms, name: Qualtrics}
+  - {match: smartsheet.com, kind: forms, name: Smartsheet forms}
+  - {match: cognitoforms.com, kind: forms, name: Cognito Forms}
+  - {match: zohoforms.com, kind: forms, name: Zoho Forms}
+  - {match: web3forms.com, kind: forms, name: Web3Forms}
+  - {match: getform.io, kind: forms, name: Getform}
+  - {match: 123formbuilder.com, kind: forms, name: 123FormBuilder}
+  # --- document / file sharing ---
+  - {match: 1drv.ms, kind: file_share, name: OneDrive short links}
+  - {match: onedrive.live.com, kind: file_share, name: OneDrive}
+  - {match: sharepoint.com, kind: file_share, name: SharePoint Online}
+  - {match: dropbox.com, path: /scl, kind: file_share, name: Dropbox shared links}
+  - {match: dropbox.com, path: /s/, kind: file_share, name: Dropbox shared links}
+  - {match: dropboxusercontent.com, kind: file_share, name: Dropbox user content}
+  - {match: docs.google.com, kind: docs, name: Google Docs}
+  - {match: drive.google.com, kind: file_share, name: Google Drive}
+  - {match: docs.zoho.com, kind: docs, name: Zoho Docs}
+  - {match: box.com, kind: file_share, name: Box shared links}
+  - {match: app.box.com, path: /s/, kind: file_share, name: Box shared links}
+  - {match: wetransfer.com, kind: file_share, name: WeTransfer}
+  - {match: we.tl, kind: file_share, name: WeTransfer short links}
+  - {match: mediafire.com, kind: file_share, name: MediaFire}
+  - {match: mega.nz, kind: file_share, name: MEGA}
+  - {match: mega.io, kind: file_share, name: MEGA}
+  - {match: sendspace.com, kind: file_share, name: SendSpace}
+  - {match: transfernow.net, kind: file_share, name: TransferNow}
+  - {match: filemail.com, kind: file_share, name: Filemail}
+  - {match: icloud.com, path: /iclouddrive, kind: file_share, name: iCloud Drive links}
+  - {match: share.icloud.com, kind: file_share, name: iCloud shared links}
+  - {match: docsend.com, kind: docs, name: DocSend}
+  - {match: scribd.com, kind: docs, name: Scribd}
+  - {match: issuu.com, kind: docs, name: Issuu}
+  - {match: slideshare.net, kind: docs, name: SlideShare}
+  - {match: pastebin.com, kind: docs, name: Pastebin}
+  - {match: paste.ee, kind: docs, name: Paste.ee}
+  - {match: gist.github.com, kind: docs, name: GitHub Gist}
+  - {match: acrobat.adobe.com, kind: file_share, name: Adobe Acrobat shared links}
+  - {match: adobesign.com, kind: docs, name: Adobe Sign}
+  - {match: docusign.net, kind: docs, name: DocuSign}
+  - {match: hellosign.com, kind: docs, name: Dropbox Sign}
+  - {match: pandadoc.com, kind: docs, name: PandaDoc}
+  - {match: figma.com, kind: docs, name: Figma prototypes}
+  - {match: miro.com, kind: docs, name: Miro boards}
+  - {match: lucid.app, kind: docs, name: Lucid}
+  - {match: evernote.com, kind: docs, name: Evernote shared notes}
+  - {match: quip.com, kind: docs, name: Quip}
+  - {match: gamma.app, kind: docs, name: Gamma}
+  - {match: sharefile.com, kind: file_share, name: ShareFile}
+  # --- IPFS / decentralised gateways ---
+  - {match: ipfs.io, kind: ipfs, name: IPFS public gateway}
+  - {match: dweb.link, kind: ipfs, name: IPFS gateway (Protocol Labs)}
+  - {match: w3s.link, kind: ipfs, name: web3.storage gateway}
+  - {match: cloudflare-ipfs.com, kind: ipfs, name: Cloudflare IPFS gateway}
+  - {match: ipfs.dweb.link, kind: ipfs, name: IPFS subdomain gateway}
+  - {match: nftstorage.link, kind: ipfs, name: NFT.Storage gateway}
+  - {match: ipfs.4everland.io, kind: ipfs, name: 4EVERLAND gateway}
+  - {match: 4everland.app, kind: ipfs, name: 4EVERLAND hosting}
+  - {match: pinata.cloud, kind: ipfs, name: Pinata}
+  - {match: mypinata.cloud, kind: ipfs, name: Pinata dedicated gateway}
+  - {match: fleek.co, kind: ipfs, name: Fleek}
+  - {match: ipfs.fleek.co, kind: ipfs, name: Fleek IPFS}
+  - {match: ipfs.cf-ipfs.com, kind: ipfs, name: Cloudflare IPFS gateway}
+  - {match: gateway.ipfs.io, kind: ipfs, name: IPFS public gateway}
+  - {match: eth.limo, kind: ipfs, name: ENS gateway}
+  - {match: arweave.net, kind: ipfs, name: Arweave gateway}
+  # --- tunnels / reverse proxies ---
+  - {match: ngrok-free.app, kind: tunnel, name: ngrok free}
+  - {match: ngrok.io, kind: tunnel, name: ngrok}
+  - {match: ngrok.app, kind: tunnel, name: ngrok}
+  - {match: ngrok.dev, kind: tunnel, name: ngrok}
+  - {match: trycloudflare.com, kind: tunnel, name: Cloudflare quick tunnels}
+  - {match: loca.lt, kind: tunnel, name: localtunnel}
+  - {match: localtunnel.me, kind: tunnel, name: localtunnel}
+  - {match: serveo.net, kind: tunnel, name: Serveo}
+  - {match: localhost.run, kind: tunnel, name: localhost.run}
+  - {match: lhr.life, kind: tunnel, name: localhost.run}
+  - {match: telebit.io, kind: tunnel, name: Telebit}
+  - {match: pagekite.me, kind: tunnel, name: PageKite}
+  - {match: playit.gg, kind: tunnel, name: playit.gg}
+  - {match: tunnelmole.net, kind: tunnel, name: Tunnelmole}
+  - {match: tunnelto.dev, kind: tunnel, name: tunnelto}
+  - {match: devtunnels.ms, kind: tunnel, name: Microsoft dev tunnels}
+  - {match: loophole.site, kind: tunnel, name: Loophole}
+  - {match: pinggy.link, kind: tunnel, name: Pinggy}
+  - {match: pinggy.io, kind: tunnel, name: Pinggy}
+  - {match: zrok.io, kind: tunnel, name: zrok}
+  - {match: ts.net, kind: tunnel, name: Tailscale Funnel}
+  - {match: gitpod.io, kind: tunnel, name: Gitpod previews}
+  - {match: githubpreview.dev, kind: tunnel, name: GitHub previews}
+  - {match: app.github.dev, kind: tunnel, name: GitHub Codespaces forwarded ports}

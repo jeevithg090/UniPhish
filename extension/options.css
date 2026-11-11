@@ -1,0 +1,18 @@
+:root { --bg: #fff; --fg: #1b1f24; --muted: #5b6573; --line: #d6dbe3; --accent: #2455d6; --err: #c62828; --card: #f6f8fb; }
+@media (prefers-color-scheme: dark) { :root { --bg: #14181d; --fg: #e8ebf0; --muted: #9aa5b4; --line: #343d49; --accent: #7ba0ff; --err: #ff6b6b; --card: #1e242c; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif; }
+.wrap { max-width: 640px; margin: 0 auto; padding: 28px 20px 60px; }
+h1 { font-size: 24px; margin: 0 0 6px; }
+fieldset { border: 1px solid var(--line); border-radius: 12px; margin: 16px 0; padding: 12px 16px; background: var(--card); }
+legend { font-weight: 700; padding: 0 6px; }
+.row { display: flex; gap: 10px; align-items: flex-start; margin: 8px 0; }
+.field, .slider { display: block; margin: 10px 0; }
+.field span, .slider span { display: block; font-weight: 600; margin-bottom: 4px; }
+input[type=text], input[type=url], input[type=password], textarea, select { width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); font: inherit; }
+input[type=range] { width: 100%; }
+.note { color: var(--muted); font-size: 13px; margin: 4px 0; } .error { color: var(--err); }
+button { font: inherit; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
+.bar { display: flex; gap: 12px; align-items: center; }
+[hidden] { display: none !important; }

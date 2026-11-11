@@ -1,0 +1,39 @@
+Received: from mx.bank.example (mx.bank.example [192.0.2.10]) by mail.recipient.test with ESMTPS id abc123; Tue, 04 Nov 2025 09:00:05 +0000
+Received: from app1.bank.example (app1.bank.example [198.51.100.7]) by mx.bank.example with SMTP; Tue, 04 Nov 2025 09:00:01 +0000
+Authentication-Results: mail.recipient.test;
+ spf=pass (mail.recipient.test: domain of alerts@bank.example designates 192.0.2.10 as permitted sender) smtp.mailfrom=alerts@bank.example smtp.helo=mx.bank.example;
+ dkim=pass (2048-bit key) header.d=bank.example header.i=@bank.example header.s=sel1;
+ dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=bank.example
+Received-SPF: pass (mail.recipient.test: domain of alerts@bank.example designates 192.0.2.10 as permitted sender) client-ip=192.0.2.10; envelope-from=alerts@bank.example; helo=mx.bank.example;
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=bank.example; s=sel1; h=from:to:subject; bh=AAAA; b=BBBB
+Return-Path: <alerts@bank.example>
+From: Example Bank <alerts@bank.example>
+To: Jane Doe <jane@recipient.test>
+Subject: =?UTF-8?B?WW91ciBzdGF0ZW1lbnQgaXMgcmVhZHkg4oCTIE5vdmVtYmVy?=
+Date: Tue, 04 Nov 2025 09:00:00 +0000
+Message-ID: <20251104090000.1@bank.example>
+List-Unsubscribe: <https://bank.example/unsub?id=1>
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="BOUNDARY1"
+
+--BOUNDARY1
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+Hello Jane,
+
+Your November statement is ready: https://bank.example/statements/2025-11
+Caf=C3=A9 rewards are unchanged.
+
+--BOUNDARY1
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+
+<html><head><title>Statement</title><style>p{color:red}</style></head>
+<body><p>Hello Jane,</p>
+<p><a href=3D"https://bank.example/statements/2025-11">View statement</a></p>
+<script>var x=1;</script>
+<img src=3D"https://bank.example/pixel.gif" alt=3D"">
+</body></html>
+
+--BOUNDARY1--

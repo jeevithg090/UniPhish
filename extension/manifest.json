@@ -1,23 +1,30 @@
 {
   "manifest_version": 3,
-  "name": "UniPhish — Multilingual Phishing Detector",
-  "version": "0.1.0",
-  "description": "Flags phishing URLs in any language (Arabic, CJK, Devanagari, Hangul, ...) using a Unicode-native byte-level CNN.",
-  "permissions": ["activeTab", "scripting", "storage"],
-  "host_permissions": ["http://localhost:8000/*", "http://127.0.0.1:8000/*"],
+  "name": "UniPhish — On-device phishing protection",
+  "short_name": "UniPhish",
+  "version": "2.0.0",
+  "description": "Flags phishing links and look-alike (homoglyph/IDN) domains in any language. All scoring runs on your device; nothing is sent anywhere.",
+  "minimum_chrome_version": "110",
+  "icons": { "16": "icons/icon16.png", "32": "icons/icon32.png", "48": "icons/icon48.png", "128": "icons/icon128.png" },
+  "permissions": ["storage", "contextMenus", "activeTab"],
+  "optional_permissions": ["webNavigation"],
+  "optional_host_permissions": ["https://*/*", "http://localhost/*", "http://127.0.0.1/*"],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "UniPhish"
+    "default_title": "UniPhish",
+    "default_icon": { "16": "icons/icon16.png", "32": "icons/icon32.png" }
   },
-  "background": {
-    "service_worker": "background.js"
-  },
+  "options_ui": { "page": "options.html", "open_in_tab": true },
+  "background": { "service_worker": "background.js" },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["lib/links.js", "content.js"],
       "css": ["content.css"],
       "run_at": "document_idle"
     }
-  ]
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+  }
 }
