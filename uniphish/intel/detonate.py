@@ -54,7 +54,7 @@ __all__ = [
 
 # --------------------------------------------------------------------------- limits
 DEFAULT_TIMEOUT_S = 12.0
-_SETTLE_MS = 1_200           # time granted to in-page JS after DOMContentLoaded
+_SETTLE_MS = 1_200  # time granted to in-page JS after DOMContentLoaded
 _MAX_DOM_CHARS = 3_000_000
 _MAX_HTML_CHARS = 3_000_000
 _MAX_CONSOLE = 50
@@ -62,7 +62,7 @@ _MAX_NAV = 25
 _MAX_CLIPBOARD = 25
 _MAX_DIALOGS = 25
 _MAX_DOWNLOADS = 25
-_DEADLINE_SLACK = 2.0        # launch/teardown grace on top of the render deadline
+_DEADLINE_SLACK = 2.0  # launch/teardown grace on top of the render deadline
 
 # Chromium flags that harden the instance without weakening its sandbox.
 _HARDENED_ARGS: tuple[str, ...] = (
@@ -81,8 +81,7 @@ _HARDENED_ARGS: tuple[str, ...] = (
 
 # Hostnames that must never be reached even if they are not IP literals.
 _BLOCKED_NAMES = frozenset(
-    {"localhost", "localhost.localdomain", "ip6-localhost", "metadata",
-     "metadata.google.internal"}
+    {"localhost", "localhost.localdomain", "ip6-localhost", "metadata", "metadata.google.internal"}
 )
 _ALLOWED_SCHEMES = frozenset({"http", "https", "data", "blob", "about"})
 
@@ -149,9 +148,12 @@ class DetonationResult:
     @property
     def redirected(self) -> bool:
         """True when script navigated the top frame away from the entry URL."""
-        return bool(self.final_url and self.start_url
-                    and self.final_url != self.start_url
-                    and not self.start_url.startswith("data:"))
+        return bool(
+            self.final_url
+            and self.start_url
+            and self.final_url != self.start_url
+            and not self.start_url.startswith("data:")
+        )
 
 
 def playwright_available() -> bool:
@@ -165,7 +167,11 @@ def playwright_available() -> bool:
 
 def _no_sandbox() -> bool:
     return os.environ.get("UNIPHISH_DETONATE_NO_SANDBOX", "").strip().lower() in {
-        "1", "true", "yes", "on"}
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
 
 
 def _launch_args() -> list[str]:
@@ -228,8 +234,9 @@ async def detonate(
     private-address block (trusted local targets only). Never raises: inspect ``error``.
     """
     if (url is None) == (html is None):
-        return DetonationResult(start_url=url or "(inline)",
-                                error="exactly one of url/html required")
+        return DetonationResult(
+            start_url=url or "(inline)", error="exactly one of url/html required"
+        )
     start_url = url if url is not None else "(inline html)"
     target = url if url is not None else _data_url(html or "")
 

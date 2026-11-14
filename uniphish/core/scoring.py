@@ -23,8 +23,8 @@ from collections import defaultdict
 from uniphish.core.config import Settings, get_settings
 from uniphish.core.types import Action, Level, Signal, Verdict
 
-PRIOR_LOGIT = -2.0       # ≈ 12 % — base rate for an arbitrary submitted artifact
-DECAY = 0.55             # within-category damping factor for correlated evidence
+PRIOR_LOGIT = -2.0  # ≈ 12 % — base rate for an arbitrary submitted artifact
+DECAY = 0.55  # within-category damping factor for correlated evidence
 LOGIT_CLAMP = 12.0
 
 
@@ -49,7 +49,7 @@ def apply_contributions(signals: list[Signal]) -> float:
     for members in groups.values():
         members.sort(key=lambda s: abs(s.weight * s.confidence), reverse=True)
         for rank, s in enumerate(members):
-            c = s.weight * s.confidence * (DECAY ** rank)
+            c = s.weight * s.confidence * (DECAY**rank)
             s.contribution = round(c, 4)
             total += c
     return total
@@ -79,8 +79,14 @@ def fuse(signals: list[Signal], settings: Settings | None = None) -> dict:
     total = max(-LOGIT_CLAMP, min(LOGIT_CLAMP, total))
     risk = sigmoid(total)
     level, action = decide(risk, st)
-    return {"logit": round(total, 4), "risk": round(risk, 4), "score": int(round(risk * 100)),
-            "level": level, "action": action, "confidence": confidence(total, st)}
+    return {
+        "logit": round(total, 4),
+        "risk": round(risk, 4),
+        "score": int(round(risk * 100)),
+        "level": level,
+        "action": action,
+        "confidence": confidence(total, st),
+    }
 
 
 def child_weight(child: Verdict) -> float:
@@ -96,8 +102,11 @@ def child_weight(child: Verdict) -> float:
     return round(0.9 * excess, 4)
 
 
-_LEVEL_WORD = {Level.MALICIOUS: "Malicious", Level.SUSPICIOUS: "Suspicious",
-               Level.BENIGN: "No significant threat"}
+_LEVEL_WORD = {
+    Level.MALICIOUS: "Malicious",
+    Level.SUSPICIOUS: "Suspicious",
+    Level.BENIGN: "No significant threat",
+}
 
 
 def summarize(verdict: Verdict, max_reasons: int = 3) -> str:

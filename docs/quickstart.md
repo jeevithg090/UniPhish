@@ -42,15 +42,15 @@ twice or accept the delay. Always look at `verdict.analyzers` when a score surpr
 ```python
 import uniphish
 
-v = uniphish.scan_url("https://pаypal-secure.top/signin?session=1")   # Cyrillic "а"
-print(v.level.value, v.score, v.action.value)       # malicious 100 block
+v = uniphish.scan_url("https://pаypal-secure.top/signin?session=1")  # Cyrillic "а"
+print(v.level.value, v.score, v.action.value)  # malicious 100 block
 print(v.summary)
-print(v.brand.name, v.techniques)                   # PayPal ['idn_homograph', 'punycode', ...]
+print(v.brand.name, v.techniques)  # PayPal ['idn_homograph', 'punycode', ...]
 
-for s in v.top_signals(5):                          # why: signals sorted by contribution
+for s in v.top_signals(5):  # why: signals sorted by contribution
     print(f"{s.contribution:+.2f}  {s.title}  [{s.id}]")
 
-print([m.id for m in v.mitre])                      # ATT&CK technique ids
+print([m.id for m in v.mitre])  # ATT&CK technique ids
 print([(i.type.value, i.value) for i in v.indicators])
 ```
 
@@ -191,8 +191,8 @@ Forward a message, link, `.eml` or screenshot and get a localised, defanged verd
 from uniphish.integrations import MailboxProcessor, FileSink
 
 proc = MailboxProcessor(sinks=[FileSink("verdicts.jsonl")])
-summary = proc.process_maildir("reported/")        # a folder of .eml files; also process_mbox()
-print(summary.render())                            # worst items first, top brands and IOCs
+summary = proc.process_maildir("reported/")  # a folder of .eml files; also process_mbox()
+print(summary.render())  # worst items first, top brands and IOCs
 ```
 
 IMAP polling (`poll_imap`) is available but refuses to touch the network unless explicitly
@@ -206,10 +206,10 @@ The Certificate Transparency hunter and the brand-permutation watcher are Python
 from uniphish.hunt import CTHunter
 from uniphish.hunt.permutations import generate_permutations
 
-hit = CTHunter(warm=False).process("paypal-login-secure.top")   # score a newly seen domain
+hit = CTHunter(warm=False).process("paypal-login-secure.top")  # score a newly seen domain
 print(hit.score, hit.brand_name, hit.technique)
 
-print(len(generate_permutations("paypal.com")))                 # look-alike candidates to watch
+print(len(generate_permutations("paypal.com")))  # look-alike candidates to watch
 ```
 
 `await CTHunter().run(source="certstream")` streams live issuance (needs the `intel` extra and

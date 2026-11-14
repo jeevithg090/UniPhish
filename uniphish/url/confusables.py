@@ -87,9 +87,18 @@ def are_confusable(a: str, b: str) -> bool:
 # --------------------------------------------------------------------------- #
 # Single-character leet / symbol substitutions, applied after the skeleton so that
 # look-alike digits and '@' collapse onto the letters they imitate.
-_LEET = str.maketrans({
-    "0": "o", "1": "l", "3": "e", "4": "a", "5": "s", "7": "t", "8": "b", "@": "a",
-})
+_LEET = str.maketrans(
+    {
+        "0": "o",
+        "1": "l",
+        "3": "e",
+        "4": "a",
+        "5": "s",
+        "7": "t",
+        "8": "b",
+        "@": "a",
+    }
+)
 # Multi-glyph look-alikes. Applied case-insensitively (brand matching lower-cases
 # afterwards); each pattern is a fixed literal, so matching is linear and ReDoS-free.
 _MULTI = [

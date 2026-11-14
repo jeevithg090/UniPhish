@@ -112,8 +112,12 @@ def _clean(ind: Indicator) -> tuple[str, str] | None:
             return None
         want = 4 if t is IndicatorType.IPV4 else 6
         return (t.value, str(addr)) if addr.version == want else None
-    if t in (IndicatorType.SHA256, IndicatorType.SHA1, IndicatorType.MD5,
-             IndicatorType.CERT_SHA256):
+    if t in (
+        IndicatorType.SHA256,
+        IndicatorType.SHA1,
+        IndicatorType.MD5,
+        IndicatorType.CERT_SHA256,
+    ):
         key = "sha256" if t is IndicatorType.CERT_SHA256 else t.value
         if len(v) != _HEX[key] or not _HEX_RE.fullmatch(v):
             return None
@@ -164,8 +168,13 @@ def _comparison(t: str, v: str) -> str:
 def _sco(t: str, v: str) -> dict[str, Any]:
     base: dict[str, Any]
     if t in ("url", "domain", "ipv4", "ipv6", "email"):
-        stix_t = {"url": "url", "domain": "domain-name", "ipv4": "ipv4-addr",
-                  "ipv6": "ipv6-addr", "email": "email-addr"}[t]
+        stix_t = {
+            "url": "url",
+            "domain": "domain-name",
+            "ipv4": "ipv4-addr",
+            "ipv6": "ipv6-addr",
+            "email": "email-addr",
+        }[t]
         base = {"type": stix_t, "value": v}
         contrib: dict[str, Any] = {"value": v}
     elif t in _HASH_NAMES:
@@ -180,8 +189,12 @@ def _sco(t: str, v: str) -> dict[str, Any]:
     else:  # asn
         base = {"type": "autonomous-system", "number": int(v)}
         contrib = {"number": int(v)}
-    return {"type": base["type"], "spec_version": "2.1",
-            "id": _sco_id(base["type"], contrib), **{k: x for k, x in base.items() if k != "type"}}
+    return {
+        "type": base["type"],
+        "spec_version": "2.1",
+        "id": _sco_id(base["type"], contrib),
+        **{k: x for k, x in base.items() if k != "type"},
+    }
 
 
 def select_indicators(verdict: Verdict, *, limit: int = MAX_OBSERVABLES) -> list[Indicator]:
@@ -227,12 +240,15 @@ def _attack_pattern(t: MitreTechnique, ns: uuid.UUID) -> dict[str, Any]:
     atlas = t.framework == "atlas"
     src = "mitre-atlas" if atlas else "mitre-attack"
     obj: dict[str, Any] = {
-        "type": "attack-pattern", "spec_version": "2.1",
+        "type": "attack-pattern",
+        "spec_version": "2.1",
         "id": f"attack-pattern--{uuid.uuid5(ns, 'attack-pattern:' + t.id)}",
-        "created": _CATALOG_EPOCH, "modified": _CATALOG_EPOCH,
+        "created": _CATALOG_EPOCH,
+        "modified": _CATALOG_EPOCH,
         "name": t.name,
-        "external_references": [{"source_name": src, "external_id": t.id,
-                                 **({"url": t.url} if t.url else {})}],
+        "external_references": [
+            {"source_name": src, "external_id": t.id, **({"url": t.url} if t.url else {})}
+        ],
     }
     if t.tactic:
         obj["kill_chain_phases"] = [{"kill_chain_name": src, "phase_name": t.tactic}]
@@ -240,16 +256,23 @@ def _attack_pattern(t: MitreTechnique, ns: uuid.UUID) -> dict[str, Any]:
 
 
 def _identity(ns: uuid.UUID) -> dict[str, Any]:
-    return {"type": "identity", "spec_version": "2.1",
-            "id": f"identity--{uuid.uuid5(ns, 'identity:uniphish')}",
-            "created": _CATALOG_EPOCH, "modified": _CATALOG_EPOCH,
-            "name": "UniPhish", "identity_class": "system",
-            "description": "UniPhish open-source anti-phishing detection engine."}
+    return {
+        "type": "identity",
+        "spec_version": "2.1",
+        "id": f"identity--{uuid.uuid5(ns, 'identity:uniphish')}",
+        "created": _CATALOG_EPOCH,
+        "modified": _CATALOG_EPOCH,
+        "name": "UniPhish",
+        "identity_class": "system",
+        "description": "UniPhish open-source anti-phishing detection engine.",
+    }
 
 
 def _note_text(verdict: Verdict, skipped: int) -> str:
-    lines = [f"UniPhish verdict: {verdict.level.value.upper()} (score {verdict.score}/100, "
-             f"action {verdict.action.value}) for {_defang(verdict.target)}"]
+    lines = [
+        f"UniPhish verdict: {verdict.level.value.upper()} (score {verdict.score}/100, "
+        f"action {verdict.action.value}) for {_defang(verdict.target)}"
+    ]
     if verdict.summary:
         lines.append(_defang(verdict.summary))
     if verdict.brand is not None:
@@ -264,10 +287,16 @@ def _note_text(verdict: Verdict, skipped: int) -> str:
 # --------------------------------------------------------------------------- #
 # Public API
 # --------------------------------------------------------------------------- #
-def to_stix_objects(verdict: Verdict, *, namespace: uuid.UUID | str | None = None,
-                    created: datetime | str | None = None, include_identity: bool = True,
-                    include_note: bool = True, include_benign: bool = False,
-                    per_observable: bool = False) -> list[dict[str, Any]]:
+def to_stix_objects(
+    verdict: Verdict,
+    *,
+    namespace: uuid.UUID | str | None = None,
+    created: datetime | str | None = None,
+    include_identity: bool = True,
+    include_note: bool = True,
+    include_benign: bool = False,
+    per_observable: bool = False,
+) -> list[dict[str, Any]]:
     """Build the STIX objects (list of dicts) for one verdict, without a bundle wrapper.
 
     Args:
@@ -319,19 +348,26 @@ def to_stix_objects(verdict: Verdict, *, namespace: uuid.UUID | str | None = Non
     objects.extend(aps)
 
     level = verdict.level
-    itype = {Level.MALICIOUS: "malicious-activity", Level.SUSPICIOUS: "anomalous-activity",
-             Level.BENIGN: "benign"}[level]
+    itype = {
+        Level.MALICIOUS: "malicious-activity",
+        Level.SUSPICIOUS: "anomalous-activity",
+        Level.BENIGN: "benign",
+    }[level]
     indicators: list[dict[str, Any]] = []
     rels: list[dict[str, Any]] = []
     for pattern, keys in patterns:
         ind_obj: dict[str, Any] = {
-            "type": "indicator", "spec_version": "2.1",
+            "type": "indicator",
+            "spec_version": "2.1",
             "id": f"indicator--{uuid.uuid5(ns, 'indicator:' + pattern)}",
-            "created": now, "modified": now,
+            "created": now,
+            "modified": now,
             "name": f"UniPhish {level.value}: {_defang(verdict.target)[:80]}",
             "description": _defang(verdict.summary) or f"UniPhish {level.value} verdict.",
             "indicator_types": [itype],
-            "pattern": pattern, "pattern_type": "stix", "pattern_version": "2.1",
+            "pattern": pattern,
+            "pattern_type": "stix",
+            "pattern_version": "2.1",
             "valid_from": now,
             "confidence": int(round(verdict.confidence * 100)),
             "labels": ["phishing", level.value],
@@ -353,27 +389,51 @@ def to_stix_objects(verdict: Verdict, *, namespace: uuid.UUID | str | None = Non
     if indicators and scos:
         refs = sorted(s["id"] for s in scos)
         seed = verdict.artifact_id + "|" + "|".join(refs)
-        objects.append({
-            "type": "observed-data", "spec_version": "2.1",
-            "id": f"observed-data--{uuid.uuid5(ns, 'observed-data:' + seed)}",
-            "created": now, "modified": now, "first_observed": now, "last_observed": now,
-            "number_observed": 1, "object_refs": refs, **creator})
+        objects.append(
+            {
+                "type": "observed-data",
+                "spec_version": "2.1",
+                "id": f"observed-data--{uuid.uuid5(ns, 'observed-data:' + seed)}",
+                "created": now,
+                "modified": now,
+                "first_observed": now,
+                "last_observed": now,
+                "number_observed": 1,
+                "object_refs": refs,
+                **creator,
+            }
+        )
     if include_note and indicators:
-        objects.append({
-            "type": "note", "spec_version": "2.1",
-            "id": f"note--{uuid.uuid5(ns, 'note:' + verdict.artifact_id)}",
-            "created": now, "modified": now, "abstract": "UniPhish analysis summary",
-            "content": _note_text(verdict, skipped),
-            "object_refs": [i["id"] for i in indicators], **creator})
+        objects.append(
+            {
+                "type": "note",
+                "spec_version": "2.1",
+                "id": f"note--{uuid.uuid5(ns, 'note:' + verdict.artifact_id)}",
+                "created": now,
+                "modified": now,
+                "abstract": "UniPhish analysis summary",
+                "content": _note_text(verdict, skipped),
+                "object_refs": [i["id"] for i in indicators],
+                **creator,
+            }
+        )
     return objects
 
 
-def _rel(ns: uuid.UUID, src: str, rtype: str, dst: str, now: str,
-         creator: dict[str, str]) -> dict[str, Any]:
-    return {"type": "relationship", "spec_version": "2.1",
-            "id": f"relationship--{uuid.uuid5(ns, f'{src}|{rtype}|{dst}')}",
-            "created": now, "modified": now, "relationship_type": rtype,
-            "source_ref": src, "target_ref": dst, **creator}
+def _rel(
+    ns: uuid.UUID, src: str, rtype: str, dst: str, now: str, creator: dict[str, str]
+) -> dict[str, Any]:
+    return {
+        "type": "relationship",
+        "spec_version": "2.1",
+        "id": f"relationship--{uuid.uuid5(ns, f'{src}|{rtype}|{dst}')}",
+        "created": now,
+        "modified": now,
+        "relationship_type": rtype,
+        "source_ref": src,
+        "target_ref": dst,
+        **creator,
+    }
 
 
 def _dedupe(objects: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -419,8 +479,9 @@ def to_stix_bundle(verdict: Verdict, *, validate: bool = False, **kwargs: Any) -
     return bundle
 
 
-def bundle_many(verdicts: Iterable[Verdict], *, validate: bool = False,
-                **kwargs: Any) -> dict[str, Any]:
+def bundle_many(
+    verdicts: Iterable[Verdict], *, validate: bool = False, **kwargs: Any
+) -> dict[str, Any]:
     """One bundle for many verdicts; shared objects (identity, attack-patterns, SCOs,
     identical indicators) are de-duplicated by id."""
     objs: list[dict[str, Any]] = []

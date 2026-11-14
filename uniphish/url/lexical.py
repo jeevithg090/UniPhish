@@ -36,26 +36,85 @@ from uniphish.url.parse import SPECIAL_SCHEMES, ParsedURL, parse_url
 
 __all__ = ["LexicalFeatures", "features"]
 
-MANY_SUBDOMAINS = 4        # sub-domain labels at or above which ``many_subdomains`` is set
-DEEP_PATH = 6              # path segments at or above which ``deep_path`` is set
+MANY_SUBDOMAINS = 4  # sub-domain labels at or above which ``many_subdomains`` is set
+DEEP_PATH = 6  # path segments at or above which ``deep_path`` is set
 _MAX_SCAN = 4096
 _PCT_RE = re.compile(r"%[0-9A-Fa-f]{2}")
 _PCT2_RE = re.compile(r"%25[0-9A-Fa-f]{2}")
 _VOWELS = frozenset("aeiouy")
 _DIGITS = frozenset("0123456789")
 _HEX = frozenset("0123456789abcdef")
-_DANGEROUS_EXT = frozenset({
-    ".exe", ".scr", ".zip", ".apk", ".hta", ".js", ".msi", ".bat", ".cmd", ".vbs", ".jar",
-    ".iso", ".img", ".lnk", ".ps1", ".dll", ".rar", ".7z", ".dmg", ".pkg", ".docm", ".xlsm",
-    ".wsf", ".cab", ".com", ".pif",
-})
-_DOC_EXT = frozenset({".pdf", ".doc", ".docx", ".xls", ".xlsx", ".jpg", ".jpeg", ".png",
-                      ".txt", ".ppt", ".pptx", ".html", ".htm"})
-_REDIRECT_PARAMS = frozenset({
-    "url", "redirect", "redirect_url", "redirect_uri", "redir", "next", "goto", "return",
-    "returnurl", "return_to", "dest", "destination", "continue", "target", "link", "u", "r",
-    "forward", "out", "to",
-})
+_DANGEROUS_EXT = frozenset(
+    {
+        ".exe",
+        ".scr",
+        ".zip",
+        ".apk",
+        ".hta",
+        ".js",
+        ".msi",
+        ".bat",
+        ".cmd",
+        ".vbs",
+        ".jar",
+        ".iso",
+        ".img",
+        ".lnk",
+        ".ps1",
+        ".dll",
+        ".rar",
+        ".7z",
+        ".dmg",
+        ".pkg",
+        ".docm",
+        ".xlsm",
+        ".wsf",
+        ".cab",
+        ".com",
+        ".pif",
+    }
+)
+_DOC_EXT = frozenset(
+    {
+        ".pdf",
+        ".doc",
+        ".docx",
+        ".xls",
+        ".xlsx",
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".txt",
+        ".ppt",
+        ".pptx",
+        ".html",
+        ".htm",
+    }
+)
+_REDIRECT_PARAMS = frozenset(
+    {
+        "url",
+        "redirect",
+        "redirect_url",
+        "redirect_uri",
+        "redir",
+        "next",
+        "goto",
+        "return",
+        "returnurl",
+        "return_to",
+        "dest",
+        "destination",
+        "continue",
+        "target",
+        "link",
+        "u",
+        "r",
+        "forward",
+        "out",
+        "to",
+    }
+)
 _NO_HOST_SCHEMES = frozenset({"data", "javascript", "vbscript", "blob"})
 
 
@@ -71,13 +130,13 @@ class LexicalFeatures:
     # host shape
     num_dots: int = 0
     num_hyphens: int = 0
-    num_subdomains: int = 0          # labels left of the registrable domain
+    num_subdomains: int = 0  # labels left of the registrable domain
     num_digits_in_host: int = 0
-    digit_ratio_host: float = 0.0    # digits / non-dot host characters
+    digit_ratio_host: float = 0.0  # digits / non-dot host characters
     many_subdomains: bool = False
-    raw_entropy: float = 0.0         # Shannon entropy (bits/char) of the ASCII host
+    raw_entropy: float = 0.0  # Shannon entropy (bits/char) of the ASCII host
     # authority tricks
-    has_at: bool = False             # user-info present (``user@host``)
+    has_at: bool = False  # user-info present (``user@host``)
     has_atsign_redirect: bool = False  # user-info itself looks like a domain/URL
     has_port: bool = False
     non_std_port: bool = False
@@ -95,7 +154,7 @@ class LexicalFeatures:
     is_shortener: bool = False
     is_dyndns: bool = False
     lots: LotsEntry | None = None
-    open_redirect: str | None = None      # recovered destination URL
+    open_redirect: str | None = None  # recovered destination URL
     open_redirect_via: str | None = None  # "known:<name>" | "param:<name>"
     # lure vocabulary and brand keywords (brand ids other than the host's owner)
     sensitive_words_in_host: tuple[str, ...] = ()
@@ -122,8 +181,11 @@ class LexicalFeatures:
     def to_dict(self) -> dict:
         """JSON-friendly dict (``lots`` becomes a plain mapping)."""
         d = asdict(self)
-        d["lots"] = None if self.lots is None else {
-            "match": self.lots.match, "kind": self.lots.kind, "name": self.lots.name}
+        d["lots"] = (
+            None
+            if self.lots is None
+            else {"match": self.lots.match, "kind": self.lots.kind, "name": self.lots.name}
+        )
         return d
 
 
@@ -159,8 +221,11 @@ def _label_randomness(label: str) -> tuple[bool, float]:
     cons_run = _longest_run(lab, _VOWELS, invert=True)
     if cons_run >= 6:
         score = max(score, 0.6 + 0.05 * min(cons_run - 6, 4))
-    flips = sum(1 for a, b in zip(lab, lab[1:], strict=False)
-                if (a in _DIGITS) != (b in _DIGITS) and a != "-" and b != "-")
+    flips = sum(
+        1
+        for a, b in zip(lab, lab[1:], strict=False)
+        if (a in _DIGITS) != (b in _DIGITS) and a != "-" and b != "-"
+    )
     if flips >= 4 and len(lab) >= 8:
         score = max(score, 0.65 + 0.05 * min(flips - 4, 4))
     if len(lab) >= 12 and all(c in _HEX for c in lab) and any(c in _DIGITS for c in lab):
@@ -192,7 +257,8 @@ def _redirect(p: ParsedURL) -> tuple[str | None, str | None]:
         return None, None
     for key, value in pairs:
         if key.lower() not in _REDIRECT_PARAMS or not value[:8].lower().startswith(
-                ("http://", "https://", "//")):
+            ("http://", "https://", "//")
+        ):
             continue
         dest = parse_url(value if "://" in value else "https:" + value)
         if dest.valid and dest.host_ascii and dest.registrable_domain != p.registrable_domain:
@@ -227,8 +293,9 @@ def features(parsed: ParsedURL | str) -> LexicalFeatures:
 
     # ---- authority
     user = p.userinfo
-    at_redirect = p.has_userinfo and ("." in user or "://" in user or "/" in user
-                                      or user.lower().startswith(("http", "www")))
+    at_redirect = p.has_userinfo and (
+        "." in user or "://" in user or "/" in user or user.lower().startswith(("http", "www"))
+    )
     std_ports = {80, 443, SPECIAL_SCHEMES.get(p.scheme, 0)}
     non_std = p.port is not None and p.port not in std_ports
 
@@ -238,8 +305,9 @@ def features(parsed: ParsedURL | str) -> LexicalFeatures:
     reasons: tuple[str, ...] = ()
     if not no_host and not p.is_ip and not p.host_unicode.isascii():
         conf = confusable_chars_in(p.host_unicode)
-        mixed = any(not lab.isascii() and scripts.is_mixed_script(lab)
-                    for lab in p.host_unicode.split("."))
+        mixed = any(
+            not lab.isascii() and scripts.is_mixed_script(lab) for lab in p.host_unicode.split(".")
+        )
         try:
             reasons = assess_host(p.host_unicode, tld=p.host_unicode.rsplit(".", 1)[-1]).reasons
         except Exception:

@@ -12,13 +12,21 @@ cv2 = pytest.importorskip("cv2")
 np = pytest.importorskip("numpy")
 
 
-def make_qr(text: str, scale: int = 8, border: int = 4, invert: bool = False,
-            ext: str = ".png") -> bytes:
+def make_qr(
+    text: str, scale: int = 8, border: int = 4, invert: bool = False, ext: str = ".png"
+) -> bytes:
     enc = cv2.QRCodeEncoder.create()
     q = enc.encode(text)
     q = cv2.resize(q, None, fx=scale, fy=scale, interpolation=cv2.INTER_NEAREST)
-    q = cv2.copyMakeBorder(q, border * scale, border * scale, border * scale, border * scale,
-                           cv2.BORDER_CONSTANT, value=255)
+    q = cv2.copyMakeBorder(
+        q,
+        border * scale,
+        border * scale,
+        border * scale,
+        border * scale,
+        cv2.BORDER_CONSTANT,
+        value=255,
+    )
     if invert:
         q = cv2.bitwise_not(q)
     ok, buf = cv2.imencode(ext, q)
@@ -35,7 +43,8 @@ def test_decode_url_png():
     assert [c.data for c in codes] == ["https://login.example.test/verify?id=7"]
     assert codes[0].kind == "url" and codes[0].is_url and codes[0].points
     assert qr_payload_urls(make_qr("https://login.example.test/x")) == [
-        "https://login.example.test/x"]
+        "https://login.example.test/x"
+    ]
 
 
 def test_decode_jpeg_and_inverted_and_tight_crop():
@@ -48,10 +57,11 @@ def test_multiple_codes_in_one_image():
     def arr(t):
         data = np.frombuffer(make_qr(t, border=2), np.uint8)
         return cv2.imdecode(data, cv2.IMREAD_GRAYSCALE)
+
     a, b = arr("https://one.example.test/1"), arr("https://two.example.test/2")
     canvas = np.full((a.shape[0], a.shape[1] + b.shape[1] + 60), 255, np.uint8)
-    canvas[:, :a.shape[1]] = a
-    canvas[:b.shape[0], a.shape[1] + 60:] = b
+    canvas[:, : a.shape[1]] = a
+    canvas[: b.shape[0], a.shape[1] + 60 :] = b
     ok, buf = cv2.imencode(".png", canvas)
     got = {c.data for c in decode_qr(buf.tobytes())}
     assert got == {"https://one.example.test/1", "https://two.example.test/2"}
@@ -72,7 +82,8 @@ def test_non_url_payloads():
     assert decode_qr(make_qr("WIFI:T:WPA;S:guest;P:notreal;;"))[0].kind == "wifi"
     assert decode_qr(make_qr("hello there"))[0].kind == "text"
     assert qr_payload_urls(make_qr("pay here https://pay.example.test/q now")) == [
-        "https://pay.example.test/q"]
+        "https://pay.example.test/q"
+    ]
 
 
 def test_bad_input_returns_empty():
@@ -97,14 +108,23 @@ def test_returns_empty_without_opencv(monkeypatch):
     assert qr.decode_qr(make_qr("https://a.example.test/x")) == []
 
 
-@pytest.mark.parametrize("payload,kind", [
-    ("https://x.example.test", "url"), ("HTTP://X.EXAMPLE.TEST", "url"),
-    ("login.example.test/verify", "url"), ("mailto:a@example.test", "email"),
-    ("tel:+10005550100", "phone"), ("smsto:+10005550100:hi", "sms"),
-    ("bitcoin:bc1qexample", "crypto"), ("otpauth://totp/x?secret=ABC", "otp"),
-    ("upi://pay?pa=x@y", "payment"), ("javascript:alert(1)", "uri"),
-    ("intent://scan#Intent;end", "uri"), ("BEGIN:VCARD\nEND:VCARD", "vcard"),
-    ("just words", "text"),
-])
+@pytest.mark.parametrize(
+    "payload,kind",
+    [
+        ("https://x.example.test", "url"),
+        ("HTTP://X.EXAMPLE.TEST", "url"),
+        ("login.example.test/verify", "url"),
+        ("mailto:a@example.test", "email"),
+        ("tel:+10005550100", "phone"),
+        ("smsto:+10005550100:hi", "sms"),
+        ("bitcoin:bc1qexample", "crypto"),
+        ("otpauth://totp/x?secret=ABC", "otp"),
+        ("upi://pay?pa=x@y", "payment"),
+        ("javascript:alert(1)", "uri"),
+        ("intent://scan#Intent;end", "uri"),
+        ("BEGIN:VCARD\nEND:VCARD", "vcard"),
+        ("just words", "text"),
+    ],
+)
 def test_classify(payload, kind):
     assert classify_payload(payload) == kind

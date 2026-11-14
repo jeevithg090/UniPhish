@@ -47,28 +47,60 @@ PUBLIC_IP = "93.184.216.34"  # example.com's documentation-grade public address
 TARGET = "https://login.paypa1-secure.test/signin?next=%2Fhome"
 
 
-def make_verdict(level: Level = Level.MALICIOUS, score: int = 96, *, target: str = TARGET,
-                 brand: bool = True, summary: str | None = None,
-                 vid: str | None = None) -> Verdict:
-    action = {Level.MALICIOUS: Action.BLOCK, Level.SUSPICIOUS: Action.WARN,
-              Level.BENIGN: Action.ALLOW}[level]
+def make_verdict(
+    level: Level = Level.MALICIOUS,
+    score: int = 96,
+    *,
+    target: str = TARGET,
+    brand: bool = True,
+    summary: str | None = None,
+    vid: str | None = None,
+) -> Verdict:
+    action = {
+        Level.MALICIOUS: Action.BLOCK,
+        Level.SUSPICIOUS: Action.WARN,
+        Level.BENIGN: Action.ALLOW,
+    }[level]
     kwargs = {} if vid is None else {"id": vid}
     return Verdict(
-        kind=ArtifactKind.URL, target=target, artifact_id="a" * 24, risk=score / 100,
-        score=score, logit=3.2, level=level, action=action, confidence=0.9,
-        summary=summary if summary is not None else
-        f"Looks like a PayPal phish at {target} reported by victim@example.com",
-        signals=[Signal(id="url.homoglyph", title="Domain imitates PayPal with a digit "
-                        "look-alike", detail=f"Host in {target}", weight=4.0, category="url",
-                        evidence={"url": target, "host": "login.paypa1-secure.test"},
-                        mitre=["T1566.002"])],
-        indicators=[Indicator(type=IndicatorType.URL, value=target, role="landing",
-                              malicious=True),
-                    Indicator(type=IndicatorType.DOMAIN, value="login.paypa1-secure.test",
-                              malicious=True)],
-        brand=BrandMatch(brand="paypal", name="PayPal", technique="homoglyph",
-                         confidence=0.9, legit_domains=["paypal.com"]) if brand else None,
-        techniques=["homoglyph"], **kwargs,
+        kind=ArtifactKind.URL,
+        target=target,
+        artifact_id="a" * 24,
+        risk=score / 100,
+        score=score,
+        logit=3.2,
+        level=level,
+        action=action,
+        confidence=0.9,
+        summary=summary
+        if summary is not None
+        else f"Looks like a PayPal phish at {target} reported by victim@example.com",
+        signals=[
+            Signal(
+                id="url.homoglyph",
+                title="Domain imitates PayPal with a digit look-alike",
+                detail=f"Host in {target}",
+                weight=4.0,
+                category="url",
+                evidence={"url": target, "host": "login.paypa1-secure.test"},
+                mitre=["T1566.002"],
+            )
+        ],
+        indicators=[
+            Indicator(type=IndicatorType.URL, value=target, role="landing", malicious=True),
+            Indicator(type=IndicatorType.DOMAIN, value="login.paypa1-secure.test", malicious=True),
+        ],
+        brand=BrandMatch(
+            brand="paypal",
+            name="PayPal",
+            technique="homoglyph",
+            confidence=0.9,
+            legit_domains=["paypal.com"],
+        )
+        if brand
+        else None,
+        techniques=["homoglyph"],
+        **kwargs,
     )
 
 
@@ -102,8 +134,14 @@ class Recorder:
 
 
 class MemorySink:
-    def __init__(self, name: str, min_level: Level = Level.BENIGN, *, fail: Exception | None = None,
-                 delay: float = 0.0) -> None:
+    def __init__(
+        self,
+        name: str,
+        min_level: Level = Level.BENIGN,
+        *,
+        fail: Exception | None = None,
+        delay: float = 0.0,
+    ) -> None:
         self.name, self.min_level = name, min_level
         self.received: list[Verdict] = []
         self._fail, self._delay = fail, delay
@@ -142,8 +180,7 @@ async def test_fan_out_respects_min_level():
     assert [r.status for r in r_benign] == ["sent", "skipped", "skipped"]
     assert [r.status for r in r_susp] == ["sent", "sent", "skipped"]
     assert [r.status for r in r_mal] == ["sent", "sent", "sent"]
-    assert [v.level for v in any_sink.received] == [Level.BENIGN, Level.SUSPICIOUS,
-                                                    Level.MALICIOUS]
+    assert [v.level for v in any_sink.received] == [Level.BENIGN, Level.SUSPICIOUS, Level.MALICIOUS]
     assert len(block_sink.received) == 1
 
 
@@ -196,8 +233,13 @@ async def test_fan_out_scrubs_secrets_from_failure_reason():
 # --------------------------------------------------------------------------- #
 async def test_webhook_posts_defanged_verdict_json_with_signature():
     rec = Recorder()
-    sink = WebhookSink("https://hooks.example.test/in", secret="topsecret-hmac-key",
-                       transport=rec.transport, resolver=_public_resolver, retries=0)
+    sink = WebhookSink(
+        "https://hooks.example.test/in",
+        secret="topsecret-hmac-key",
+        transport=rec.transport,
+        resolver=_public_resolver,
+        retries=0,
+    )
     verdict = make_verdict()
     await sink.send(verdict)
 
@@ -226,8 +268,13 @@ async def test_webhook_posts_defanged_verdict_json_with_signature():
 
 async def test_webhook_defang_can_be_disabled_for_machine_consumers():
     rec = Recorder()
-    sink = WebhookSink("https://hooks.example.test/in", defang=False, retries=0,
-                       transport=rec.transport, resolver=_public_resolver)
+    sink = WebhookSink(
+        "https://hooks.example.test/in",
+        defang=False,
+        retries=0,
+        transport=rec.transport,
+        resolver=_public_resolver,
+    )
     await sink.send(make_verdict())
     assert json.loads(rec.last.content)["target"] == TARGET
 
@@ -239,12 +286,11 @@ async def test_webhook_blocks_private_and_metadata_destinations():
         ("https://169.254.169.254/latest/meta-data", _public_resolver),
         ("https://[::1]/hook", _public_resolver),
         ("https://10.0.0.7/hook", _public_resolver),
-        ("https://internal.example.test/hook", _private_resolver("10.1.2.3")),   # DNS -> RFC1918
+        ("https://internal.example.test/hook", _private_resolver("10.1.2.3")),  # DNS -> RFC1918
         ("https://rebind.example.test/hook", _private_resolver("169.254.169.254")),
     ]
     for url, resolver in cases:
-        sink = WebhookSink(url, transport=rec.transport, resolver=resolver, retries=3,
-                           backoff_s=0)
+        sink = WebhookSink(url, transport=rec.transport, resolver=resolver, retries=3, backoff_s=0)
         with pytest.raises(SinkError, match="blocked"):
             await sink.send(make_verdict())
     assert rec.requests == []  # nothing ever reached the transport
@@ -252,14 +298,19 @@ async def test_webhook_blocks_private_and_metadata_destinations():
 
 async def test_webhook_blocks_non_allowed_port_and_never_follows_redirects():
     rec = Recorder()
-    sink = WebhookSink("https://hooks.example.test:22/in", transport=rec.transport,
-                       resolver=_public_resolver)
+    sink = WebhookSink(
+        "https://hooks.example.test:22/in", transport=rec.transport, resolver=_public_resolver
+    )
     with pytest.raises(SinkError, match="port"):
         await sink.send(make_verdict())
 
     redirect = Recorder(httpx.Response(302, headers={"location": "https://127.0.0.1/steal"}))
-    sink = WebhookSink("https://hooks.example.test/in", transport=redirect.transport,
-                       resolver=_public_resolver, retries=0)
+    sink = WebhookSink(
+        "https://hooks.example.test/in",
+        transport=redirect.transport,
+        resolver=_public_resolver,
+        retries=0,
+    )
     with pytest.raises(SinkError, match="HTTP 302"):
         await sink.send(make_verdict())
     assert len(redirect.requests) == 1
@@ -270,14 +321,26 @@ async def test_webhook_uses_safe_fetch_without_private_or_redirects(monkeypatch)
 
     async def fake_safe_fetch(url, **kwargs):
         calls.append((url, kwargs))
-        return FetchResult(url=url, final_url=url, status=204, headers={}, body=b"",
-                           truncated=False, chain=[], ip=None, elapsed_ms=1.0, error=None,
-                           blocked_reason=None, content_type=None, charset=None)
+        return FetchResult(
+            url=url,
+            final_url=url,
+            status=204,
+            headers={},
+            body=b"",
+            truncated=False,
+            chain=[],
+            ip=None,
+            elapsed_ms=1.0,
+            error=None,
+            blocked_reason=None,
+            content_type=None,
+            charset=None,
+        )
 
     monkeypatch.setattr(sinks_mod, "safe_fetch", fake_safe_fetch)
     sink = WebhookSink("https://hooks.example.test/in")
     await sink.send(make_verdict())
-    (url, kwargs), = calls
+    ((url, kwargs),) = calls
     assert url == "https://hooks.example.test/in"
     assert kwargs["method"] == "POST"
     assert kwargs["allow_private"] is False
@@ -285,10 +348,21 @@ async def test_webhook_uses_safe_fetch_without_private_or_redirects(monkeypatch)
     assert kwargs["headers"]["content-type"] == "application/json"
 
     async def blocked(url, **kwargs):
-        return FetchResult(url=url, final_url=url, status=0, headers={}, body=b"",
-                           truncated=False, chain=[], ip=None, elapsed_ms=0.0, error=None,
-                           blocked_reason="non-public address: 127.0.0.1", content_type=None,
-                           charset=None)
+        return FetchResult(
+            url=url,
+            final_url=url,
+            status=0,
+            headers={},
+            body=b"",
+            truncated=False,
+            chain=[],
+            ip=None,
+            elapsed_ms=0.0,
+            error=None,
+            blocked_reason="non-public address: 127.0.0.1",
+            content_type=None,
+            charset=None,
+        )
 
     monkeypatch.setattr(sinks_mod, "safe_fetch", blocked)
     with pytest.raises(SinkError, match="non-public address"):
@@ -297,22 +371,37 @@ async def test_webhook_uses_safe_fetch_without_private_or_redirects(monkeypatch)
 
 async def test_webhook_retries_transient_failures_but_not_client_errors():
     rec = Recorder(httpx.Response(503), httpx.Response(200))
-    sink = WebhookSink("https://hooks.example.test/in", transport=rec.transport,
-                       resolver=_public_resolver, retries=2, backoff_s=0)
+    sink = WebhookSink(
+        "https://hooks.example.test/in",
+        transport=rec.transport,
+        resolver=_public_resolver,
+        retries=2,
+        backoff_s=0,
+    )
     await sink.send(make_verdict())
     assert len(rec.requests) == 2
     assert rec.requests[0].content == rec.requests[1].content  # same body re-sent
 
     rec = Recorder(httpx.Response(400, text="nope"))
-    sink = WebhookSink("https://hooks.example.test/in", transport=rec.transport,
-                       resolver=_public_resolver, retries=3, backoff_s=0)
+    sink = WebhookSink(
+        "https://hooks.example.test/in",
+        transport=rec.transport,
+        resolver=_public_resolver,
+        retries=3,
+        backoff_s=0,
+    )
     with pytest.raises(SinkError, match="HTTP 400"):
         await sink.send(make_verdict())
     assert len(rec.requests) == 1
 
     rec = Recorder(httpx.Response(500))
-    sink = WebhookSink("https://hooks.example.test/in", transport=rec.transport,
-                       resolver=_public_resolver, retries=1, backoff_s=0)
+    sink = WebhookSink(
+        "https://hooks.example.test/in",
+        transport=rec.transport,
+        resolver=_public_resolver,
+        retries=1,
+        backoff_s=0,
+    )
     with pytest.raises(SinkError, match="HTTP 500"):
         await sink.send(make_verdict())
     assert len(rec.requests) == 2
@@ -335,9 +424,14 @@ def test_http_sinks_validate_urls():
 async def test_webhook_error_and_repr_do_not_leak_secrets():
     secret_url = "https://hooks.example.test/services/T000/B000/XXXXSECRETXXXX"
     rec = Recorder(httpx.Response(500))
-    sink = WebhookSink(secret_url, headers={"authorization": "Bearer tok-abcdef123456"},
-                       secret="hmac-key-123456", transport=rec.transport,
-                       resolver=_public_resolver, retries=0)
+    sink = WebhookSink(
+        secret_url,
+        headers={"authorization": "Bearer tok-abcdef123456"},
+        secret="hmac-key-123456",
+        transport=rec.transport,
+        resolver=_public_resolver,
+        retries=0,
+    )
     with pytest.raises(SinkError) as exc:
         await sink.send(make_verdict())
     shown = f"{exc.value} {sink!r} {sink.scrub(secret_url + ' tok-abcdef123456 hmac-key-123456')}"
@@ -350,8 +444,13 @@ async def test_webhook_drops_children_when_payload_too_large():
     parent = make_verdict()
     parent.children = [child] * 20
     rec = Recorder()
-    sink = WebhookSink("https://hooks.example.test/in", transport=rec.transport,
-                       resolver=_public_resolver, max_payload_bytes=2_000, retries=0)
+    sink = WebhookSink(
+        "https://hooks.example.test/in",
+        transport=rec.transport,
+        resolver=_public_resolver,
+        max_payload_bytes=2_000,
+        retries=0,
+    )
     await sink.send(parent)
     data = json.loads(rec.last.content)
     assert data["children"] == [] and data["children_omitted"] == 20
@@ -379,8 +478,14 @@ async def test_real_wrapper_delivers_body_over_loopback():
     thread.start()
     try:
         port = server.server_address[1]
-        sink = WebhookSink(f"http://127.0.0.1:{port}/hook", allow_insecure_http=True,
-                           allow_private=True, allowed_ports={port}, retries=0, timeout=5)
+        sink = WebhookSink(
+            f"http://127.0.0.1:{port}/hook",
+            allow_insecure_http=True,
+            allow_private=True,
+            allowed_ports={port},
+            retries=0,
+            timeout=5,
+        )
         verdict = make_verdict()
         await sink.send(verdict)
     finally:
@@ -393,8 +498,9 @@ async def test_real_wrapper_delivers_body_over_loopback():
     assert int(wire["content-length"]) == len(seen["body"])  # type: ignore[arg-type]
 
     # ...and the same sink without the private opt-in must be refused, no connection made.
-    strict = WebhookSink("http://127.0.0.1:9/hook", allow_insecure_http=True,
-                         allowed_ports={9}, retries=0)
+    strict = WebhookSink(
+        "http://127.0.0.1:9/hook", allow_insecure_http=True, allowed_ports={9}, retries=0
+    )
     with pytest.raises(SinkError, match="blocked"):
         await strict.send(make_verdict())
 
@@ -403,7 +509,9 @@ async def test_real_wrapper_delivers_body_over_loopback():
 # Slack
 # --------------------------------------------------------------------------- #
 def test_slack_payload_shape_and_defanging():
-    verdict = make_verdict(summary="Click <!channel> to verify @here at https://evil.test/a?b=1&c=2")
+    verdict = make_verdict(
+        summary="Click <!channel> to verify @here at https://evil.test/a?b=1&c=2"
+    )
     payload = slack_payload(verdict)
     assert set(payload) == {"text", "blocks"}
     blocks = payload["blocks"]
@@ -415,8 +523,11 @@ def test_slack_payload_shape_and_defanging():
     assert "[@]here" in section and "&amp;" in section
     field_text = " ".join(f["text"] for f in blocks[2]["fields"])
     assert "PayPal" in field_text and "block" in field_text and "homoglyph" in field_text
-    signals = next(b for b in blocks if b["type"] == "section" and "Top signals" in
-                   b.get("text", {}).get("text", ""))
+    signals = next(
+        b
+        for b in blocks
+        if b["type"] == "section" and "Top signals" in b.get("text", {}).get("text", "")
+    )
     assert "+4.0" in signals["text"]["text"]
     assert blocks[-1]["type"] == "context" and verdict.id in blocks[-1]["elements"][0]["text"]
     blob = json.dumps(payload)
@@ -443,8 +554,9 @@ async def test_slack_sink_posts_and_hides_webhook_url():
     assert "SLACKSECRETPATH" not in repr(sink)
     assert sink.min_level is Level.SUSPICIOUS
 
-    failing = SlackSink(url, transport=Recorder(httpx.Response(403)).transport,
-                        resolver=_public_resolver, retries=0)
+    failing = SlackSink(
+        url, transport=Recorder(httpx.Response(403)).transport, resolver=_public_resolver, retries=0
+    )
     with pytest.raises(SinkError) as exc:
         await failing.send(make_verdict())
     assert "SLACKSECRETPATH" not in str(exc.value)
@@ -455,9 +567,15 @@ async def test_slack_sink_posts_and_hides_webhook_url():
 # --------------------------------------------------------------------------- #
 async def test_splunk_hec_sends_ecs_event_with_token_header():
     rec = Recorder(httpx.Response(200, json={"text": "Success", "code": 0}))
-    sink = SplunkHECSink("https://splunk.example.test:8088", "hec-token-0123456789",
-                         index="security", host="uniphish-1", transport=rec.transport,
-                         resolver=_public_resolver, retries=0)
+    sink = SplunkHECSink(
+        "https://splunk.example.test:8088",
+        "hec-token-0123456789",
+        index="security",
+        host="uniphish-1",
+        transport=rec.transport,
+        resolver=_public_resolver,
+        retries=0,
+    )
     verdict = make_verdict()
     await sink.send(verdict)
     req = rec.last
@@ -480,9 +598,13 @@ async def test_splunk_hec_sends_ecs_event_with_token_header():
 
 async def test_splunk_hec_application_error_and_secret_scrubbing():
     rec = Recorder(httpx.Response(200, json={"text": "Invalid token", "code": 4}))
-    sink = SplunkHECSink("https://splunk.example.test:8088/services/collector/event",
-                         "hec-token-0123456789", transport=rec.transport,
-                         resolver=_public_resolver, retries=0)
+    sink = SplunkHECSink(
+        "https://splunk.example.test:8088/services/collector/event",
+        "hec-token-0123456789",
+        transport=rec.transport,
+        resolver=_public_resolver,
+        retries=0,
+    )
     with pytest.raises(SinkError, match="code 4") as exc:
         await sink.send(make_verdict())
     assert "hec-token-0123456789" not in str(exc.value) + repr(sink)
@@ -492,22 +614,40 @@ async def test_splunk_hec_application_error_and_secret_scrubbing():
 
 async def test_splunk_default_port_is_allowed_but_unlisted_ports_are_not():
     rec = Recorder()
-    ok = SplunkHECSink("https://splunk.example.test:8088", "tok-123456", retries=0,
-                       transport=rec.transport, resolver=_public_resolver)
+    ok = SplunkHECSink(
+        "https://splunk.example.test:8088",
+        "tok-123456",
+        retries=0,
+        transport=rec.transport,
+        resolver=_public_resolver,
+    )
     await ok.send(make_verdict())
-    bad = SplunkHECSink("https://splunk.example.test:9999", "tok-123456", retries=0,
-                        transport=rec.transport, resolver=_public_resolver)
+    bad = SplunkHECSink(
+        "https://splunk.example.test:9999",
+        "tok-123456",
+        retries=0,
+        transport=rec.transport,
+        resolver=_public_resolver,
+    )
     with pytest.raises(SinkError, match="port"):
         await bad.send(make_verdict())
     assert len(rec.requests) == 1
 
 
 async def test_elastic_sink_creates_document_idempotently():
-    rec = Recorder(httpx.Response(201, json={"result": "created"}),
-                   httpx.Response(409, json={"error": "version_conflict_engine_exception"}),
-                   httpx.Response(401, json={"error": "security_exception"}))
-    sink = ElasticSink("https://es.example.test:9200/", "uniphish-verdicts", "ES-API-KEY-abcdef",
-                       transport=rec.transport, resolver=_public_resolver, retries=0)
+    rec = Recorder(
+        httpx.Response(201, json={"result": "created"}),
+        httpx.Response(409, json={"error": "version_conflict_engine_exception"}),
+        httpx.Response(401, json={"error": "security_exception"}),
+    )
+    sink = ElasticSink(
+        "https://es.example.test:9200/",
+        "uniphish-verdicts",
+        "ES-API-KEY-abcdef",
+        transport=rec.transport,
+        resolver=_public_resolver,
+        retries=0,
+    )
     verdict = make_verdict(vid="deadbeef" * 4)
     await sink.send(verdict)
     req = rec.last
@@ -598,8 +738,12 @@ async def test_stdout_sink_defaults_to_sys_stdout(capsys):
 @settings(max_examples=60, deadline=None)
 @given(st.text(max_size=300))
 def test_defang_tree_never_raises_and_leaves_no_live_links(text):
-    tree = {"id": "keep.this.id", "summary": f"see http://{text}.test/x or https://a.b.c/",
-            "evidence": {"url": "https://x.example.test/p"}, "list": [text, {"detail": text}]}
+    tree = {
+        "id": "keep.this.id",
+        "summary": f"see http://{text}.test/x or https://a.b.c/",
+        "evidence": {"url": "https://x.example.test/p"},
+        "list": [text, {"detail": text}],
+    }
     out = sinks_mod._defang_tree(tree)
     assert out["id"] == "keep.this.id"
     blob = json.dumps(out)

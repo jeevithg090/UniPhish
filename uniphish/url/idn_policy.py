@@ -36,10 +36,24 @@ from uniphish.url.confusables import brand_skeleton, confusable_chars_in
 
 # Country-code TLDs under which a whole-script label of the given script is expected and
 # therefore shown as Unicode by browsers (Chromium's IDN allow-exceptions).
-_CYRILLIC_CCTLDS = frozenset({
-    "ru", "xn--p1ai",  # .рф
-    "рф", "bg", "by", "kz", "kg", "mk", "mn", "rs", "su", "ua", "uz", "tj",
-})
+_CYRILLIC_CCTLDS = frozenset(
+    {
+        "ru",
+        "xn--p1ai",  # .рф
+        "рф",
+        "bg",
+        "by",
+        "kz",
+        "kg",
+        "mk",
+        "mn",
+        "rs",
+        "su",
+        "ua",
+        "uz",
+        "tj",
+    }
+)
 _GREEK_CCTLDS = frozenset({"gr", "cy"})
 
 # Characters that imitate URL/label delimiters (. : / @ -) or are otherwise dangerous in
@@ -117,8 +131,10 @@ class IdnAssessment:
 
 def _has_digit_lookalike(label: str) -> bool:
     """A non-ASCII character that imitates an ASCII digit (letter-as-digit spoof)."""
-    return any(len(looks_like) == 1 and looks_like in _ASCII_DIGITS
-               for _, _, looks_like in confusable_chars_in(label))
+    return any(
+        len(looks_like) == 1 and looks_like in _ASCII_DIGITS
+        for _, _, looks_like in confusable_chars_in(label)
+    )
 
 
 def _assess_label(label: str, tld: str | None, reasons: set[str]) -> None:
@@ -158,8 +174,9 @@ def _assess_label(label: str, tld: str | None, reasons: set[str]) -> None:
         reasons.add("whole_script_confusable")
 
 
-def assess_host(host_unicode: str, *, tld: str | None = None,
-                top_domain_skeletons: Iterable[str] | None = None) -> IdnAssessment:
+def assess_host(
+    host_unicode: str, *, tld: str | None = None, top_domain_skeletons: Iterable[str] | None = None
+) -> IdnAssessment:
     """Assess ``host_unicode`` for IDN spoofing and return an :class:`IdnAssessment`.
 
     Args:

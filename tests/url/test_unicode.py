@@ -22,33 +22,33 @@ from uniphish.url import scripts as S
 # --------------------------------------------------------------------------- #
 # Named code points used below (Unicode names in comments for auditability).
 # --------------------------------------------------------------------------- #
-CYR_A = "а"   # а CYRILLIC SMALL LETTER A        (looks like Latin a)
-CYR_R = "р"   # р CYRILLIC SMALL LETTER ER       (looks like Latin p)
-CYR_E = "е"   # е CYRILLIC SMALL LETTER IE       (looks like Latin e)
-CYR_O = "о"   # о CYRILLIC SMALL LETTER O        (looks like Latin o)
-CYR_S = "с"   # с CYRILLIC SMALL LETTER ES       (looks like Latin c)
-CYR_U = "у"   # у CYRILLIC SMALL LETTER U        (looks like Latin y)
+CYR_A = "а"  # а CYRILLIC SMALL LETTER A        (looks like Latin a)
+CYR_R = "р"  # р CYRILLIC SMALL LETTER ER       (looks like Latin p)
+CYR_E = "е"  # е CYRILLIC SMALL LETTER IE       (looks like Latin e)
+CYR_O = "о"  # о CYRILLIC SMALL LETTER O        (looks like Latin o)
+CYR_S = "с"  # с CYRILLIC SMALL LETTER ES       (looks like Latin c)
+CYR_U = "у"  # у CYRILLIC SMALL LETTER U        (looks like Latin y)
 CYR_PA = "ӏ"  # ӏ CYRILLIC SMALL LETTER PALOCHKA (looks like Latin l)
-GRK_O = "ο"   # ο GREEK SMALL LETTER OMICRON     (looks like Latin o)
-ARM_O = "օ"   # օ ARMENIAN SMALL LETTER OH       (looks like Latin o)
+GRK_O = "ο"  # ο GREEK SMALL LETTER OMICRON     (looks like Latin o)
+ARM_O = "օ"  # օ ARMENIAN SMALL LETTER OH       (looks like Latin o)
 SCRIPT_G = "ɡ"  # ɡ LATIN SMALL LETTER SCRIPT G  (Restricted identifier)
-RLO = "‮"     # RIGHT-TO-LEFT OVERRIDE
-ZWJ = "‍"     # ZERO WIDTH JOINER
+RLO = "‮"  # RIGHT-TO-LEFT OVERRIDE
+ZWJ = "‍"  # ZERO WIDTH JOINER
 SOFT_HYPHEN = "­"
 
 # "paypal" written entirely in Cyrillic look-alikes, and "apple" ditto.
-PAYPAL_CYR = CYR_R + CYR_A + CYR_U + CYR_R + CYR_A + CYR_PA   # раураӏ
-APPLE_CYR = CYR_A + CYR_R + CYR_R + CYR_PA + CYR_E            # аррӏе == xn--80ak6aa92e
+PAYPAL_CYR = CYR_R + CYR_A + CYR_U + CYR_R + CYR_A + CYR_PA  # раураӏ
+APPLE_CYR = CYR_A + CYR_R + CYR_R + CYR_PA + CYR_E  # аррӏе == xn--80ak6aa92e
 
 
 # --------------------------------------------------------------------------- #
 # confusables.py
 # --------------------------------------------------------------------------- #
 def test_skeleton_folds_cross_script_lookalikes_to_ascii():
-    assert C.skeleton("p" + CYR_A + "ypal") == "paypal"       # Cyrillic а in paypal
+    assert C.skeleton("p" + CYR_A + "ypal") == "paypal"  # Cyrillic а in paypal
     assert C.skeleton(APPLE_CYR) == "apple"
-    assert C.skeleton("g" + GRK_O + GRK_O + "gle") == "google"   # Greek omicron
-    assert C.skeleton("g" + ARM_O + ARM_O + "gle") == "google"   # Armenian oh
+    assert C.skeleton("g" + GRK_O + GRK_O + "gle") == "google"  # Greek omicron
+    assert C.skeleton("g" + ARM_O + ARM_O + "gle") == "google"  # Armenian oh
 
 
 def test_are_confusable_symmetric_and_negative():
@@ -118,33 +118,36 @@ def test_script_of_and_extensions_and_status():
 
 
 def test_mixed_script_detection():
-    assert S.is_mixed_script("p" + CYR_A + "ypal")          # Latin + Cyrillic
-    assert not S.is_mixed_script("apple")                   # pure Latin
-    assert not S.is_mixed_script(PAYPAL_CYR)                # pure Cyrillic
+    assert S.is_mixed_script("p" + CYR_A + "ypal")  # Latin + Cyrillic
+    assert not S.is_mixed_script("apple")  # pure Latin
+    assert not S.is_mixed_script(PAYPAL_CYR)  # pure Cyrillic
     assert not S.is_mixed_script("")
 
 
 def test_resolved_script_set():
     assert S.resolved_script_set("apple") == frozenset({"Latn"})
-    assert S.resolved_script_set("p" + CYR_A + "ypal") == frozenset()   # mixed -> empty
+    assert S.resolved_script_set("p" + CYR_A + "ypal") == frozenset()  # mixed -> empty
 
 
-@pytest.mark.parametrize("text,level", [
-    ("apple", S.RestrictionLevel.ASCII_ONLY),
-    (PAYPAL_CYR, S.RestrictionLevel.SINGLE_SCRIPT),
-    ("中文", S.RestrictionLevel.SINGLE_SCRIPT),               # Han only
-    ("sonyソニー", S.RestrictionLevel.HIGHLY_RESTRICTIVE),  # Latin + Katakana
-    ("p" + CYR_A + "ypal", S.RestrictionLevel.MINIMALLY_RESTRICTIVE),   # Latin + Cyrillic
-    (SCRIPT_G + "oogle", S.RestrictionLevel.UNRESTRICTED),            # Restricted char
-])
+@pytest.mark.parametrize(
+    "text,level",
+    [
+        ("apple", S.RestrictionLevel.ASCII_ONLY),
+        (PAYPAL_CYR, S.RestrictionLevel.SINGLE_SCRIPT),
+        ("中文", S.RestrictionLevel.SINGLE_SCRIPT),  # Han only
+        ("sonyソニー", S.RestrictionLevel.HIGHLY_RESTRICTIVE),  # Latin + Katakana
+        ("p" + CYR_A + "ypal", S.RestrictionLevel.MINIMALLY_RESTRICTIVE),  # Latin + Cyrillic
+        (SCRIPT_G + "oogle", S.RestrictionLevel.UNRESTRICTED),  # Restricted char
+    ],
+)
 def test_restriction_levels(text, level):
     assert S.restriction_level(text) is level
 
 
 def test_whole_script_confusable():
-    assert S.whole_script_confusable(PAYPAL_CYR)          # all-Cyrillic reads as Latin
+    assert S.whole_script_confusable(PAYPAL_CYR)  # all-Cyrillic reads as Latin
     assert S.whole_script_confusable(APPLE_CYR)
-    assert not S.whole_script_confusable("apple")         # already Latin
+    assert not S.whole_script_confusable("apple")  # already Latin
     assert not S.whole_script_confusable("δοκιμή")  # Greek δοκιμή
     assert not S.whole_script_confusable("")
 
@@ -160,7 +163,7 @@ def test_find_invisible():
 
 
 def test_find_invisible_variation_selector():
-    hits = S.find_invisible("a️")   # VARIATION SELECTOR-16
+    hits = S.find_invisible("a️")  # VARIATION SELECTOR-16
     assert hits and hits[0][1] == 0xFE0F
 
 
@@ -178,7 +181,7 @@ def test_decode_tag_chars_roundtrip():
 
 
 def test_has_combining_on_latin():
-    assert S.has_combining_on_latin("á")      # a + COMBINING ACUTE ACCENT
+    assert S.has_combining_on_latin("á")  # a + COMBINING ACUTE ACCENT
     assert not S.has_combining_on_latin("café")  # precomposed é
 
 
@@ -186,13 +189,13 @@ def test_has_combining_on_latin():
 # idn_policy.py — the homograph assessment
 # --------------------------------------------------------------------------- #
 MUST_FLAG = [
-    ("p" + CYR_A + "ypal.com", None, "mixed_script"),                 # Cyrillic а in paypal
-    (PAYPAL_CYR + ".com", None, "whole_script_confusable"),           # whole-Cyrillic paypal
-    (APPLE_CYR + ".com", None, "whole_script_confusable"),            # xn--80ak6aa92e.com
-    ("g" + GRK_O + GRK_O + "gle.com", None, "mixed_script"),          # Greek omicron mix
-    ("g" + ARM_O + ARM_O + "gle.com", None, "mixed_script"),          # Armenian oh mix
-    ("admin" + RLO + "d.example", None, "bidi_control"),              # RTLO
-    ("ban" + ZWJ + "k.example", None, "invisible_char"),              # zero-width joiner
+    ("p" + CYR_A + "ypal.com", None, "mixed_script"),  # Cyrillic а in paypal
+    (PAYPAL_CYR + ".com", None, "whole_script_confusable"),  # whole-Cyrillic paypal
+    (APPLE_CYR + ".com", None, "whole_script_confusable"),  # xn--80ak6aa92e.com
+    ("g" + GRK_O + GRK_O + "gle.com", None, "mixed_script"),  # Greek omicron mix
+    ("g" + ARM_O + ARM_O + "gle.com", None, "mixed_script"),  # Armenian oh mix
+    ("admin" + RLO + "d.example", None, "bidi_control"),  # RTLO
+    ("ban" + ZWJ + "k.example", None, "invisible_char"),  # zero-width joiner
     (SCRIPT_G + "oogle.example", None, "disallowed_identifier_char"),  # Restricted char
 ]
 
@@ -206,14 +209,14 @@ def test_assess_host_flags_homographs(host, tld, expected_reason):
 
 
 LEGIT = [
-    ("bücher.de", None),                                  # German umlaut
-    ("münchen.de", None),                                 # München
-    ("中文网.cn", "cn"),                           # Chinese (Han) under .cn
-    ("한국어.kr", "kr"),                           # Korean (Hangul) under .kr
-    ("日本語テスト.jp", "jp"),         # Japanese kanji+kana under .jp
-    ("δοκιμή.gr", "gr"),         # Greek-only under .gr
+    ("bücher.de", None),  # German umlaut
+    ("münchen.de", None),  # München
+    ("中文网.cn", "cn"),  # Chinese (Han) under .cn
+    ("한국어.kr", "kr"),  # Korean (Hangul) under .kr
+    ("日本語テスト.jp", "jp"),  # Japanese kanji+kana under .jp
+    ("δοκιμή.gr", "gr"),  # Greek-only under .gr
     ("пример.рф", "рф"),  # Cyrillic under .рф
-    ("example.com", None),                                     # plain ASCII
+    ("example.com", None),  # plain ASCII
 ]
 
 
@@ -227,8 +230,8 @@ def test_assess_host_allows_legitimate_idns(host, tld):
 def test_cyrillic_whole_script_allowed_only_under_cyrillic_cctld():
     # A whole-Cyrillic label that reads as Latin is a spoof under a Latin TLD, but is
     # exactly what a browser shows as Unicode under a Cyrillic-script ccTLD.
-    assert P.assess_host(PAYPAL_CYR + ".com").is_spoof                       # under .com
-    ok = P.assess_host(PAYPAL_CYR + ".рф", tld="рф")     # under .рф
+    assert P.assess_host(PAYPAL_CYR + ".com").is_spoof  # under .com
+    ok = P.assess_host(PAYPAL_CYR + ".рф", tld="рф")  # under .рф
     assert ok.display_as_unicode and ok.reasons == ()
 
 
@@ -240,7 +243,7 @@ def test_xn_punycode_decodes_and_flags():
 
 def test_skeleton_matches_top_domain():
     tops = {"paypal", "google", "apple"}
-    a = P.assess_host("paypa1.example", top_domain_skeletons=tops)   # ASCII leet squat
+    a = P.assess_host("paypa1.example", top_domain_skeletons=tops)  # ASCII leet squat
     assert "skeleton_matches_top_domain" in a.reasons
     # the real brand itself must not self-flag
     clean = P.assess_host("paypal.com", top_domain_skeletons=tops)
@@ -275,7 +278,7 @@ def test_host_skeleton_and_confusable_report_helpers():
 @given(st.text(max_size=120))
 def test_skeleton_never_raises_and_is_stable(s):
     sk = C.skeleton(s)
-    assert C.skeleton(sk) == sk          # skeleton of a skeleton is itself
+    assert C.skeleton(sk) == sk  # skeleton of a skeleton is itself
 
 
 @settings(max_examples=250)

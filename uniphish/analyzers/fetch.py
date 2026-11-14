@@ -62,7 +62,7 @@ _W_JS_REDIRECT = 2.0
 _MAX_REDIRECTS = 8
 _MAX_HOP_INDICATORS = 12
 _MAX_CLIP_CHARS = 300
-_HIGH_RISK_TLD = 1.0           # tld_risk log-odds at/above which a landing TLD is "risky"
+_HIGH_RISK_TLD = 1.0  # tld_risk log-odds at/above which a landing TLD is "risky"
 
 # Content types we turn into a child PAGE artifact (everything else HTML-ish is sniffed).
 _HTML_CTYPES = ("text/html", "application/xhtml+xml", "application/xhtml")
@@ -114,8 +114,12 @@ def _is_ssrf_block(reason: str | None) -> bool:
     if not reason:
         return False
     low = reason.lower()
-    return ("non-public" in low or "resolves to non-public" in low
-            or "numeric host obfuscation" in low or "hex host obfuscation" in low)
+    return (
+        "non-public" in low
+        or "resolves to non-public" in low
+        or "numeric host obfuscation" in low
+        or "hex host obfuscation" in low
+    )
 
 
 def _data_uri_hop(result: FetchResult) -> str | None:
@@ -157,8 +161,10 @@ class FetchAnalyzer(_ActiveBase):
 
     name = "fetch"
     requires_detonation = False
-    description = ("Safely fetches the URL and follows its redirect chain; exposes the "
-                   "landing page as a child artifact and flags risky redirect hand-offs")
+    description = (
+        "Safely fetches the URL and follows its redirect chain; exposes the "
+        "landing page as a child artifact and flags risky redirect hand-offs"
+    )
     signals = {
         "fetch.redirect_cross": "Redirect chain crosses into a risky or unrelated host",
         "fetch.landing_data_uri": "Redirect chain ends at an inline data: URI",
@@ -207,57 +213,72 @@ class FetchAnalyzer(_ActiveBase):
                 continue
             seen.add(url)
             if added < _MAX_HOP_INDICATORS:
-                res.indicators.append(Indicator(type=IndicatorType.URL, value=url,
-                                                role="redirect"))
+                res.indicators.append(Indicator(type=IndicatorType.URL, value=url, role="redirect"))
                 added += 1
         if final:
             res.indicators.append(Indicator(type=IndicatorType.URL, value=final, role="landing"))
             host = _host(final)
             if host and not parse_url(final).is_ip:
-                res.indicators.append(Indicator(type=IndicatorType.DOMAIN, value=host,
-                                                role="landing"))
+                res.indicators.append(
+                    Indicator(type=IndicatorType.DOMAIN, value=host, role="landing")
+                )
         ind = _ip_indicator(result.ip or "", "landing")
         if ind is not None:
             res.indicators.append(ind)
 
     # ------------------------------------------------------------------ #
-    def _redirect_signals(self, start: ParsedURL, result: FetchResult,
-                          res: AnalyzerResult) -> None:
+    def _redirect_signals(self, start: ParsedURL, result: FetchResult, res: AnalyzerResult) -> None:
         # SSRF probe: a redirect tried to send the scanner at a private address.
         if _is_ssrf_block(result.blocked_reason):
-            res.signals.append(Signal(
-                id="fetch.ssrf_blocked",
-                title="Page tried to redirect the scanner to a private address",
-                detail="Following this link led to a request for a private / internal "
-                       f"address, which was refused ({result.blocked_reason}). Legitimate "
-                       "sites do not redirect visitors at internal infrastructure; this is a "
-                       "server-side request forgery probe.",
-                weight=_W_SSRF, category="fetch",
-                evidence={"blocked_reason": result.blocked_reason,
-                          "chain": [h.url for h in result.chain][:_MAX_REDIRECTS]}))
+            res.signals.append(
+                Signal(
+                    id="fetch.ssrf_blocked",
+                    title="Page tried to redirect the scanner to a private address",
+                    detail="Following this link led to a request for a private / internal "
+                    f"address, which was refused ({result.blocked_reason}). Legitimate "
+                    "sites do not redirect visitors at internal infrastructure; this is a "
+                    "server-side request forgery probe.",
+                    weight=_W_SSRF,
+                    category="fetch",
+                    evidence={
+                        "blocked_reason": result.blocked_reason,
+                        "chain": [h.url for h in result.chain][:_MAX_REDIRECTS],
+                    },
+                )
+            )
 
         # data: URI landing — credential capture / HTML-smuggling without a real endpoint.
         data_target = _data_uri_hop(result)
         if data_target is not None:
-            res.signals.append(Signal(
-                id="fetch.landing_data_uri",
-                title="Redirect chain ends at an inline data: URI",
-                detail="The link redirects to an inline data: document rather than a hosted "
-                       "page. Phishing uses this to render a credential form or smuggle a "
-                       "payload straight from the URL, leaving no server to block.",
-                weight=_W_DATA_URI, category="fetch", mitre=["T1566.002", "T1027.006"],
-                evidence={"data_uri_prefix": data_target[:80]}))
+            res.signals.append(
+                Signal(
+                    id="fetch.landing_data_uri",
+                    title="Redirect chain ends at an inline data: URI",
+                    detail="The link redirects to an inline data: document rather than a hosted "
+                    "page. Phishing uses this to render a credential form or smuggle a "
+                    "payload straight from the URL, leaving no server to block.",
+                    weight=_W_DATA_URI,
+                    category="fetch",
+                    mitre=["T1566.002", "T1027.006"],
+                    evidence={"data_uri_prefix": data_target[:80]},
+                )
+            )
 
         # Risky redirect hand-off (LOTS / dynamic DNS / brand change / shortener terminal).
         reasons, evidence = self._crossing(start, result)
         if reasons:
             final_host = _host(result.final_url)
-            res.signals.append(Signal(
-                id="fetch.redirect_cross",
-                title="Redirect chain crosses into a risky or unrelated host",
-                detail=self._crossing_detail(start, final_host, reasons),
-                weight=_W_REDIRECT_CROSS, category="fetch", mitre=["T1566.002"],
-                evidence=evidence))
+            res.signals.append(
+                Signal(
+                    id="fetch.redirect_cross",
+                    title="Redirect chain crosses into a risky or unrelated host",
+                    detail=self._crossing_detail(start, final_host, reasons),
+                    weight=_W_REDIRECT_CROSS,
+                    category="fetch",
+                    mitre=["T1566.002"],
+                    evidence=evidence,
+                )
+            )
 
     @staticmethod
     def _crossing(start: ParsedURL, result: FetchResult) -> tuple[list[str], dict]:
@@ -284,10 +305,12 @@ class FetchAnalyzer(_ActiveBase):
         kb = get_kb()
         final_owner = kb.official_brand_for_host(final_host) if final_host else None
         brand_change = bool(
-            start_brand is not None and final_owner is not None
-            and start_brand.brand != final_owner.id)
+            start_brand is not None
+            and final_owner is not None
+            and start_brand.brand != final_owner.id
+        )
 
-        suffix = (final.suffix.rsplit(".", 1)[-1] if final.suffix else None)
+        suffix = final.suffix.rsplit(".", 1)[-1] if final.suffix else None
         risk = tld_risk(suffix)
         risky_tld = risk is not None and risk >= _HIGH_RISK_TLD
 
@@ -333,30 +356,43 @@ class FetchAnalyzer(_ActiveBase):
         where = "; ".join(bits) or "an unrelated host"
         src = start.host_ascii or "the provided link"
         dst = final_host or "another host"
-        return (f"The link {src} redirects to {dst}, which is {where}. Redirect hand-offs like "
-                "this move the victim from a trusted-looking link to the attacker's real "
-                "landing page.")
+        return (
+            f"The link {src} redirects to {dst}, which is {where}. Redirect hand-offs like "
+            "this move the victim from a trusted-looking link to the attacker's real "
+            "landing page."
+        )
 
     # ------------------------------------------------------------------ #
-    def _landing_child(self, artifact: Artifact, result: FetchResult,
-                       res: AnalyzerResult) -> None:
+    def _landing_child(self, artifact: Artifact, result: FetchResult, res: AnalyzerResult) -> None:
         body = result.body or b""
         final = result.final_url or result.url
         if not body or not (result.ok or 200 <= result.status < 300):
             return
         if _looks_html(body, result.content_type):
             try:
-                res.children.append(Artifact.from_page(
-                    body, url=final, origin="fetch.page", parent_id=artifact.id,
-                    charset=result.charset or "utf-8"))
+                res.children.append(
+                    Artifact.from_page(
+                        body,
+                        url=final,
+                        origin="fetch.page",
+                        parent_id=artifact.id,
+                        charset=result.charset or "utf-8",
+                    )
+                )
             except (ArtifactTooLarge, ValueError):
                 res.meta.setdefault("fetch_notes", []).append("landing page too large to analyse")
             return
         if _is_fileish(result.content_type):
             try:
-                res.children.append(Artifact.from_file(
-                    body, filename=_filename_from_url(final), mime=result.content_type,
-                    origin="fetch.download", parent_id=artifact.id))
+                res.children.append(
+                    Artifact.from_file(
+                        body,
+                        filename=_filename_from_url(final),
+                        mime=result.content_type,
+                        origin="fetch.download",
+                        parent_id=artifact.id,
+                    )
+                )
             except (ArtifactTooLarge, ValueError):
                 res.meta.setdefault("fetch_notes", []).append("downloaded file too large")
 
@@ -367,8 +403,10 @@ class DetonationAnalyzer(_ActiveBase):
 
     name = "detonate"
     requires_detonation = True
-    description = ("Renders the URL in a hardened sandboxed headless browser to detect "
-                   "cloaking, runtime clipboard writes (ClickFix) and client-side redirects")
+    description = (
+        "Renders the URL in a hardened sandboxed headless browser to detect "
+        "cloaking, runtime clipboard writes (ClickFix) and client-side redirects"
+    )
     signals = {
         "fetch.cloaking": "Rendered page differs materially from the static HTML",
         "fetch.runtime_clipboard": "Page writes to the clipboard when rendered (ClickFix)",
@@ -410,44 +448,57 @@ class DetonationAnalyzer(_ActiveBase):
     async def _static_model(self, artifact: Artifact) -> PageModel | None:
         """Best-effort pre-JS HTML, used only as the cloaking baseline."""
         try:
-            result = await safe_fetch(artifact.url or "", timeout=5.0, follow_redirects=True,
-                                      max_redirects=_MAX_REDIRECTS)
+            result = await safe_fetch(
+                artifact.url or "", timeout=5.0, follow_redirects=True, max_redirects=_MAX_REDIRECTS
+            )
         except Exception:  # safe_fetch never raises, but stay defensive
             return None
         if not result.body or not _looks_html(result.body, result.content_type):
             return None
         return parse_html(result.text(), result.final_url or artifact.url)
 
-    def _cloaking_signal(self, static: PageModel | None, rendered: PageModel,
-                         res: AnalyzerResult) -> None:
+    def _cloaking_signal(
+        self, static: PageModel | None, rendered: PageModel, res: AnalyzerResult
+    ) -> None:
         if static is None:
             return
         differs, evidence = _materially_differs(static, rendered)
         if not differs:
             return
-        res.signals.append(Signal(
-            id="fetch.cloaking",
-            title="Rendered page differs materially from the static HTML",
-            detail="The document served to a scanner is benign, but running its scripts "
-                   "assembles a different page (for example a credential form appears). "
-                   "Serving one page to crawlers and another to victims is a hallmark of "
-                   "phishing kits.",
-            weight=_W_CLOAKING, confidence=0.9, category="fetch",
-            mitre=["T1027", "T1497"], evidence=evidence))
+        res.signals.append(
+            Signal(
+                id="fetch.cloaking",
+                title="Rendered page differs materially from the static HTML",
+                detail="The document served to a scanner is benign, but running its scripts "
+                "assembles a different page (for example a credential form appears). "
+                "Serving one page to crawlers and another to victims is a hallmark of "
+                "phishing kits.",
+                weight=_W_CLOAKING,
+                confidence=0.9,
+                category="fetch",
+                mitre=["T1027", "T1497"],
+                evidence=evidence,
+            )
+        )
 
     def _clipboard_signal(self, det: DetonationResult, res: AnalyzerResult) -> None:
         if not det.clipboard_writes:
             return
         sample = det.clipboard_writes[0][:_MAX_CLIP_CHARS]
-        res.signals.append(Signal(
-            id="fetch.runtime_clipboard",
-            title="Page writes to the clipboard when rendered (ClickFix)",
-            detail="When rendered, the page silently copied text to the visitor's clipboard "
-                   f"({len(det.clipboard_writes)} write(s)). ClickFix attacks plant a command "
-                   "this way and then tell the victim to paste it into the Run dialog or a "
-                   "terminal.",
-            weight=_W_RUNTIME_CLIPBOARD, category="fetch", mitre=["T1204.004", "T1059.001"],
-            evidence={"writes": len(det.clipboard_writes), "sample": sample}))
+        res.signals.append(
+            Signal(
+                id="fetch.runtime_clipboard",
+                title="Page writes to the clipboard when rendered (ClickFix)",
+                detail="When rendered, the page silently copied text to the visitor's clipboard "
+                f"({len(det.clipboard_writes)} write(s)). ClickFix attacks plant a command "
+                "this way and then tell the victim to paste it into the Run dialog or a "
+                "terminal.",
+                weight=_W_RUNTIME_CLIPBOARD,
+                category="fetch",
+                mitre=["T1204.004", "T1059.001"],
+                evidence={"writes": len(det.clipboard_writes), "sample": sample},
+            )
+        )
         # A URL hidden in the pasted command is itself an IOC.
         for text in det.clipboard_writes[:3]:
             low = text.lower()
@@ -455,13 +506,19 @@ class DetonationAnalyzer(_ActiveBase):
                 idx = low.find(token)
                 if idx != -1:
                     url = text[idx:].split()[0][:500]
-                    res.indicators.append(Indicator(type=IndicatorType.URL, value=url,
-                                                    role="payload",
-                                                    context="URL found in clipboard payload"))
+                    res.indicators.append(
+                        Indicator(
+                            type=IndicatorType.URL,
+                            value=url,
+                            role="payload",
+                            context="URL found in clipboard payload",
+                        )
+                    )
                     break
 
-    def _js_redirect_signal(self, artifact: Artifact, det: DetonationResult,
-                            res: AnalyzerResult) -> None:
+    def _js_redirect_signal(
+        self, artifact: Artifact, det: DetonationResult, res: AnalyzerResult
+    ) -> None:
         final = det.final_url
         if not final or final.startswith("data:"):
             return
@@ -470,20 +527,34 @@ class DetonationAnalyzer(_ActiveBase):
         if not final_reg or final_reg == start_reg:
             return
         res.indicators.append(Indicator(type=IndicatorType.URL, value=final, role="landing"))
-        res.signals.append(Signal(
-            id="fetch.js_redirect",
-            title="Page uses script to redirect to another site when rendered",
-            detail=f"Rendering the page navigated it from {_host(artifact.url) or 'the link'} "
-                   f"to {_host(final)} via client-side script, a redirect invisible to anyone "
-                   "inspecting the original link.",
-            weight=_W_JS_REDIRECT, category="fetch", mitre=["T1566.002"],
-            evidence={"start_registrable": start_reg, "final_registrable": final_reg,
-                      "final_url": final,
-                      "navigation_chain": det.navigation_chain[:_MAX_REDIRECTS]}))
+        res.signals.append(
+            Signal(
+                id="fetch.js_redirect",
+                title="Page uses script to redirect to another site when rendered",
+                detail=f"Rendering the page navigated it from {_host(artifact.url) or 'the link'} "
+                f"to {_host(final)} via client-side script, a redirect invisible to anyone "
+                "inspecting the original link.",
+                weight=_W_JS_REDIRECT,
+                category="fetch",
+                mitre=["T1566.002"],
+                evidence={
+                    "start_registrable": start_reg,
+                    "final_registrable": final_reg,
+                    "final_url": final,
+                    "navigation_chain": det.navigation_chain[:_MAX_REDIRECTS],
+                },
+            )
+        )
 
-    def _rendered_child(self, artifact: Artifact, det: DetonationResult,
-                        static: PageModel | None, rendered: PageModel,
-                        ctx: AnalysisContext, res: AnalyzerResult) -> None:
+    def _rendered_child(
+        self,
+        artifact: Artifact,
+        det: DetonationResult,
+        static: PageModel | None,
+        rendered: PageModel,
+        ctx: AnalysisContext,
+        res: AnalyzerResult,
+    ) -> None:
         """Route the rendered DOM back through the engine for page/kit/injection analysis.
 
         Only when it adds coverage the static path does not already have: a materially
@@ -493,9 +564,14 @@ class DetonationAnalyzer(_ActiveBase):
         if not (differs or not ctx.options.fetch_pages):
             return
         try:
-            res.children.append(Artifact.from_page(
-                det.dom_html, url=det.final_url or artifact.url,
-                origin="fetch.rendered", parent_id=artifact.id))
+            res.children.append(
+                Artifact.from_page(
+                    det.dom_html,
+                    url=det.final_url or artifact.url,
+                    origin="fetch.rendered",
+                    parent_id=artifact.id,
+                )
+            )
         except (ArtifactTooLarge, ValueError):
             res.meta.setdefault("detonation_notes", []).append("rendered DOM too large to analyse")
 
@@ -506,7 +582,7 @@ def _materially_differs(static: PageModel, rendered: PageModel) -> tuple[bool, d
     more_forms = len(rendered.forms) > len(static.forms) and rendered.password_field_present
     new_clipboard = rendered.clipboard_write > 0 and static.clipboard_write == 0
     sim = _text_similarity(static.visible_text, rendered.visible_text)
-    grew = (rendered.text_len > 200 and rendered.text_len > static.text_len * 1.5)
+    grew = rendered.text_len > 200 and rendered.text_len > static.text_len * 1.5
     textual = sim < 0.4 and grew
     differs = bool(new_password or more_forms or new_clipboard or textual)
     evidence = {

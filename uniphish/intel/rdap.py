@@ -49,8 +49,10 @@ BOOTSTRAP_TTL_S = 86_400.0
 
 Fetcher = Callable[..., Awaitable[FetchResult]]
 
-_DOMAIN_RE = re.compile(r"^(?=.{1,253}$)[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?"
-                        r"(?:\.[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?)+$")
+_DOMAIN_RE = re.compile(
+    r"^(?=.{1,253}$)[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?"
+    r"(?:\.[a-z0-9_](?:[a-z0-9_-]{0,61}[a-z0-9_])?)+$"
+)
 
 
 @dataclass(frozen=True)
@@ -134,8 +136,9 @@ def _registrar(doc: dict[str, Any]) -> str | None:
     return walk(doc.get("entities"))
 
 
-def parse_rdap(doc: object, domain: str, *, now: datetime | None = None,
-               source: str = "rdap") -> RdapInfo | None:
+def parse_rdap(
+    doc: object, domain: str, *, now: datetime | None = None, source: str = "rdap"
+) -> RdapInfo | None:
     """Turn an RDAP domain object into :class:`RdapInfo` (``None`` if not a domain)."""
     if not isinstance(doc, dict):
         return None
@@ -179,9 +182,18 @@ def parse_rdap(doc: object, domain: str, *, now: datetime | None = None,
                 if isinstance(name, str) and name:
                     ns.append(name.lower().rstrip("."))
     status = tuple(s for s in (doc.get("status") or []) if isinstance(s, str))[:12]
-    return RdapInfo(domain=domain, registered=registered, age_days=age, expires=expires,
-                    last_changed=changed, registrar=_registrar(doc),
-                    nameservers=tuple(ns), status=status, source=source, notes=tuple(notes))
+    return RdapInfo(
+        domain=domain,
+        registered=registered,
+        age_days=age,
+        expires=expires,
+        last_changed=changed,
+        registrar=_registrar(doc),
+        nameservers=tuple(ns),
+        status=status,
+        source=source,
+        notes=tuple(notes),
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -213,9 +225,13 @@ def _info_from_cache(raw: dict[str, Any], domain: str, now: datetime) -> RdapInf
     if registered is not None:
         age = max(0, (now - registered).days)
     return RdapInfo(
-        domain=domain, registered=registered, age_days=age,
-        expires=_parse_dt(raw.get("expires")), registrar=raw.get("registrar"),
-        nameservers=tuple(raw.get("nameservers") or ()), status=tuple(raw.get("status") or ()),
+        domain=domain,
+        registered=registered,
+        age_days=age,
+        expires=_parse_dt(raw.get("expires")),
+        registrar=raw.get("registrar"),
+        nameservers=tuple(raw.get("nameservers") or ()),
+        status=tuple(raw.get("status") or ()),
         source=str(raw.get("source") or "rdap"),
     )
 
@@ -224,8 +240,13 @@ def _info_from_cache(raw: dict[str, Any], domain: str, now: datetime) -> RdapInf
 # Fetching
 # --------------------------------------------------------------------------- #
 async def _get_json(url: str, fetch: Fetcher, timeout: float) -> tuple[Any, int, str | None]:
-    res = await fetch(url, headers={"accept": "application/rdap+json, application/json"},
-                      max_bytes=MAX_RDAP_BYTES, timeout=timeout, max_redirects=4)
+    res = await fetch(
+        url,
+        headers={"accept": "application/rdap+json, application/json"},
+        max_bytes=MAX_RDAP_BYTES,
+        timeout=timeout,
+        max_redirects=4,
+    )
     if res.blocked_reason or res.error:
         return None, res.status, res.blocked_reason or res.error
     if res.status == 404:
@@ -257,16 +278,25 @@ async def _bootstrap_service(tld: str, fetch: Fetcher, timeout: float) -> str | 
             tlds, urls = entry[0], entry[1]
         except (TypeError, IndexError):
             continue
-        if isinstance(tlds, list) and tld in [str(t).lower() for t in tlds] \
-                and isinstance(urls, list):
+        if (
+            isinstance(tlds, list)
+            and tld in [str(t).lower() for t in tlds]
+            and isinstance(urls, list)
+        ):
             https = [u for u in urls if isinstance(u, str) and u.startswith("https://")]
             if https:
                 return https[0]
     return None
 
 
-async def domain_age(domain: str, *, timeout: float = 6.0, now: datetime | None = None,
-                     fetch: Fetcher | None = None, use_cache: bool = True) -> RdapInfo | None:
+async def domain_age(
+    domain: str,
+    *,
+    timeout: float = 6.0,
+    now: datetime | None = None,
+    fetch: Fetcher | None = None,
+    use_cache: bool = True,
+) -> RdapInfo | None:
     """Look up registration data for ``domain`` (a registrable domain, e.g. ``a.co.uk``).
 
     Returns ``None`` when the domain is malformed, not registered (RDAP 404), or the

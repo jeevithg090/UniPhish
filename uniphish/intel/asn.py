@@ -44,13 +44,30 @@ _ASNAME = "asn.cymru.com"
 
 #: Well-known mainstream hosting / cloud / CDN autonomous systems.
 HOSTING_ASNS: dict[int, str] = {
-    13335: "Cloudflare", 16509: "Amazon AWS", 14618: "Amazon AWS", 15169: "Google",
-    396982: "Google Cloud", 8075: "Microsoft Azure", 14061: "DigitalOcean",
-    16276: "OVHcloud", 24940: "Hetzner", 63949: "Akamai Connected Cloud (Linode)",
-    20473: "Vultr", 22612: "Namecheap", 51167: "Contabo", 47583: "Hostinger",
-    26496: "GoDaddy", 54113: "Fastly", 45102: "Alibaba Cloud", 132203: "Tencent Cloud",
-    46606: "Unified Layer (Bluehost/HostGator)", 36351: "IBM SoftLayer", 8560: "IONOS",
-    197540: "netcup", 12876: "Scaleway", 53667: "FranTech / BuyVM",
+    13335: "Cloudflare",
+    16509: "Amazon AWS",
+    14618: "Amazon AWS",
+    15169: "Google",
+    396982: "Google Cloud",
+    8075: "Microsoft Azure",
+    14061: "DigitalOcean",
+    16276: "OVHcloud",
+    24940: "Hetzner",
+    63949: "Akamai Connected Cloud (Linode)",
+    20473: "Vultr",
+    22612: "Namecheap",
+    51167: "Contabo",
+    47583: "Hostinger",
+    26496: "GoDaddy",
+    54113: "Fastly",
+    45102: "Alibaba Cloud",
+    132203: "Tencent Cloud",
+    46606: "Unified Layer (Bluehost/HostGator)",
+    36351: "IBM SoftLayer",
+    8560: "IONOS",
+    197540: "netcup",
+    12876: "Scaleway",
+    53667: "FranTech / BuyVM",
 }
 #: A few autonomous systems widely reported as abuse-tolerant ("bulletproof-ish")
 #: hosters. Heuristic only; membership is a weak signal, never proof.
@@ -93,10 +110,17 @@ class AsnInfo:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "ip": self.ip, "asn": self.asn, "prefix": self.prefix, "country": self.country,
-            "registry": self.registry, "org": self.org, "is_hosting": self.is_hosting,
-            "hosting_provider": self.hosting_provider, "is_abuse_prone": self.is_abuse_prone,
-            "is_residential_like": self.is_residential_like, "note": self.note,
+            "ip": self.ip,
+            "asn": self.asn,
+            "prefix": self.prefix,
+            "country": self.country,
+            "registry": self.registry,
+            "org": self.org,
+            "is_hosting": self.is_hosting,
+            "hosting_provider": self.hosting_provider,
+            "is_abuse_prone": self.is_abuse_prone,
+            "is_residential_like": self.is_residential_like,
+            "note": self.note,
         }
 
 
@@ -145,7 +169,7 @@ def _parse_origin(values: tuple[str, ...]) -> tuple[int, str | None, str | None,
             continue
         asn = int(m.group(1))
         prefix = f[1] or None
-        country = (f[2] or None)
+        country = f[2] or None
         registry = f[3] if len(f) > 3 and f[3] else None
         return asn, prefix, country, registry
     return None
@@ -175,14 +199,24 @@ def _from_dict(d: dict[str, Any]) -> AsnInfo | None:
         return None
     org = d.get("org")
     hosting, provider, abuse, resid, note = classify_asn(asn, org)
-    return AsnInfo(ip=ip, asn=asn, prefix=d.get("prefix"), country=d.get("country"),
-                   registry=d.get("registry"), org=org, is_hosting=hosting,
-                   hosting_provider=provider, is_abuse_prone=abuse,
-                   is_residential_like=resid, note=note)
+    return AsnInfo(
+        ip=ip,
+        asn=asn,
+        prefix=d.get("prefix"),
+        country=d.get("country"),
+        registry=d.get("registry"),
+        org=org,
+        is_hosting=hosting,
+        hosting_provider=provider,
+        is_abuse_prone=abuse,
+        is_residential_like=resid,
+        note=note,
+    )
 
 
-async def lookup_asn(ip: str, *, timeout: float = 4.0, rr_resolver: RRResolver | None = None,
-                     use_cache: bool = True) -> AsnInfo | None:
+async def lookup_asn(
+    ip: str, *, timeout: float = 4.0, rr_resolver: RRResolver | None = None, use_cache: bool = True
+) -> AsnInfo | None:
     """Map ``ip`` to its origin AS. ``None`` if non-public, unmapped or lookup failed."""
     ip = (ip or "").strip().strip("[]")
     if not is_public_ip(ip):
@@ -215,8 +249,14 @@ async def lookup_asn(ip: str, *, timeout: float = 4.0, rr_resolver: RRResolver |
         raise
     except Exception as exc:  # org name is optional
         log.debug("cymru AS name lookup for AS%s failed: %r", asn, exc)
-    record = {"ip": ip, "asn": asn, "prefix": prefix, "country": country,
-              "registry": registry, "org": org}
+    record = {
+        "ip": ip,
+        "asn": asn,
+        "prefix": prefix,
+        "country": country,
+        "registry": registry,
+        "org": org,
+    }
     if cache is not None and org is not None:
         cache.set(ip, record)
     return _from_dict(record)

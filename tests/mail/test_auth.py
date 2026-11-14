@@ -69,31 +69,39 @@ def test_no_auth_headers():
 
 # ------------------------------------------------------------------ alignment
 def test_spf_pass_but_unaligned_with_from():
-    raw = mk("Authentication-Results: mx.r.test; spf=pass smtp.mailfrom=bounce@esp.example;"
-             " dkim=none; dmarc=fail (p=QUARANTINE) header.from=bank.example")
+    raw = mk(
+        "Authentication-Results: mx.r.test; spf=pass smtp.mailfrom=bounce@esp.example;"
+        " dkim=none; dmarc=fail (p=QUARANTINE) header.from=bank.example"
+    )
     a = analyze_auth(parse_email(raw))
     assert a.spf.status == "pass" and not a.spf.aligned and not a.dmarc_aligned
     assert a.dmarc.policy == "quarantine"
 
 
 def test_relaxed_alignment_subdomain_and_registrable_level():
-    raw = mk("Authentication-Results: mx.r.test; spf=pass smtp.mailfrom=b@mail.bank.example;"
-             " dkim=pass header.d=news.bank.example; dmarc=pass header.from=bank.example")
+    raw = mk(
+        "Authentication-Results: mx.r.test; spf=pass smtp.mailfrom=b@mail.bank.example;"
+        " dkim=pass header.d=news.bank.example; dmarc=pass header.from=bank.example"
+    )
     a = analyze_auth(parse_email(raw))
     assert a.spf.aligned and a.dkim.aligned and a.dmarc_aligned
 
 
 def test_dkim_pass_unrelated_domain_not_aligned():
-    raw = mk("Authentication-Results: mx.r.test; dkim=pass header.d=attacker.example;"
-             " dkim=fail header.d=bank.example")
+    raw = mk(
+        "Authentication-Results: mx.r.test; dkim=pass header.d=attacker.example;"
+        " dkim=fail header.d=bank.example"
+    )
     a = analyze_auth(parse_email(raw))
     assert a.dkim.status == "pass" and not a.dkim.aligned and not a.dmarc_aligned
     assert len(a.dkim.signatures) == 2
 
 
 def test_second_dkim_signature_aligned():
-    raw = mk("Authentication-Results: mx.r.test; dkim=pass header.d=esp.example;"
-             " dkim=pass header.d=bank.example; dmarc=pass header.from=bank.example")
+    raw = mk(
+        "Authentication-Results: mx.r.test; dkim=pass header.d=esp.example;"
+        " dkim=pass header.d=bank.example; dmarc=pass header.from=bank.example"
+    )
     a = analyze_auth(parse_email(raw))
     assert a.dkim_aligned and a.authenticated_domain == "bank.example"
 
@@ -107,8 +115,10 @@ def test_private_suffix_not_aligned_across_tenants():
 
 
 def test_dmarc_pass_claim_without_alignment_is_noted():
-    raw = mk("Authentication-Results: mx.r.test; spf=fail smtp.mailfrom=x@evil.example;"
-             " dmarc=pass header.from=bank.example")
+    raw = mk(
+        "Authentication-Results: mx.r.test; spf=fail smtp.mailfrom=x@evil.example;"
+        " dmarc=pass header.from=bank.example"
+    )
     a = analyze_auth(parse_email(raw))
     assert "dmarc_pass_but_unaligned_in_headers" in a.notes
 
@@ -120,9 +130,11 @@ def test_dmarc_header_from_mismatch_noted():
 
 # ------------------------------------------------------------------ Received-SPF / fallbacks
 def test_received_spf_fallback():
-    raw = mk("Received-SPF: softfail (g.test: domain of transitioning x@bank.example does not"
-             " designate 203.0.113.5) client-ip=203.0.113.5; envelope-from=x@bank.example;"
-             " helo=h.test;")
+    raw = mk(
+        "Received-SPF: softfail (g.test: domain of transitioning x@bank.example does not"
+        " designate 203.0.113.5) client-ip=203.0.113.5; envelope-from=x@bank.example;"
+        " helo=h.test;"
+    )
     a = analyze_auth(parse_email(raw))
     assert a.spf.status == "softfail" and a.spf.source == "received-spf"
     assert a.spf.domain == "bank.example" and a.spf.client_ip == "203.0.113.5"
@@ -130,8 +142,10 @@ def test_received_spf_fallback():
 
 
 def test_spf_header_disagreement_noted():
-    raw = mk("Authentication-Results: mx.r.test; spf=pass smtp.mailfrom=a@bank.example\n"
-             "Received-SPF: fail client-ip=203.0.113.1; envelope-from=a@bank.example")
+    raw = mk(
+        "Authentication-Results: mx.r.test; spf=pass smtp.mailfrom=a@bank.example\n"
+        "Received-SPF: fail client-ip=203.0.113.1; envelope-from=a@bank.example"
+    )
     a = analyze_auth(parse_email(raw))
     assert a.spf.status == "pass" and "spf_header_disagreement" in a.notes
 
@@ -143,8 +157,10 @@ def test_spf_domain_falls_back_to_return_path():
 
 
 def test_status_aliases_and_unknown_values():
-    raw = mk("Authentication-Results: mx.r.test; spf=hardfail smtp.mailfrom=a@b.example;"
-             " dkim=banana header.d=bank.example")
+    raw = mk(
+        "Authentication-Results: mx.r.test; spf=hardfail smtp.mailfrom=a@b.example;"
+        " dkim=banana header.d=bank.example"
+    )
     a = analyze_auth(parse_email(raw))
     assert a.spf.status == "fail" and a.dkim.status == "none"
     assert "garbled_authentication_results" in a.notes
@@ -152,18 +168,22 @@ def test_status_aliases_and_unknown_values():
 
 # ------------------------------------------------------------------ robustness
 def test_comments_nested_and_semicolons_in_comments():
-    raw = mk("Authentication-Results: mx.r.test (nested (comment; with semi));\n"
-             " spf=pass (a; b) smtp.mailfrom=u@bank.example;\n"
-             " dmarc=pass (p=REJECT; sp=NONE) header.from=bank.example")
+    raw = mk(
+        "Authentication-Results: mx.r.test (nested (comment; with semi));\n"
+        " spf=pass (a; b) smtp.mailfrom=u@bank.example;\n"
+        " dmarc=pass (p=REJECT; sp=NONE) header.from=bank.example"
+    )
     a = analyze_auth(parse_email(raw))
     assert a.spf.status == "pass" and a.dmarc.status == "pass" and a.dmarc.policy == "reject"
     assert a.authserv_id == "mx.r.test"
 
 
 def test_duplicate_and_garbled_headers_do_not_raise():
-    raw = mk("Authentication-Results: ;;;;\nAuthentication-Results: =====\n"
-             "Authentication-Results: x; spf\nReceived-SPF:\nARC-Seal: junk\n"
-             "DKIM-Signature: nothing=here")
+    raw = mk(
+        "Authentication-Results: ;;;;\nAuthentication-Results: =====\n"
+        "Authentication-Results: x; spf\nReceived-SPF:\nARC-Seal: junk\n"
+        "DKIM-Signature: nothing=here"
+    )
     a = analyze_auth(parse_email(raw))
     assert isinstance(a.notes, list)
 
@@ -187,11 +207,13 @@ def test_unverified_dkim_signature_only():
 
 # ------------------------------------------------------------------ ARC
 def test_arc_chain():
-    raw = mk("ARC-Seal: i=2; a=rsa-sha256; cv=pass; d=relay2.example; s=a; b=X\n"
-             "ARC-Seal: i=1; a=rsa-sha256; cv=none; d=relay1.example; s=a; b=Y\n"
-             "ARC-Message-Signature: i=1; d=relay1.example\n"
-             "Authentication-Results: mx.r.test; arc=pass; spf=fail smtp.mailfrom=a@x.example;"
-             " dmarc=fail header.from=bank.example")
+    raw = mk(
+        "ARC-Seal: i=2; a=rsa-sha256; cv=pass; d=relay2.example; s=a; b=X\n"
+        "ARC-Seal: i=1; a=rsa-sha256; cv=none; d=relay1.example; s=a; b=Y\n"
+        "ARC-Message-Signature: i=1; d=relay1.example\n"
+        "Authentication-Results: mx.r.test; arc=pass; spf=fail smtp.mailfrom=a@x.example;"
+        " dmarc=fail header.from=bank.example"
+    )
     a = analyze_auth(parse_email(raw))
     assert a.arc.present and a.arc.instances == 2 and a.arc.chain_validation == "pass"
     assert a.arc.sealers == ["relay2.example", "relay1.example"]
@@ -203,17 +225,20 @@ def test_no_arc():
 
 
 # ------------------------------------------------------------------ display-name spoofing
-@pytest.mark.parametrize("frm,expected", [
-    ('"support@paypal.com" <x@freemail.example>', True),
-    ('"PayPal paypal.com" <x@freemail.example>', True),
-    ('"www.paypal.com Support" <x@freemail.example>', True),
-    ('"PayPal Support" <x@freemail.example>', False),          # brand name, no domain
-    ('"John.Smith" <john@corp.example>', False),               # dotted name, not a domain
-    ('"bank.example Alerts" <a@bank.example>', False),         # own domain is fine
-    ('"alerts@mail.bank.example" <a@bank.example>', False),    # same org domain
-    ('"Amazon amazon.co.uk" <x@evil.example>', True),          # multi-label suffix
-    ('<x@freemail.example>', False),
-])
+@pytest.mark.parametrize(
+    "frm,expected",
+    [
+        ('"support@paypal.com" <x@freemail.example>', True),
+        ('"PayPal paypal.com" <x@freemail.example>', True),
+        ('"www.paypal.com Support" <x@freemail.example>', True),
+        ('"PayPal Support" <x@freemail.example>', False),  # brand name, no domain
+        ('"John.Smith" <john@corp.example>', False),  # dotted name, not a domain
+        ('"bank.example Alerts" <a@bank.example>', False),  # own domain is fine
+        ('"alerts@mail.bank.example" <a@bank.example>', False),  # same org domain
+        ('"Amazon amazon.co.uk" <x@evil.example>', True),  # multi-label suffix
+        ("<x@freemail.example>", False),
+    ],
+)
 def test_display_name_contains_other_domain(frm, expected):
     pe = parse_email(f"From: {frm}\n\nx".encode())
     assert from_display_name_contains_other_domain(pe) is expected
@@ -250,9 +275,17 @@ def test_reply_to_variants():
 @settings(max_examples=150, deadline=None, suppress_health_check=[HealthCheck.too_slow])
 @given(st.text(max_size=400), st.text(max_size=200))
 def test_property_auth_never_raises(ar, rspf):
-    raw = (f"From: a@bank.example\nAuthentication-Results: {ar}\nReceived-SPF: {rspf}\n\nx"
-           ).encode("utf-8", "surrogatepass")
+    raw = (f"From: a@bank.example\nAuthentication-Results: {ar}\nReceived-SPF: {rspf}\n\nx").encode(
+        "utf-8", "surrogatepass"
+    )
     a = analyze_auth(parse_email(raw))
-    assert a.spf.status in {"pass", "fail", "none", "softfail", "neutral", "temperror",
-                            "permperror"}
+    assert a.spf.status in {
+        "pass",
+        "fail",
+        "none",
+        "softfail",
+        "neutral",
+        "temperror",
+        "permperror",
+    }
     assert a.dmarc_aligned == (a.spf_aligned or a.dkim_aligned)

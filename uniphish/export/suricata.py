@@ -32,19 +32,24 @@ from uniphish.export.sigma import (
     mitre_techniques,
 )
 
-__all__ = ["SID_BASE", "SID_SPAN", "escape_content", "to_suricata_rules",
-           "validate_suricata_rule"]
+__all__ = ["SID_BASE", "SID_SPAN", "escape_content", "to_suricata_rules", "validate_suricata_rule"]
 
 SID_BASE = 4_100_000
 SID_SPAN = 900_000
 _CLASSTYPE = "social-engineering"
-_TACTIC_META = {"initial-access": "Initial_Access", "credential-access": "Credential_Access",
-                "execution": "Execution", "defense-evasion": "Defense_Evasion",
-                "resource-development": "Resource_Development",
-                "reconnaissance": "Reconnaissance", "collection": "Collection"}
+_TACTIC_META = {
+    "initial-access": "Initial_Access",
+    "credential-access": "Credential_Access",
+    "execution": "Execution",
+    "defense-evasion": "Defense_Evasion",
+    "resource-development": "Resource_Development",
+    "reconnaissance": "Reconnaissance",
+    "collection": "Collection",
+}
 
 _CONTENT_SAFE = frozenset(
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -._~/?=&%@!$'()*+,#[]<>{}^`")
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 -._~/?=&%@!$'()*+,#[]<>{}^`"
+)
 _MSG_SAFE = re.compile(r"[^A-Za-z0-9 ._()/+,\-]")
 
 
@@ -83,8 +88,9 @@ def _metadata(verdict: Verdict) -> str:
     for t in mitre_techniques(verdict):
         if t.framework == "attack":
             items.append(f"mitre_technique_id {t.id}")
-    tactics = {_TACTIC_META.get(t.tactic) for t in mitre_techniques(verdict)
-               if t.framework == "attack"}
+    tactics = {
+        _TACTIC_META.get(t.tactic) for t in mitre_techniques(verdict) if t.framework == "attack"
+    }
     items.extend(f"mitre_tactic_name {n}" for n in sorted(x for x in tactics if x))
     items.append(f"created_at {verdict.created_at:%Y_%m_%d}")
     items.append(f"uniphish_score {verdict.score}")
@@ -108,8 +114,10 @@ class _Sids:
 
 
 def _rule(header: str, msg: str, body: str, sid: int, meta: str) -> str:
-    return (f'alert {header} (msg:"{msg}"; {body} classtype:{_CLASSTYPE}; '
-            f"sid:{sid}; rev:1; metadata:{meta};)")
+    return (
+        f'alert {header} (msg:"{msg}"; {body} classtype:{_CLASSTYPE}; '
+        f"sid:{sid}; rev:1; metadata:{meta};)"
+    )
 
 
 def _host_rules(verdict: Verdict, iocs: Iocs, sids: _Sids, meta: str) -> list[str]:
@@ -117,15 +125,33 @@ def _host_rules(verdict: Verdict, iocs: Iocs, sids: _Sids, meta: str) -> list[st
     for d in iocs.domains:
         c = escape_content("." + d)
         buf = f'dotprefix; content:"{c}"; nocase; endswith;'
-        rules.append(_rule(
-            "tls $HOME_NET any -> $EXTERNAL_NET any", _msg(verdict, "TLS SNI", d),
-            f"flow:established,to_server; tls.sni; {buf}", sids.get("sni", d), meta))
-        rules.append(_rule(
-            "http $HOME_NET any -> $EXTERNAL_NET any", _msg(verdict, "HTTP Host", d),
-            f"flow:established,to_server; http.host; {buf}", sids.get("host", d), meta))
-        rules.append(_rule(
-            "dns $HOME_NET any -> any any", _msg(verdict, "DNS query", d),
-            f"dns.query; {buf}", sids.get("dns", d), meta))
+        rules.append(
+            _rule(
+                "tls $HOME_NET any -> $EXTERNAL_NET any",
+                _msg(verdict, "TLS SNI", d),
+                f"flow:established,to_server; tls.sni; {buf}",
+                sids.get("sni", d),
+                meta,
+            )
+        )
+        rules.append(
+            _rule(
+                "http $HOME_NET any -> $EXTERNAL_NET any",
+                _msg(verdict, "HTTP Host", d),
+                f"flow:established,to_server; http.host; {buf}",
+                sids.get("host", d),
+                meta,
+            )
+        )
+        rules.append(
+            _rule(
+                "dns $HOME_NET any -> any any",
+                _msg(verdict, "DNS query", d),
+                f"dns.query; {buf}",
+                sids.get("dns", d),
+                meta,
+            )
+        )
     return rules
 
 
@@ -134,16 +160,24 @@ def _uri_rule(verdict: Verdict, u: UrlIoc, sids: _Sids, meta: str) -> str | None
         return None  # domain-level rules already cover it
     host = escape_content(u.host)
     uri = escape_content(u.path_query)
-    body = ("flow:established,to_server; "
-            f'http.host; content:"{host}"; nocase; bsize:{len(u.host)}; '
-            f'http.uri; content:"{uri}"; startswith; fast_pattern;')
+    body = (
+        "flow:established,to_server; "
+        f'http.host; content:"{host}"; nocase; bsize:{len(u.host)}; '
+        f'http.uri; content:"{uri}"; startswith; fast_pattern;'
+    )
     if u.path_query == "/":
-        body = ("flow:established,to_server; "
-                f'http.host; content:"{host}"; nocase; bsize:{len(u.host)}; '
-                'http.uri; content:"/"; bsize:1;')
-    return _rule("http $HOME_NET any -> $EXTERNAL_NET any",
-                 _msg(verdict, "URL", u.host + u.path_query.split("?", 1)[0]),
-                 body, sids.get("uri", u.url), meta)
+        body = (
+            "flow:established,to_server; "
+            f'http.host; content:"{host}"; nocase; bsize:{len(u.host)}; '
+            'http.uri; content:"/"; bsize:1;'
+        )
+    return _rule(
+        "http $HOME_NET any -> $EXTERNAL_NET any",
+        _msg(verdict, "URL", u.host + u.path_query.split("?", 1)[0]),
+        body,
+        sids.get("uri", u.url),
+        meta,
+    )
 
 
 def to_suricata_rules(verdict: Verdict, *, allow_benign: bool = False) -> list[str]:
@@ -166,8 +200,15 @@ def to_suricata_rules(verdict: Verdict, *, allow_benign: bool = False) -> list[s
         if r:
             rules.append(r)
     for ip in iocs.ips:
-        rules.append(_rule(f"ip $HOME_NET any -> {ip} any", _msg(verdict, "C2/landing IP", ip),
-                           "flow:to_server;", sids.get("ip", ip), meta))
+        rules.append(
+            _rule(
+                f"ip $HOME_NET any -> {ip} any",
+                _msg(verdict, "C2/landing IP", ip),
+                "flow:to_server;",
+                sids.get("ip", ip),
+                meta,
+            )
+        )
     return rules
 
 
@@ -208,7 +249,7 @@ def validate_suricata_rule(rule: str) -> list[str]:
     if not rule.endswith(";)"):
         problems.append("rule must end with ';)'")
     start = rule.index("(")
-    body = rule[start + 1:-1] if rule.endswith(")") else rule[start + 1:]
+    body = rule[start + 1 : -1] if rule.endswith(")") else rule[start + 1 :]
     depth, quoted, esc = 0, False, False
     for ch in rule[start:]:
         if esc:

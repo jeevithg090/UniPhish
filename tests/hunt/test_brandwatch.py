@@ -47,8 +47,9 @@ def test_sorted_best_first_and_excludes_original(watch_paypal):
 def test_candidate_details():
     bw = BrandWatch()
     brand, _ = bw.resolve_target("paypal.com")
-    c = bw.score_permutations([Permutation("xn--pypal-4ve.com", "homoglyph")], "paypal.com",
-                              brand=brand)[0]
+    c = bw.score_permutations(
+        [Permutation("xn--pypal-4ve.com", "homoglyph")], "paypal.com", brand=brand
+    )[0]
     assert c.display == "pаypal.com"
     assert c.brand == "paypal" and c.target == "paypal.com"
     assert "punycode" in c.techniques and "homoglyph" in c.techniques
@@ -69,7 +70,7 @@ def test_other_brands_official_domains_are_dropped():
     bw = BrandWatch()
     perms = [Permutation("paypal.me", "tld_swap"), Permutation("paypa1.com", "homoglyph")]
     out = bw.score_permutations(perms, "paypal.com")
-    assert [c.domain for c in out] == ["paypa1.com"]       # paypal.me is PayPal's own
+    assert [c.domain for c in out] == ["paypa1.com"]  # paypal.me is PayPal's own
 
 
 def test_popular_site_scores_zero():
@@ -129,6 +130,7 @@ def make_resolver(live: dict[str, list[str]], calls: list[str] | None = None):
         if rdtype != "A":
             return []
         return live.get(host, [])
+
     return resolver
 
 
@@ -182,6 +184,7 @@ def test_max_checks_bounds_lookups(base_candidates):
 def test_resolver_failure_is_tolerated(base_candidates):
     async def boom(host, rdtype, timeout):
         raise RuntimeError("resolver down")
+
     out = asyncio.run(BrandWatch(resolver=boom).check_live(base_candidates[:5]))
     assert len(out) == 5 and all(c.live is False or c.live is None for c in out)
 
@@ -205,6 +208,7 @@ def test_no_real_network_used_by_default(base_candidates, monkeypatch):
     # conftest blocks DNS; with the default resolver the sweep must fail soft, not raise
     def blocked(*a, **k):
         raise AssertionError("real DNS lookup attempted")
+
     monkeypatch.setattr(socket, "getaddrinfo", blocked)
     out = asyncio.run(BrandWatch(resolver=make_resolver({})).check_live(base_candidates[:3]))
     assert len(out) == 3
@@ -222,7 +226,7 @@ def test_persist_records_hunt_events_and_dedupes():
     ev = next(e for e in events if e["domain"] == "paypa1.com")
     assert ev["source"] == "brandwatch" and ev["score"] >= 60
     assert "homoglyph" in ev["techniques"]
-    assert bw.persist(cands, min_score=60) == 0           # idempotent
+    assert bw.persist(cands, min_score=60) == 0  # idempotent
     assert bw.persist(cands, min_score=60, only_live=True) == 0
 
 
@@ -236,6 +240,7 @@ def test_watch_persist_flag_and_only_live():
 
 def test_persist_uses_shared_store_by_default():
     from uniphish.store import get_store, reset_store
+
     try:
         bw = BrandWatch()
         n = bw.persist(bw.watch("paypal.com", deep_limit=0, limit=5), min_score=1)
@@ -261,7 +266,7 @@ def test_verify_requires_engine_and_merges_verdict(base_candidates):
     out = asyncio.run(bw.verify(live, top=3))
     d = by_domain(out)
     assert d["paypal.tk"].verdict_score == 99 and d["paypal.tk"].score == 99
-    assert sum(c.verdict_id is not None for c in out) == 1   # only live ones verified
+    assert sum(c.verdict_id is not None for c in out) == 1  # only live ones verified
 
 
 def test_kind_priors_are_sane():

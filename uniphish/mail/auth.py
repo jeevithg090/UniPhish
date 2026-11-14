@@ -30,8 +30,13 @@ from uniphish.mail.parse import ParsedEmail
 Status = Literal["pass", "fail", "none", "softfail", "neutral", "temperror", "permperror"]
 
 _STATUSES = {"pass", "fail", "none", "softfail", "neutral", "temperror", "permperror"}
-_STATUS_ALIASES = {"hardfail": "fail", "unknown": "neutral", "policy": "neutral",
-                   "error": "temperror", "bestguesspass": "neutral"}
+_STATUS_ALIASES = {
+    "hardfail": "fail",
+    "unknown": "neutral",
+    "policy": "neutral",
+    "error": "temperror",
+    "bestguesspass": "neutral",
+}
 MAX_AUTH_HEADER_CHARS = 8_000
 MAX_AUTH_HEADERS = 20
 
@@ -42,36 +47,36 @@ MAX_AUTH_HEADERS = 20
 @dataclass
 class SPFResult:
     status: Status = "none"
-    domain: str = ""            # RFC 5321.MailFrom (or HELO) domain that was evaluated
+    domain: str = ""  # RFC 5321.MailFrom (or HELO) domain that was evaluated
     helo: str = ""
     client_ip: str = ""
-    aligned: bool = False       # status == pass and domain aligns with From
-    source: str = ""            # "authentication-results" | "received-spf" | ""
+    aligned: bool = False  # status == pass and domain aligns with From
+    source: str = ""  # "authentication-results" | "received-spf" | ""
 
 
 @dataclass
 class DKIMSignatureResult:
     status: Status = "none"
-    domain: str = ""            # d=
-    selector: str = ""          # s=
-    identity: str = ""          # i=
+    domain: str = ""  # d=
+    selector: str = ""  # s=
+    identity: str = ""  # i=
     aligned: bool = False
 
 
 @dataclass
 class DKIMResult:
-    status: Status = "none"     # best across signatures (pass > fail > others)
+    status: Status = "none"  # best across signatures (pass > fail > others)
     signatures: list[DKIMSignatureResult] = field(default_factory=list)
     unverified_domains: list[str] = field(default_factory=list)  # d= of DKIM-Signature headers
-    aligned: bool = False       # some passing signature aligns with From
+    aligned: bool = False  # some passing signature aligns with From
 
 
 @dataclass
 class DMARCResult:
     status: Status = "none"
-    policy: str = ""            # p= as reported by the receiver ("none"/"quarantine"/"reject")
+    policy: str = ""  # p= as reported by the receiver ("none"/"quarantine"/"reject")
     header_from: str = ""
-    aligned: bool = False       # *computed* alignment, see AuthResult.dmarc_aligned
+    aligned: bool = False  # *computed* alignment, see AuthResult.dmarc_aligned
 
 
 @dataclass
@@ -93,7 +98,7 @@ class AuthResult:
     has_auth_results: bool = False
     spf_aligned: bool = False
     dkim_aligned: bool = False
-    dmarc_aligned: bool = False   # (SPF pass & aligned) or (DKIM pass & aligned)
+    dmarc_aligned: bool = False  # (SPF pass & aligned) or (DKIM pass & aligned)
     authenticated_domain: str = ""  # aligned domain that actually passed, else ""
     notes: list[str] = field(default_factory=list)
 
@@ -101,7 +106,8 @@ class AuthResult:
     def fully_failed(self) -> bool:
         """Receiver evidence says the message did not authenticate as its From domain."""
         return not self.dmarc_aligned and (
-            self.dmarc.status == "fail" or "fail" in (self.spf.status, self.dkim.status))
+            self.dmarc.status == "fail" or "fail" in (self.spf.status, self.dkim.status)
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -152,7 +158,8 @@ def domains_aligned(a: str, b: str) -> bool:
 # Header parsing
 # --------------------------------------------------------------------------- #
 _PAIR_RE = re.compile(
-    r'([A-Za-z0-9][A-Za-z0-9._-]{0,63})\s*=\s*("(?:[^"\\]{0,512}|\\.){0,8}"|[^\s;]{0,512})')
+    r'([A-Za-z0-9][A-Za-z0-9._-]{0,63})\s*=\s*("(?:[^"\\]{0,512}|\\.){0,8}"|[^\s;]{0,512})'
+)
 _POLICY_RE = re.compile(r"(?i)\bp\s*=\s*([A-Za-z]{3,12})")
 
 
@@ -168,9 +175,9 @@ def _strip_comments(s: str) -> tuple[str, list[str]]:
         c = s[i]
         if c == "\\" and i + 1 < len(s) and (depth or in_quote):
             if depth:
-                buf.append(s[i:i + 2])
+                buf.append(s[i : i + 2])
             else:
-                out.append(s[i:i + 2])
+                out.append(s[i : i + 2])
             i += 2
             continue
         if c == '"' and depth == 0:
@@ -271,8 +278,15 @@ def _parse_received_spf(value: str) -> tuple[Status, dict[str, str]]:
     return status, kv
 
 
-_RANK = {"pass": 5, "fail": 4, "softfail": 3, "permperror": 2, "temperror": 2,
-         "neutral": 1, "none": 0}
+_RANK = {
+    "pass": 5,
+    "fail": 4,
+    "softfail": 3,
+    "permperror": 2,
+    "temperror": 2,
+    "neutral": 1,
+    "none": 0,
+}
 
 
 def _best(statuses: list[Status]) -> Status:
@@ -339,8 +353,9 @@ def _analyze(email: ParsedEmail) -> AuthResult:
         if not spf_infos:
             res.spf.status = status
             res.spf.source = "received-spf"
-            res.spf.domain = _norm_domain(kv.get("envelope-from", "")) or \
-                _norm_domain(kv.get("helo", ""))
+            res.spf.domain = _norm_domain(kv.get("envelope-from", "")) or _norm_domain(
+                kv.get("helo", "")
+            )
             res.spf.helo = kv.get("helo", "").lower()
             res.spf.client_ip = kv.get("client-ip", "")
         elif status != res.spf.status and status in _STATUSES:
@@ -350,17 +365,18 @@ def _analyze(email: ParsedEmail) -> AuthResult:
         res.spf.domain = _norm_domain(email.return_path)
         if not res.spf.domain:
             notes.append("spf_domain_unknown")
-    res.spf.aligned = res.spf.status == "pass" and domains_aligned(
-        res.spf.domain, res.from_domain)
+    res.spf.aligned = res.spf.status == "pass" and domains_aligned(res.spf.domain, res.from_domain)
 
     # ---- DKIM -----------------------------------------------------------------
     for i in (x for x in trusted if x.method == "dkim"):
-        d = _norm_domain(i.props.get("header.d", "")) or \
-            _norm_domain(i.props.get("header.i", ""))
+        d = _norm_domain(i.props.get("header.d", "")) or _norm_domain(i.props.get("header.i", ""))
         sig = DKIMSignatureResult(
-            status=i.status, domain=d, selector=i.props.get("header.s", ""),
+            status=i.status,
+            domain=d,
+            selector=i.props.get("header.s", ""),
             identity=i.props.get("header.i", ""),
-            aligned=i.status == "pass" and domains_aligned(d, res.from_domain))
+            aligned=i.status == "pass" and domains_aligned(d, res.from_domain),
+        )
         res.dkim.signatures.append(sig)
     res.dkim.status = _best([s.status for s in res.dkim.signatures])
     res.dkim.aligned = any(s.aligned for s in res.dkim.signatures)
@@ -391,8 +407,11 @@ def _analyze(email: ParsedEmail) -> AuthResult:
                     pol = m.group(1)
                     break
         res.dmarc.policy = pol.lower()
-        if res.dmarc.header_from and res.from_domain and \
-                not domains_aligned(res.dmarc.header_from, res.from_domain):
+        if (
+            res.dmarc.header_from
+            and res.from_domain
+            and not domains_aligned(res.dmarc.header_from, res.from_domain)
+        ):
             notes.append("dmarc_header_from_mismatch")
         if i.status == "pass" and not res.dmarc_aligned:
             notes.append("dmarc_pass_but_unaligned_in_headers")
@@ -438,18 +457,72 @@ def _analyze(email: ParsedEmail) -> AuthResult:
 # Spoofing helpers
 # --------------------------------------------------------------------------- #
 _EMAIL_IN_NAME_RE = re.compile(
-    r"[A-Za-z0-9._%+-]{1,64}@([A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63}){1,5})")
+    r"[A-Za-z0-9._%+-]{1,64}@([A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63}){1,5})"
+)
 _DOMAIN_IN_NAME_RE = re.compile(
     r"(?<![A-Za-z0-9@._-])((?:www\.)?[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63}){1,5})"
-    r"(?![A-Za-z0-9-])")
+    r"(?![A-Za-z0-9-])"
+)
 # Bare dotted tokens in a display name ("John.Smith") are only treated as domains when the
 # suffix is a well-known one, or the token is an explicit email address / www. host.
-_COMMON_TLDS = frozenset({
-    "com", "net", "org", "edu", "gov", "mil", "int", "io", "co", "ai", "app", "dev", "xyz",
-    "info", "biz", "online", "site", "shop", "store", "us", "uk", "de", "fr", "es", "it", "nl",
-    "ru", "cn", "jp", "in", "br", "au", "ca", "ch", "se", "no", "fi", "dk", "pl", "be", "at",
-    "ie", "nz", "za", "mx", "kr", "tv", "me", "cc", "top", "club", "live", "tech", "cloud",
-})
+_COMMON_TLDS = frozenset(
+    {
+        "com",
+        "net",
+        "org",
+        "edu",
+        "gov",
+        "mil",
+        "int",
+        "io",
+        "co",
+        "ai",
+        "app",
+        "dev",
+        "xyz",
+        "info",
+        "biz",
+        "online",
+        "site",
+        "shop",
+        "store",
+        "us",
+        "uk",
+        "de",
+        "fr",
+        "es",
+        "it",
+        "nl",
+        "ru",
+        "cn",
+        "jp",
+        "in",
+        "br",
+        "au",
+        "ca",
+        "ch",
+        "se",
+        "no",
+        "fi",
+        "dk",
+        "pl",
+        "be",
+        "at",
+        "ie",
+        "nz",
+        "za",
+        "mx",
+        "kr",
+        "tv",
+        "me",
+        "cc",
+        "top",
+        "club",
+        "live",
+        "tech",
+        "cloud",
+    }
+)
 
 
 def display_name_domains(email: ParsedEmail) -> list[str]:

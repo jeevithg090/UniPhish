@@ -21,7 +21,19 @@ from uniphish.core.types import (
 )
 
 __all__ = [
-    "Action", "AnalysisContext", "AnalysisOptions", "Analyzer", "AnalyzerResult", "Artifact",
-    "ArtifactKind", "BrandMatch", "Indicator", "IndicatorType", "Level", "Severity", "Signal",
-    "Verdict", "register",
+    "Action",
+    "AnalysisContext",
+    "AnalysisOptions",
+    "Analyzer",
+    "AnalyzerResult",
+    "Artifact",
+    "ArtifactKind",
+    "BrandMatch",
+    "Indicator",
+    "IndicatorType",
+    "Level",
+    "Severity",
+    "Signal",
+    "Verdict",
+    "register",
 ]

@@ -37,10 +37,11 @@ class Fixed(Analyzer):
             self.name = name
 
     async def analyze(self, artifact, ctx):
-        return AnalyzerResult(signals=[s.model_copy() for s in self._signals],
-                              children=list(self._children),
-                              indicators=[Indicator(type=IndicatorType.URL,
-                                                    value=artifact.url or "x")])
+        return AnalyzerResult(
+            signals=[s.model_copy() for s in self._signals],
+            children=list(self._children),
+            indicators=[Indicator(type=IndicatorType.URL, value=artifact.url or "x")],
+        )
 
 
 class Boom(Analyzer):
@@ -79,27 +80,29 @@ def test_strong_signal_is_malicious_and_decomposes():
     v = eng.analyze_sync(Artifact.from_url("https://x.test/"))
     assert v.level is Level.MALICIOUS
     total = scoring.PRIOR_LOGIT + sum(s.contribution for s in v.signals)
-    assert abs(total - v.logit) < 1e-3          # exact decomposition
-    assert v.signals[0].id == "a"               # sorted by |contribution|
+    assert abs(total - v.logit) < 1e-3  # exact decomposition
+    assert v.signals[0].id == "a"  # sorted by |contribution|
     assert v.signals[0].severity is Severity.CRITICAL
 
 
 def test_correlated_evidence_is_damped():
     many_weak = [_sig(f"w{i}", 1.0, "url") for i in range(6)]
     v = Engine(analyzers=[Fixed(many_weak)]).analyze_sync(Artifact.from_url("https://x.test/"))
-    assert sum(s.contribution for s in v.signals) < 2.3   # geometric series < 1/(1-0.55)
+    assert sum(s.contribution for s in v.signals) < 2.3  # geometric series < 1/(1-0.55)
 
 
 def test_benign_evidence_lowers_risk():
-    v = Engine(analyzers=[Fixed([_sig("ml", 2.0, "ml"), _sig("top", -3.0, "reputation")])]) \
-        .analyze_sync(Artifact.from_url("https://x.test/"))
+    v = Engine(
+        analyzers=[Fixed([_sig("ml", 2.0, "ml"), _sig("top", -3.0, "reputation")])]
+    ).analyze_sync(Artifact.from_url("https://x.test/"))
     assert v.level is Level.BENIGN
 
 
 def test_faulty_and_slow_analyzers_are_isolated():
     eng = Engine(analyzers=[Boom(), Slow(), Fixed([_sig("ok", 1.0)])])
-    v = eng.analyze_sync(Artifact.from_url("https://x.test/"),
-                         AnalysisOptions(analyzer_timeout_s=0.2))
+    v = eng.analyze_sync(
+        Artifact.from_url("https://x.test/"), AnalysisOptions(analyzer_timeout_s=0.2)
+    )
     status = {r.name: r.status for r in v.analyzers}
     assert status["boom"] == "error" and status["slow"] == "timeout" and status["fixed"] == "ok"
     assert any(s.id == "ok" for s in v.signals)
@@ -129,9 +132,9 @@ def test_children_propagate_and_cycles_stop():
             return AnalyzerResult(signals=[_sig("evil", 5.0, "brand")], children=[bad_child])
 
     v = Engine(analyzers=[Parent(), ChildAn()]).analyze_sync(Artifact.from_text("hello"))
-    assert len(v.children) == 1                      # deduplicated
+    assert len(v.children) == 1  # deduplicated
     assert v.children[0].level is Level.MALICIOUS
-    assert v.level is Level.MALICIOUS                # inherited via engine.child.url
+    assert v.level is Level.MALICIOUS  # inherited via engine.child.url
     assert any(s.id == "engine.child.url" for s in v.signals)
 
 
@@ -149,8 +152,10 @@ def test_enable_disable_and_online_gating():
     assert {r.name for r in off.analyzers} == {"fixed"}
     on = eng.analyze_sync(Artifact.from_url("https://x.test/"), AnalysisOptions(online=True))
     assert {r.name for r in on.analyzers} == {"fixed", "net"}
-    only = eng.analyze_sync(Artifact.from_url("https://x.test/"),
-                            AnalysisOptions(online=True, disable=frozenset({"net"})))
+    only = eng.analyze_sync(
+        Artifact.from_url("https://x.test/"),
+        AnalysisOptions(online=True, disable=frozenset({"net"})),
+    )
     assert {r.name for r in only.analyzers} == {"fixed"}
 
 
@@ -167,7 +172,9 @@ def test_artifact_id_is_stable():
 
 
 def test_verdict_json_roundtrip():
-    v = Engine(analyzers=[Fixed([_sig("a", 2.0)])]).analyze_sync(Artifact.from_url("https://x.test/"))
+    v = Engine(analyzers=[Fixed([_sig("a", 2.0)])]).analyze_sync(
+        Artifact.from_url("https://x.test/")
+    )
     from uniphish.core.types import Verdict
 
     again = Verdict.model_validate_json(v.model_dump_json())

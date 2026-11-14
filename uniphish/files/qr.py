@@ -24,10 +24,20 @@ MAX_PIXELS = 25_000_000
 MAX_SIDE = 2400
 MAX_CODES = 16
 
-_BARE_URL_RE = re.compile(r"(?i)^(?:www\.)?[a-z0-9-]{1,63}(?:\.[a-z0-9-]{1,63})*\.[a-z]{2,24}"
-                          r"(?::\d{1,5})?(?:[/?#]\S{0,2000})?$")
-_CRYPTO_SCHEMES = ("bitcoin:", "ethereum:", "monero:", "litecoin:", "solana:", "tron:",
-                   "bitcoincash:", "dogecoin:")
+_BARE_URL_RE = re.compile(
+    r"(?i)^(?:www\.)?[a-z0-9-]{1,63}(?:\.[a-z0-9-]{1,63})*\.[a-z]{2,24}"
+    r"(?::\d{1,5})?(?:[/?#]\S{0,2000})?$"
+)
+_CRYPTO_SCHEMES = (
+    "bitcoin:",
+    "ethereum:",
+    "monero:",
+    "litecoin:",
+    "solana:",
+    "tron:",
+    "bitcoincash:",
+    "dogecoin:",
+)
 _PAYMENT_SCHEMES = ("upi:", "weixin:", "alipays:", "alipay:", "paypal:", "venmo:", "pix:")
 
 
@@ -36,7 +46,7 @@ class QRCode:
     """One decoded QR code."""
 
     data: str
-    kind: str   # url | wifi | email | phone | sms | vcard | calendar | geo | crypto | otp |
+    kind: str  # url | wifi | email | phone | sms | vcard | calendar | geo | crypto | otp |
     #             payment | uri | text
     points: tuple[tuple[float, float], ...] | None = None
 
@@ -82,7 +92,7 @@ def classify_payload(data: str) -> str:
     if low.startswith(_PAYMENT_SCHEMES):
         return "payment"
     if re.match(r"^[a-z][a-z0-9+.-]{1,30}:(?://|[^\s])", low) and not _BARE_URL_RE.match(s):
-        return "uri"   # intent:, javascript:, data:, custom app schemes ...
+        return "uri"  # intent:, javascript:, data:, custom app schemes ...
     if _BARE_URL_RE.match(s):
         return "url"
     return "text"

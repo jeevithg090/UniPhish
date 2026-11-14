@@ -96,7 +96,8 @@ class BatchRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     items: list[ScanRequest] = Field(min_length=1, max_length=50)
     options: OptionsModel | None = Field(
-        default=None, description="Defaults applied to every item lacking its own options.")
+        default=None, description="Defaults applied to every item lacking its own options."
+    )
 
 
 class ExportRequest(BaseModel):

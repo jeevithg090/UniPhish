@@ -83,18 +83,26 @@ def test_encrypted_traversal_zip():
     inner = make_zip({"a.txt": b"hi"})
     z = make_zip({"../../evil.txt": b"x", "nested.zip": inner}, encrypt_flag=True)
     _, res = run(z, "docs.zip")
-    assert {"file.archive.encrypted", "file.archive.path_traversal",
-            "file.archive.nested"} <= ids(res)
+    assert {"file.archive.encrypted", "file.archive.path_traversal", "file.archive.nested"} <= ids(
+        res
+    )
     assert any("mark-of-the-web" in n for n in res.meta["file_notes"])
 
 
 def test_macro_doc_remote_template_child():
-    rel = (b'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/'
-           b'relationships"><Relationship Id="r1" Type="http://schemas.openxmlformats.org/'
-           b'officeDocument/2006/relationships/attachedTemplate" '
-           b'Target="https://tpl.example.test/t.dotm" TargetMode="External"/></Relationships>')
-    d = make_zip({"[Content_Types].xml": b"<Types/>", "word/document.xml": b"<w:document/>",
-                  "word/_rels/settings.xml.rels": rel})
+    rel = (
+        b'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/'
+        b'relationships"><Relationship Id="r1" Type="http://schemas.openxmlformats.org/'
+        b'officeDocument/2006/relationships/attachedTemplate" '
+        b'Target="https://tpl.example.test/t.dotm" TargetMode="External"/></Relationships>'
+    )
+    d = make_zip(
+        {
+            "[Content_Types].xml": b"<Types/>",
+            "word/document.xml": b"<w:document/>",
+            "word/_rels/settings.xml.rels": rel,
+        }
+    )
     art, res = run(d, "report.docx")
     assert "file.office.remote_template" in ids(res)
     kids = [c for c in res.children if c.origin == "file.url"]
@@ -105,18 +113,22 @@ def test_macro_doc_remote_template_child():
 
 def test_html_smuggling():
     blob = base64.b64encode(pe_stub(pad=2000)).decode()
-    html = (f"<html><script>var d='{blob}';var b=new Blob([atob(d)]);"
-            "var a=document.createElement('a');a.href=URL.createObjectURL(b);"
-            "a.download='doc.exe';a.click();</script></html>")
+    html = (
+        f"<html><script>var d='{blob}';var b=new Blob([atob(d)]);"
+        "var a=document.createElement('a');a.href=URL.createObjectURL(b);"
+        "a.download='doc.exe';a.click();</script></html>"
+    )
     _, res = run(html.encode(), "view.html")
     assert {"file.html.smuggling.payload", "file.html.smuggling.pattern"} <= ids(res)
     assert "T1027.006" in sig(res, "file.html.smuggling.payload").mitre
 
 
 def test_svg_script_and_children():
-    svg = (b'<svg xmlns="http://www.w3.org/2000/svg" onload="x()"><script>'
-           b'window.location="https://redir.example.test/a"</script>'
-           b'<image href="https://img.example.test/logo.png"/></svg>')
+    svg = (
+        b'<svg xmlns="http://www.w3.org/2000/svg" onload="x()"><script>'
+        b'window.location="https://redir.example.test/a"</script>'
+        b'<image href="https://img.example.test/logo.png"/></svg>'
+    )
     _, res = run(svg, "doc.svg")
     assert "file.svg.script" in ids(res)
     urls = {c.url for c in res.children}
@@ -125,8 +137,10 @@ def test_svg_script_and_children():
 
 
 def test_pdf_openaction_uri_child():
-    pdf = (b"%PDF-1.7\n1 0 obj<</OpenAction 2 0 R>>endobj\n"
-           b"2 0 obj<</S/URI/URI(https://pay.example.test/now)>>endobj\n")
+    pdf = (
+        b"%PDF-1.7\n1 0 obj<</OpenAction 2 0 R>>endobj\n"
+        b"2 0 obj<</S/URI/URI(https://pay.example.test/now)>>endobj\n"
+    )
     _, res = run(pdf, "inv.pdf")
     assert {"file.pdf.open_action", "file.pdf.uri"} <= ids(res)
     assert [c.url for c in res.children] == ["https://pay.example.test/now"]
@@ -160,6 +174,7 @@ async def test_async_analyze_through_thread():
 try:
     import cv2
     import numpy  # noqa: F401
+
     HAVE_CV = True
 except Exception:  # pragma: no cover
     HAVE_CV = False
@@ -170,8 +185,15 @@ needs_cv = pytest.mark.skipif(not HAVE_CV, reason="OpenCV not installed")
 def make_qr(text: str, scale: int = 8, border: int = 4) -> bytes:
     q = cv2.QRCodeEncoder.create().encode(text)
     q = cv2.resize(q, None, fx=scale, fy=scale, interpolation=cv2.INTER_NEAREST)
-    q = cv2.copyMakeBorder(q, border * scale, border * scale, border * scale, border * scale,
-                           cv2.BORDER_CONSTANT, value=255)
+    q = cv2.copyMakeBorder(
+        q,
+        border * scale,
+        border * scale,
+        border * scale,
+        border * scale,
+        cv2.BORDER_CONSTANT,
+        value=255,
+    )
     ok, buf = cv2.imencode(".png", q)
     assert ok
     return buf.tobytes()
@@ -187,8 +209,9 @@ def test_qr_png_child_url_email_context():
     assert [c.url for c in kids] == ["https://login.example.test/verify?id=7"]
     assert kids[0].parent_id == art.id
     assert res.meta["qr_urls"] == ["https://login.example.test/verify?id=7"]
-    assert (IndicatorType.DOMAIN, "login.example.test") in {(i.type, i.value)
-                                                            for i in res.indicators}
+    assert (IndicatorType.DOMAIN, "login.example.test") in {
+        (i.type, i.value) for i in res.indicators
+    }
 
 
 @needs_cv

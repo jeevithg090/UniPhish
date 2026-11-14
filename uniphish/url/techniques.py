@@ -19,23 +19,57 @@ from uniphish.url.parse import ParsedURL, parse_url
 __all__ = ["MITRE_MAP", "TAXONOMY", "TechniqueResult", "classify"]
 
 TAXONOMY: tuple[str, ...] = (
-    "homoglyph", "idn_homograph", "typosquat", "combosquat", "subdomain_stuffing",
-    "path_deception", "ip_host", "ip_obfuscation", "url_shortener", "open_redirect_abuse",
-    "lots_hosting", "dynamic_dns", "at_redirect", "punycode", "suspicious_tld",
-    "excessive_subdomains", "data_uri", "credential_path",
+    "homoglyph",
+    "idn_homograph",
+    "typosquat",
+    "combosquat",
+    "subdomain_stuffing",
+    "path_deception",
+    "ip_host",
+    "ip_obfuscation",
+    "url_shortener",
+    "open_redirect_abuse",
+    "lots_hosting",
+    "dynamic_dns",
+    "at_redirect",
+    "punycode",
+    "suspicious_tld",
+    "excessive_subdomains",
+    "data_uri",
+    "credential_path",
 )
 
 #: Which technique is reported as ``primary`` when several apply (most deceptive first).
 _PRIORITY: tuple[str, ...] = (
-    "homoglyph", "idn_homograph", "typosquat", "combosquat", "subdomain_stuffing",
-    "at_redirect", "data_uri", "path_deception", "open_redirect_abuse", "ip_obfuscation",
-    "ip_host", "lots_hosting", "url_shortener", "dynamic_dns", "punycode",
-    "credential_path", "suspicious_tld", "excessive_subdomains",
+    "homoglyph",
+    "idn_homograph",
+    "typosquat",
+    "combosquat",
+    "subdomain_stuffing",
+    "at_redirect",
+    "data_uri",
+    "path_deception",
+    "open_redirect_abuse",
+    "ip_obfuscation",
+    "ip_host",
+    "lots_hosting",
+    "url_shortener",
+    "dynamic_dns",
+    "punycode",
+    "credential_path",
+    "suspicious_tld",
+    "excessive_subdomains",
 )
 
-_BRAND_TECHNIQUE = {"homoglyph": "homoglyph", "idn": "idn_homograph", "typosquat": "typosquat",
-                    "bitsquat": "typosquat", "combosquat": "combosquat",
-                    "subdomain": "subdomain_stuffing", "path": "path_deception"}
+_BRAND_TECHNIQUE = {
+    "homoglyph": "homoglyph",
+    "idn": "idn_homograph",
+    "typosquat": "typosquat",
+    "bitsquat": "typosquat",
+    "combosquat": "combosquat",
+    "subdomain": "subdomain_stuffing",
+    "path": "path_deception",
+}
 
 #: technique -> MITRE ATT&CK technique ids (all present in ``core.mitre.CATALOG``).
 MITRE_MAP: dict[str, tuple[str, ...]] = {
@@ -103,45 +137,53 @@ def classify(url: str | ParsedURL, *, lexical: LexicalFeatures | None = None) ->
     if official:
         # A brand's own host is never impersonation, but its redirectors are abused.
         if f.open_redirect or (f.open_redirect_via or "").startswith("known:"):
-            found["open_redirect_abuse"] = (f"{p.host_ascii} hosts a redirect endpoint "
-                                            f"({f.open_redirect_via}) that can forward victims "
-                                            f"to {f.open_redirect or 'another site'}.")
+            found["open_redirect_abuse"] = (
+                f"{p.host_ascii} hosts a redirect endpoint "
+                f"({f.open_redirect_via}) that can forward victims "
+                f"to {f.open_redirect or 'another site'}."
+            )
         return _result(found, None)
     if p.is_ip:
         found["ip_host"] = f"The link points at a raw IP address ({p.host}) instead of a domain."
     if f.ip_obfuscated:
-        found["ip_obfuscation"] = (f"The IP address is written in an obfuscated numeric form "
-                                   f"and resolves to {p.host}.")
+        found["ip_obfuscation"] = (
+            f"The IP address is written in an obfuscated numeric form and resolves to {p.host}."
+        )
     if f.is_shortener:
-        found["url_shortener"] = (f"{p.host_ascii} is a link shortener, hiding the real "
-                                  f"destination.")
+        found["url_shortener"] = f"{p.host_ascii} is a link shortener, hiding the real destination."
     if f.open_redirect or (f.open_redirect_via or "").startswith("known:"):
         dest = f" to {f.open_redirect}" if f.open_redirect else ""
         found["open_redirect_abuse"] = (
             f"A redirect endpoint on {p.host_ascii} ({f.open_redirect_via}) forwards "
-            f"visitors{dest}, borrowing that site's reputation.")
+            f"visitors{dest}, borrowing that site's reputation."
+        )
     if f.lots is not None:
-        found["lots_hosting"] = (f"Hosted on {f.lots.name}, a legitimate {f.lots.kind} platform "
-                                 f"anyone can publish on.")
+        found["lots_hosting"] = (
+            f"Hosted on {f.lots.name}, a legitimate {f.lots.kind} platform anyone can publish on."
+        )
     if f.is_dyndns:
         found["dynamic_dns"] = f"{p.host_ascii} sits on a dynamic-DNS zone anyone can register in."
     if f.has_atsign_redirect:
-        found["at_redirect"] = (f"Text before '@' ({p.userinfo!r}) looks like the destination, "
-                                f"but the browser connects to {p.host_ascii}.")
+        found["at_redirect"] = (
+            f"Text before '@' ({p.userinfo!r}) looks like the destination, "
+            f"but the browser connects to {p.host_ascii}."
+        )
     if f.punycode:
         found["punycode"] = f"The host uses punycode (xn--) labels: {p.host_ascii}."
     if f.tld_risk is not None and f.tld_risk >= _SUSPICIOUS_TLD_RISK:
         found["suspicious_tld"] = f".{f.tld} is a TLD with a high phishing abuse rate."
     if f.many_subdomains:
-        found["excessive_subdomains"] = (f"{f.num_subdomains} sub-domain labels push the real "
-                                         f"domain out of view.")
+        found["excessive_subdomains"] = (
+            f"{f.num_subdomains} sub-domain labels push the real domain out of view."
+        )
     if f.data_or_js_scheme:
         found["data_uri"] = f"The URL uses the {p.scheme}: scheme, which carries content inline."
     if p.host_ascii or p.is_ip:
         cred = [w for w in f.sensitive_words_in_path]
         if len(cred) >= 2 or (cred and len(found) > 0):
-            found["credential_path"] = ("The path contains sign-in / verification vocabulary: "
-                                        + ", ".join(cred[:4]) + ".")
+            found["credential_path"] = (
+                "The path contains sign-in / verification vocabulary: " + ", ".join(cred[:4]) + "."
+            )
 
     return _result(found, target)
 
@@ -153,7 +195,8 @@ def _result(found: dict[str, str], target) -> TechniqueResult:
     for t in techniques:
         ids.update(i for i in MITRE_MAP[t] if i in CATALOG)
     return TechniqueResult(
-        techniques=techniques, primary=primary,
+        techniques=techniques,
+        primary=primary,
         target_brand=target.brand if target else None,
         descriptions={t: found[t] for t in techniques},
         mitre=sorted(ids),

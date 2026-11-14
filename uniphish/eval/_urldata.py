@@ -110,7 +110,6 @@ _NATIVE = (
 )
 
 
-
 _BRAND_OFFICIAL = (
     "https://www.paypal.com/signin",
     "https://accounts.google.com/signin",
@@ -295,5 +294,3 @@ _WORDS = (
     "ideas",
     "report",
 )
-
-

@@ -121,11 +121,14 @@ def test_path_impersonation():
 # --------------------------------------------------------------------------- #
 # Official / legitimacy
 # --------------------------------------------------------------------------- #
-@pytest.mark.parametrize("url", [
-    "https://www.paypal.com/signin",
-    "https://login.microsoftonline.com/common/oauth2",
-    "https://accounts.google.com/",
-])
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://www.paypal.com/signin",
+        "https://login.microsoftonline.com/common/oauth2",
+        "https://accounts.google.com/",
+    ],
+)
 def test_official_domain_negative_evidence(url):
     _, r = run(url)
     off = by_id(r, "brand.official")
@@ -248,16 +251,19 @@ def test_url_and_domain_indicators():
 # --------------------------------------------------------------------------- #
 # Invariants: catalog completeness, span validity, total function on hostile input
 # --------------------------------------------------------------------------- #
-@pytest.mark.parametrize("url", [
-    PAYPAL_HOMOGLYPH,
-    "https://micros0ft.com/account",
-    "http://paypal.com.evil.test/login",
-    "http://3232235777/login",
-    "https://www.paypal.com@evil.test/login",
-    "https://sites.google.com/view/x",
-    "https://example.com/redirect?url=https://evil.test/phish",
-    "data:text/html,<b>x</b>",
-])
+@pytest.mark.parametrize(
+    "url",
+    [
+        PAYPAL_HOMOGLYPH,
+        "https://micros0ft.com/account",
+        "http://paypal.com.evil.test/login",
+        "http://3232235777/login",
+        "https://www.paypal.com@evil.test/login",
+        "https://sites.google.com/view/x",
+        "https://example.com/redirect?url=https://evil.test/phish",
+        "data:text/html,<b>x</b>",
+    ],
+)
 def test_every_signal_is_declared_and_spans_are_valid(url):
     _, r = run(url)
     for s in r.signals:

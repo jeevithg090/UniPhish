@@ -20,16 +20,35 @@ from uniphish.core.types import (
 from uniphish.store import SCHEMA_VERSION, Store, get_store, norm_value, reset_store
 
 
-def make_verdict(target="http://login.evil.test/a", score=90, level=Level.MALICIOUS,
-                 kind=ArtifactKind.URL, indicators=(), brand=None, created_at=None,
-                 children=()) -> Verdict:
+def make_verdict(
+    target="http://login.evil.test/a",
+    score=90,
+    level=Level.MALICIOUS,
+    kind=ArtifactKind.URL,
+    indicators=(),
+    brand=None,
+    created_at=None,
+    children=(),
+) -> Verdict:
     kw = {}
     if created_at is not None:
         kw["created_at"] = created_at
     return Verdict(
-        kind=kind, target=target, artifact_id="a" * 24, risk=score / 100, score=score,
-        logit=1.0, level=level, action=Action.BLOCK, confidence=0.9, summary="test",
-        indicators=list(indicators), brand=brand, children=list(children), **kw)
+        kind=kind,
+        target=target,
+        artifact_id="a" * 24,
+        risk=score / 100,
+        score=score,
+        logit=1.0,
+        level=level,
+        action=Action.BLOCK,
+        confidence=0.9,
+        summary="test",
+        indicators=list(indicators),
+        brand=brand,
+        children=list(children),
+        **kw,
+    )
 
 
 def dom(value, mal=True):
@@ -144,10 +163,14 @@ def test_child_indicators_saved(store):
 def test_recent_filters(store):
     base = datetime(2026, 3, 1, tzinfo=timezone.utc)
     store.save_verdict(make_verdict("http://a.test/", 95, Level.MALICIOUS, created_at=base))
-    store.save_verdict(make_verdict("http://b.test/", 60, Level.SUSPICIOUS,
-                                    created_at=base + timedelta(minutes=1)))
-    store.save_verdict(make_verdict("hello", 5, Level.BENIGN, ArtifactKind.TEXT,
-                                    created_at=base + timedelta(minutes=2)))
+    store.save_verdict(
+        make_verdict("http://b.test/", 60, Level.SUSPICIOUS, created_at=base + timedelta(minutes=1))
+    )
+    store.save_verdict(
+        make_verdict(
+            "hello", 5, Level.BENIGN, ArtifactKind.TEXT, created_at=base + timedelta(minutes=2)
+        )
+    )
     allv = store.recent_verdicts()
     assert [r["score"] for r in allv] == [5, 60, 95]  # newest first
     assert [r["score"] for r in store.recent_verdicts(min_score=60)] == [60, 95]
@@ -177,10 +200,12 @@ def test_stats_and_timeline(store):
     now = datetime.now(timezone.utc)
     store.save_verdict(make_verdict(score=100, created_at=now))
     store.save_verdict(make_verdict("http://b.test/", 55, Level.SUSPICIOUS, created_at=now))
-    store.save_verdict(make_verdict("http://c.test/", 3, Level.BENIGN,
-                                    created_at=now - timedelta(hours=3)))
-    store.save_verdict(make_verdict("http://old.test/", 3, Level.BENIGN,
-                                    created_at=now - timedelta(days=10)))
+    store.save_verdict(
+        make_verdict("http://c.test/", 3, Level.BENIGN, created_at=now - timedelta(hours=3))
+    )
+    store.save_verdict(
+        make_verdict("http://old.test/", 3, Level.BENIGN, created_at=now - timedelta(days=10))
+    )
     s = store.stats()
     assert s["verdicts"] == 4
     assert s["by_level"] == {"malicious": 1, "suspicious": 1, "benign": 2}
@@ -228,11 +253,13 @@ def test_reputation_expiry(store):
 
 
 def test_bulk_set_atomic(store):
-    n = store.bulk_set([
-        {"type": "domain", "value": "a.test", "verdict": "deny", "weight": 3},
-        ("domain", "b.test", "allow", 1.0, "r", "feed", 60),
-        ("ipv4", "1.2.3.4", "unknown"),
-    ])
+    n = store.bulk_set(
+        [
+            {"type": "domain", "value": "a.test", "verdict": "deny", "weight": 3},
+            ("domain", "b.test", "allow", 1.0, "r", "feed", 60),
+            ("ipv4", "1.2.3.4", "unknown"),
+        ]
+    )
     assert n == 3
     assert store.lookup_reputation("domain", "b.test")["expires_at"] is not None
     assert store.lookup_reputation("ipv4", "1.2.3.4")["weight"] == 0.0
@@ -245,8 +272,15 @@ def test_bulk_set_atomic(store):
 # ---- hunt events --------------------------------------------------------- #
 def test_hunt_events(store):
     base = datetime(2026, 5, 1, tzinfo=timezone.utc)
-    store.add_hunt_event("ct", "Paypa1-login.test.", 80, "PayPal", ["homoglyph", "combosquat"],
-                         {"type": "indicator"}, ts=base)
+    store.add_hunt_event(
+        "ct",
+        "Paypa1-login.test.",
+        80,
+        "PayPal",
+        ["homoglyph", "combosquat"],
+        {"type": "indicator"},
+        ts=base,
+    )
     store.add_hunt_event("ct", "other.test", 20, None, ts=base + timedelta(seconds=1))
     store.add_hunt_event("ct", "bank.test", 999, "paypal", ts=base + timedelta(seconds=2))
     ev = store.recent_hunt_events()
@@ -256,7 +290,9 @@ def test_hunt_events(store):
     assert ev[2]["stix"] == {"type": "indicator"} and ev[1]["stix"] is None
     assert len(store.recent_hunt_events(min_score=50)) == 2
     assert {e["domain"] for e in store.recent_hunt_events(brand="PAYPAL")} == {
-        "bank.test", "paypa1-login.test"}
+        "bank.test",
+        "paypa1-login.test",
+    }
     assert len(store.recent_hunt_events(limit=1)) == 1
 
 
@@ -281,8 +317,13 @@ def test_stix_synthesised_and_explicit(store):
 
 
 def test_stix_pattern_escaping(store):
-    store.save_verdict(make_verdict(indicators=[
-        Indicator(type=IndicatorType.URL, value="http://x.test/it's", malicious=True)]))
+    store.save_verdict(
+        make_verdict(
+            indicators=[
+                Indicator(type=IndicatorType.URL, value="http://x.test/it's", malicious=True)
+            ]
+        )
+    )
     assert store.stix_objects()[0]["pattern"] == "[url:value = 'http://x.test/it\\'s']"
 
 
@@ -307,8 +348,9 @@ def test_concurrent_writes_threads(tmp_path):
     def worker(i: int) -> None:
         try:
             for j in range(15):
-                s.save_verdict(make_verdict(f"http://h{i}-{j}.test/",
-                                            indicators=[dom("shared.test")]))
+                s.save_verdict(
+                    make_verdict(f"http://h{i}-{j}.test/", indicators=[dom("shared.test")])
+                )
                 s.set_reputation("domain", f"r{i}-{j}.test", "deny")
         except BaseException as e:
             errors.append(e)
@@ -331,13 +373,16 @@ def test_concurrent_writes_two_connections(tmp_path):
     def worker(s: Store, tag: str) -> None:
         try:
             for j in range(25):
-                s.save_verdict(make_verdict(f"http://{tag}{j}.test/",
-                                            indicators=[dom("shared.test")]))
+                s.save_verdict(
+                    make_verdict(f"http://{tag}{j}.test/", indicators=[dom("shared.test")])
+                )
         except BaseException as e:
             errors.append(e)
 
-    ts = [threading.Thread(target=worker, args=(a, "a")),
-          threading.Thread(target=worker, args=(b, "b"))]
+    ts = [
+        threading.Thread(target=worker, args=(a, "a")),
+        threading.Thread(target=worker, args=(b, "b")),
+    ]
     [t.start() for t in ts]
     [t.join() for t in ts]
     assert not errors

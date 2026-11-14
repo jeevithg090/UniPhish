@@ -101,8 +101,12 @@ def verdict_digest(verdict: Verdict) -> dict[str, Any]:
         "confidence": round(verdict.confidence, 2),
         "brand": brand,
         "signals": [
-            {"id": s.id, "title": defang(s.title), "detail": defang(s.detail),
-             "weight": round(s.weight, 1)}
+            {
+                "id": s.id,
+                "title": defang(s.title),
+                "detail": defang(s.detail),
+                "weight": round(s.weight, 1),
+            }
             for s in sigs
         ],
         "indicators": [
@@ -117,20 +121,25 @@ def verdict_digest(verdict: Verdict) -> dict[str, Any]:
 def _render(verdict: Verdict) -> str:
     d = verdict_digest(verdict)
     lines = [
-        f"kind: {d['kind']}", f"target: {d['target']}",
+        f"kind: {d['kind']}",
+        f"target: {d['target']}",
         f"automated verdict: {d['level']} (score {d['score']}/100, action {d['action']}, "
         f"confidence {d['confidence']})",
     ]
     if d["brand"]:
         b = d["brand"]
-        lines.append(f"brand: {b['name']} via {b['technique']} (confidence {b['confidence']}, "
-                     f"official={b['official']})")
+        lines.append(
+            f"brand: {b['name']} via {b['technique']} (confidence {b['confidence']}, "
+            f"official={b['official']})"
+        )
     lines.append("top signals:")
-    lines += [f"- [{s['weight']:+}] {s['id']}: {s['title']}. {s['detail']}".rstrip()
-              for s in d["signals"]] or ["- none"]
+    lines += [
+        f"- [{s['weight']:+}] {s['id']}: {s['title']}. {s['detail']}".rstrip() for s in d["signals"]
+    ] or ["- none"]
     lines.append("indicators:")
-    lines += [f"- {i['type']} {i['value']} ({i['role'] or 'n/a'})"
-              for i in d["indicators"]] or ["- none"]
+    lines += [f"- {i['type']} {i['value']} ({i['role'] or 'n/a'})" for i in d["indicators"]] or [
+        "- none"
+    ]
     return "\n".join(lines)
 
 

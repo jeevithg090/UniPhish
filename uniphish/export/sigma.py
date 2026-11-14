@@ -68,24 +68,54 @@ MAX_URL_IOCS = 50
 #: Fixed namespace so rule ids (uuid5) are stable across runs and machines.
 RULE_NAMESPACE = uuid.UUID("6f1c7a52-2b8e-5c4d-9a37-0d5e1b9f4a10")
 
-_ACTIONABLE_ROLES = frozenset({"landing", "redirect", "exfil-endpoint", "exfil", "payload",
-                               "sender", "c2", "kit"})
-_KIT_EVIDENCE_KEYS = ("fingerprints", "fingerprint", "strings", "matched_strings", "matches",
-                      "patterns", "markers")
+_ACTIONABLE_ROLES = frozenset(
+    {"landing", "redirect", "exfil-endpoint", "exfil", "payload", "sender", "c2", "kit"}
+)
+_KIT_EVIDENCE_KEYS = (
+    "fingerprints",
+    "fingerprint",
+    "strings",
+    "matched_strings",
+    "matches",
+    "patterns",
+    "markers",
+)
 _EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+'\-]{1,64}@[A-Za-z0-9.\-]{1,253}$")
 _SHA256_RE = re.compile(r"^[0-9a-fA-F]{64}$")
-_INTERNAL_NETS = tuple(ipaddress.ip_network(n) for n in (
-    "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "100.64.0.0/10", "127.0.0.0/8",
-    "169.254.0.0/16", "0.0.0.0/8", "224.0.0.0/4", "240.0.0.0/4",
-    "::1/128", "fc00::/7", "fe80::/10", "ff00::/8", "::/128"))
+_INTERNAL_NETS = tuple(
+    ipaddress.ip_network(n)
+    for n in (
+        "10.0.0.0/8",
+        "172.16.0.0/12",
+        "192.168.0.0/16",
+        "100.64.0.0/10",
+        "127.0.0.0/8",
+        "169.254.0.0/16",
+        "0.0.0.0/8",
+        "224.0.0.0/4",
+        "240.0.0.0/4",
+        "::1/128",
+        "fc00::/7",
+        "fe80::/10",
+        "ff00::/8",
+        "::/128",
+    )
+)
 
 _TACTIC_TAG = {
-    "initial-access": "initial_access", "execution": "execution", "persistence": "persistence",
-    "privilege-escalation": "privilege_escalation", "defense-evasion": "defense_evasion",
-    "credential-access": "credential_access", "discovery": "discovery",
-    "lateral-movement": "lateral_movement", "collection": "collection",
-    "command-and-control": "command_and_control", "exfiltration": "exfiltration",
-    "impact": "impact", "reconnaissance": "reconnaissance",
+    "initial-access": "initial_access",
+    "execution": "execution",
+    "persistence": "persistence",
+    "privilege-escalation": "privilege_escalation",
+    "defense-evasion": "defense_evasion",
+    "credential-access": "credential_access",
+    "discovery": "discovery",
+    "lateral-movement": "lateral_movement",
+    "collection": "collection",
+    "command-and-control": "command_and_control",
+    "exfiltration": "exfiltration",
+    "impact": "impact",
+    "reconnaissance": "reconnaissance",
     "resource-development": "resource_development",
 }
 
@@ -101,10 +131,10 @@ class NoIndicatorsError(ValueError):
 class UrlIoc:
     """A selected URL IOC split into the parts rule languages need."""
 
-    url: str          # normalised, ASCII host
+    url: str  # normalised, ASCII host
     scheme: str
-    host: str         # A-label host (lower-case)
-    path_query: str   # '/path?query' (always starts with '/')
+    host: str  # A-label host (lower-case)
+    path_query: str  # '/path?query' (always starts with '/')
     shared_host: bool  # host is on a shared hosting platform (no domain-level rule)
 
 
@@ -113,7 +143,7 @@ class Iocs:
     """Deployable observables selected from a verdict tree (ordered, de-duplicated)."""
 
     urls: list[UrlIoc] = field(default_factory=list)
-    domains: list[str] = field(default_factory=list)   # safe for domain-level rules
+    domains: list[str] = field(default_factory=list)  # safe for domain-level rules
     shared_hosts: list[str] = field(default_factory=list)  # LOTS hosts, URL-level only
     ips: list[str] = field(default_factory=list)
     emails: list[str] = field(default_factory=list)
@@ -126,14 +156,14 @@ class Iocs:
         return bool(self.urls or self.domains or self.ips)
 
     def empty(self) -> bool:
-        return not (self.urls or self.domains or self.ips or self.emails or self.sha256
-                    or self.kit_strings)
+        return not (
+            self.urls or self.domains or self.ips or self.emails or self.sha256 or self.kit_strings
+        )
 
     def fingerprint(self) -> str:
         """Stable digest of the IOC content (drives deterministic rule ids / sids)."""
         h = hashlib.sha256()
-        for name in ("urls", "domains", "shared_hosts", "ips", "emails", "sha256",
-                     "kit_strings"):
+        for name in ("urls", "domains", "shared_hosts", "ips", "emails", "sha256", "kit_strings"):
             h.update(name.encode())
             for item in getattr(self, name):
                 h.update((item.url if isinstance(item, UrlIoc) else item).encode())
@@ -232,7 +262,8 @@ def collect_iocs(verdict: Verdict, *, allow_benign: bool = False) -> Iocs:
             continue
         target = refang(v.target.strip())
         if v.kind in (ArtifactKind.URL, ArtifactKind.PAGE) and target.lower().startswith(
-                ("http://", "https://")):
+            ("http://", "https://")
+        ):
             _add_url(out, target, legit)
         for ind in v.indicators:
             if ind.malicious is False:
@@ -317,8 +348,14 @@ def _refs(techs: list[MitreTechnique]) -> list[str]:
     return _uniq([t.url for t in techs if t.url]) or ["https://attack.mitre.org/techniques/T1566/"]
 
 
-def _base(verdict: Verdict, techs: list[MitreTechnique], kind: str, iocs: Iocs,
-          title: str, description: str) -> dict[str, Any]:
+def _base(
+    verdict: Verdict,
+    techs: list[MitreTechnique],
+    kind: str,
+    iocs: Iocs,
+    title: str,
+    description: str,
+) -> dict[str, Any]:
     rid = uuid.uuid5(RULE_NAMESPACE, f"sigma|{kind}|{iocs.fingerprint()}")
     score = f"{verdict.score}/100"
     return {
@@ -326,7 +363,7 @@ def _base(verdict: Verdict, techs: list[MitreTechnique], kind: str, iocs: Iocs,
         "id": str(rid),
         "status": "experimental",
         "description": f"{description} UniPhish verdict: {verdict.level.value} ({score}). "
-                       f"{verdict.summary}".strip()[:1000],
+        f"{verdict.summary}".strip()[:1000],
         "references": _refs(techs),
         "author": "UniPhish",
         "date": verdict.created_at.strftime("%Y/%m/%d"),
@@ -354,53 +391,80 @@ def _proxy_rule(verdict: Verdict, techs: list[MitreTechnique], iocs: Iocs) -> di
     if iocs.ips:
         det["selection_ip"] = {"dst_ip": list(iocs.ips)}
     det["condition"] = "1 of selection_*"
-    rule = _base(verdict, techs, "proxy", iocs,
-                 f"UniPhish: web access to {_lead(verdict)}",
-                 "Detects web-proxy requests to hosts, URLs or addresses that UniPhish "
-                 f"identified as {_lead(verdict)}.")
-    rule.update({
-        "logsource": {"category": "proxy"},
-        "detection": det,
-        "fields": ["c-ip", "cs-host", "c-uri"],
-        "falsepositives": ["Security-awareness exercises or red-team engagements that "
-                           "deliberately use these hosts",
-                           "Analysts or sandboxes visiting the indicator to investigate it"],
-        "level": _sigma_level(verdict),
-    })
+    rule = _base(
+        verdict,
+        techs,
+        "proxy",
+        iocs,
+        f"UniPhish: web access to {_lead(verdict)}",
+        "Detects web-proxy requests to hosts, URLs or addresses that UniPhish "
+        f"identified as {_lead(verdict)}.",
+    )
+    rule.update(
+        {
+            "logsource": {"category": "proxy"},
+            "detection": det,
+            "fields": ["c-ip", "cs-host", "c-uri"],
+            "falsepositives": [
+                "Security-awareness exercises or red-team engagements that "
+                "deliberately use these hosts",
+                "Analysts or sandboxes visiting the indicator to investigate it",
+            ],
+            "level": _sigma_level(verdict),
+        }
+    )
     return rule
 
 
 def _dns_rule(verdict: Verdict, techs: list[MitreTechnique], iocs: Iocs) -> dict[str, Any]:
-    rule = _base(verdict, techs, "zeek-dns", iocs,
-                 f"UniPhish: DNS lookup of {_lead(verdict)} domain",
-                 f"Detects Zeek DNS queries for domains UniPhish identified as {_lead(verdict)}.")
-    rule.update({
-        "logsource": {"product": "zeek", "service": "dns"},
-        "detection": {
-            "selection_exact": {"query": list(iocs.domains)},
-            "selection_subdomain": {"query|endswith": [f".{d}" for d in iocs.domains]},
-            "condition": "1 of selection_*",
-        },
-        "fields": ["id.orig_h", "query", "answers"],
-        "falsepositives": ["Threat-hunting or take-down tooling resolving the domain"],
-        "level": _sigma_level(verdict),
-    })
+    rule = _base(
+        verdict,
+        techs,
+        "zeek-dns",
+        iocs,
+        f"UniPhish: DNS lookup of {_lead(verdict)} domain",
+        f"Detects Zeek DNS queries for domains UniPhish identified as {_lead(verdict)}.",
+    )
+    rule.update(
+        {
+            "logsource": {"product": "zeek", "service": "dns"},
+            "detection": {
+                "selection_exact": {"query": list(iocs.domains)},
+                "selection_subdomain": {"query|endswith": [f".{d}" for d in iocs.domains]},
+                "condition": "1 of selection_*",
+            },
+            "fields": ["id.orig_h", "query", "answers"],
+            "falsepositives": ["Threat-hunting or take-down tooling resolving the domain"],
+            "level": _sigma_level(verdict),
+        }
+    )
     return rule
 
 
 def _email_rule(verdict: Verdict, techs: list[MitreTechnique], iocs: Iocs) -> dict[str, Any]:
-    rule = _base(verdict, techs, "email", iocs,
-                 f"UniPhish: e-mail from {_lead(verdict)} sender",
-                 f"Detects inbound mail from sender addresses tied to {_lead(verdict)}.")
-    rule.update({
-        "logsource": {"category": "email"},
-        "detection": {"selection": {"sender_address": list(iocs.emails)},
-                      "condition": "selection"},
-        "fields": ["sender_address", "recipient_address", "subject"],
-        "falsepositives": ["Sender address later recovered by its legitimate owner",
-                           "Spoofed envelope senders that impersonate an innocent party"],
-        "level": _sigma_level(verdict),
-    })
+    rule = _base(
+        verdict,
+        techs,
+        "email",
+        iocs,
+        f"UniPhish: e-mail from {_lead(verdict)} sender",
+        f"Detects inbound mail from sender addresses tied to {_lead(verdict)}.",
+    )
+    rule.update(
+        {
+            "logsource": {"category": "email"},
+            "detection": {
+                "selection": {"sender_address": list(iocs.emails)},
+                "condition": "selection",
+            },
+            "fields": ["sender_address", "recipient_address", "subject"],
+            "falsepositives": [
+                "Sender address later recovered by its legitimate owner",
+                "Spoofed envelope senders that impersonate an innocent party",
+            ],
+            "level": _sigma_level(verdict),
+        }
+    )
     return rule
 
 
@@ -431,8 +495,12 @@ def to_sigma(verdict: Verdict, *, allow_benign: bool = False) -> dict[str, Any]:
 
 def to_sigma_yaml(verdict: Verdict, *, allow_benign: bool = False) -> str:
     """All Sigma rules as one multi-document YAML string (``---`` separated)."""
-    return yaml.safe_dump_all(to_sigma_rules(verdict, allow_benign=allow_benign),
-                              sort_keys=False, allow_unicode=False, width=100)
+    return yaml.safe_dump_all(
+        to_sigma_rules(verdict, allow_benign=allow_benign),
+        sort_keys=False,
+        allow_unicode=False,
+        width=100,
+    )
 
 
 _SIGMA_REQUIRED = ("title", "id", "status", "description", "logsource", "detection", "level")

@@ -286,7 +286,8 @@ class Store:
             current = self.schema_version
             if current > SCHEMA_VERSION:
                 raise RuntimeError(
-                    f"database schema v{current} is newer than supported v{SCHEMA_VERSION}")
+                    f"database schema v{current} is newer than supported v{SCHEMA_VERSION}"
+                )
             for version in range(current, SCHEMA_VERSION):
                 with self._tx() as db:
                     # Re-check inside the write lock: another process may have migrated.
@@ -313,19 +314,43 @@ class Store:
             db.execute(
                 "INSERT OR REPLACE INTO verdicts(id, created_at, kind, target, target_norm,"
                 " score, level, brand, summary, json, source) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
-                (verdict.id, created, kind, verdict.target, _target_norm(kind, verdict.target),
-                 int(verdict.score), level, brand, verdict.summary, payload, source),
+                (
+                    verdict.id,
+                    created,
+                    kind,
+                    verdict.target,
+                    _target_norm(kind, verdict.target),
+                    int(verdict.score),
+                    level,
+                    brand,
+                    verdict.summary,
+                    payload,
+                    source,
+                ),
             )
             if not existed:
                 for ind in verdict.all_indicators():
                     self._upsert_indicator(
-                        db, _type_str(ind.type), ind.value, bool(ind.malicious),
-                        verdict.id, source, created)
+                        db,
+                        _type_str(ind.type),
+                        ind.value,
+                        bool(ind.malicious),
+                        verdict.id,
+                        source,
+                        created,
+                    )
         return verdict.id
 
     @staticmethod
-    def _upsert_indicator(db: sqlite3.Connection, type_: str, value: str, malicious: bool,
-                          verdict_id: str | None, source: str, ts: str) -> None:
+    def _upsert_indicator(
+        db: sqlite3.Connection,
+        type_: str,
+        value: str,
+        malicious: bool,
+        verdict_id: str | None,
+        source: str,
+        ts: str,
+    ) -> None:
         value = value[:_MAX_VALUE_CHARS]
         db.execute(
             "INSERT INTO indicators(type, value, value_norm, first_seen, last_seen, count,"
@@ -343,23 +368,31 @@ class Store:
     def get_verdict(self, verdict_id: str) -> Verdict | None:
         """Return the full :class:`Verdict` for *verdict_id*, or ``None``."""
         with self._lock:
-            r = self._db().execute("SELECT json FROM verdicts WHERE id=?",
-                                   (verdict_id,)).fetchone()
+            r = self._db().execute("SELECT json FROM verdicts WHERE id=?", (verdict_id,)).fetchone()
         return Verdict.model_validate_json(r["json"]) if r else None
 
     def get_verdict_row(self, verdict_id: str) -> dict[str, Any] | None:
         """Return the verdict's metadata row (no JSON blob), or ``None``."""
         with self._lock:
-            r = self._db().execute(
-                "SELECT id, created_at, kind, target, target_norm, score, level, brand,"
-                " summary, source FROM verdicts WHERE id=?", (verdict_id,)).fetchone()
+            r = (
+                self._db()
+                .execute(
+                    "SELECT id, created_at, kind, target, target_norm, score, level, brand,"
+                    " summary, source FROM verdicts WHERE id=?",
+                    (verdict_id,),
+                )
+                .fetchone()
+            )
         return _row(r)
 
-    def recent_verdicts(self, limit: int = 50, min_score: int = 0, kind: str | None = None,
-                        level: str | None = None) -> list[dict[str, Any]]:
+    def recent_verdicts(
+        self, limit: int = 50, min_score: int = 0, kind: str | None = None, level: str | None = None
+    ) -> list[dict[str, Any]]:
         """Newest-first verdict rows (metadata only; use :meth:`get_verdict` for the full one)."""
-        sql = ("SELECT id, created_at, kind, target, score, level, brand, summary, source"
-               " FROM verdicts WHERE score >= ?")
+        sql = (
+            "SELECT id, created_at, kind, target, score, level, brand, summary, source"
+            " FROM verdicts WHERE score >= ?"
+        )
         args: list[Any] = [int(min_score)]
         if kind is not None:
             sql += " AND kind = ?"
@@ -375,12 +408,16 @@ class Store:
     def find_verdicts(self, kind: str, target: str, limit: int = 20) -> list[dict[str, Any]]:
         """Previous verdict rows for a normalised target, newest first."""
         with self._lock:
-            rows = self._db().execute(
-                "SELECT id, created_at, kind, target, score, level, brand, summary, source"
-                " FROM verdicts WHERE kind=? AND target_norm=?"
-                " ORDER BY created_at DESC, rowid DESC LIMIT ?",
-                (_type_str(kind), _target_norm(_type_str(kind), target), _clamp_limit(limit)),
-            ).fetchall()
+            rows = (
+                self._db()
+                .execute(
+                    "SELECT id, created_at, kind, target, score, level, brand, summary, source"
+                    " FROM verdicts WHERE kind=? AND target_norm=?"
+                    " ORDER BY created_at DESC, rowid DESC LIMIT ?",
+                    (_type_str(kind), _target_norm(_type_str(kind), target), _clamp_limit(limit)),
+                )
+                .fetchall()
+            )
         return [dict(r) for r in rows]
 
     # ---- indicators ------------------------------------------------------ #
@@ -388,13 +425,19 @@ class Store:
         """Indicator rows matching the normalised (type, value)."""
         t = _type_str(type)
         with self._lock:
-            rows = self._db().execute(
-                "SELECT * FROM indicators WHERE type=? AND value_norm=?",
-                (t, norm_value(t, value))).fetchall()
+            rows = (
+                self._db()
+                .execute(
+                    "SELECT * FROM indicators WHERE type=? AND value_norm=?",
+                    (t, norm_value(t, value)),
+                )
+                .fetchall()
+            )
         return [dict(r) for r in rows]
 
-    def recent_indicators(self, limit: int = 100, malicious_only: bool = False,
-                          type: str | None = None) -> list[dict[str, Any]]:
+    def recent_indicators(
+        self, limit: int = 100, malicious_only: bool = False, type: str | None = None
+    ) -> list[dict[str, Any]]:
         """Most recently seen indicators."""
         sql = "SELECT * FROM indicators WHERE 1=1"
         args: list[Any] = []
@@ -414,13 +457,17 @@ class Store:
         with self._lock:
             db = self._db()
             total = db.execute("SELECT COUNT(*) FROM verdicts").fetchone()[0]
-            by_level = {r[0]: r[1] for r in db.execute(
-                "SELECT level, COUNT(*) FROM verdicts GROUP BY level")}
-            by_kind = {r[0]: r[1] for r in db.execute(
-                "SELECT kind, COUNT(*) FROM verdicts GROUP BY kind")}
+            by_level = {
+                r[0]: r[1]
+                for r in db.execute("SELECT level, COUNT(*) FROM verdicts GROUP BY level")
+            }
+            by_kind = {
+                r[0]: r[1] for r in db.execute("SELECT kind, COUNT(*) FROM verdicts GROUP BY kind")
+            }
             hist = [0] * 10
             for bucket, n in db.execute(
-                    "SELECT MIN(score / 10, 9), COUNT(*) FROM verdicts GROUP BY 1"):
+                "SELECT MIN(score / 10, 9), COUNT(*) FROM verdicts GROUP BY 1"
+            ):
                 hist[int(bucket)] = n
             return {
                 "verdicts": total,
@@ -429,7 +476,8 @@ class Store:
                 "score_histogram": hist,  # bucket i = scores [10*i, 10*i+9]; last includes 100
                 "indicators": db.execute("SELECT COUNT(*) FROM indicators").fetchone()[0],
                 "malicious_indicators": db.execute(
-                    "SELECT COUNT(*) FROM indicators WHERE malicious=1").fetchone()[0],
+                    "SELECT COUNT(*) FROM indicators WHERE malicious=1"
+                ).fetchone()[0],
                 "reputation": self.reputation_counts(),
                 "hunt_events": db.execute("SELECT COUNT(*) FROM hunt_events").fetchone()[0],
                 "stix_objects": db.execute("SELECT COUNT(*) FROM stix_objects").fetchone()[0],
@@ -442,14 +490,25 @@ class Store:
         now = _utcnow().replace(minute=0, second=0, microsecond=0)
         start = now - timedelta(hours=hours - 1)
         with self._lock:
-            rows = self._db().execute(
-                "SELECT substr(created_at,1,13) AS h, level, COUNT(*) AS n FROM verdicts"
-                " WHERE created_at >= ? GROUP BY h, level", (_iso(start),)).fetchall()
+            rows = (
+                self._db()
+                .execute(
+                    "SELECT substr(created_at,1,13) AS h, level, COUNT(*) AS n FROM verdicts"
+                    " WHERE created_at >= ? GROUP BY h, level",
+                    (_iso(start),),
+                )
+                .fetchall()
+            )
         buckets: dict[str, dict[str, Any]] = {}
         for i in range(hours):
             h = (start + timedelta(hours=i)).strftime("%Y-%m-%dT%H")
-            buckets[h] = {"hour": h + ":00:00Z", "total": 0, "benign": 0,
-                          "suspicious": 0, "malicious": 0}
+            buckets[h] = {
+                "hour": h + ":00:00Z",
+                "total": 0,
+                "benign": 0,
+                "suspicious": 0,
+                "malicious": 0,
+            }
         for r in rows:
             b = buckets.get(r["h"])
             if b is None:
@@ -461,8 +520,16 @@ class Store:
 
     # ---- reputation ------------------------------------------------------ #
     @staticmethod
-    def _rep_params(type_: Any, value: str, verdict: str, weight: float, reason: str,
-                    source: str, ttl: float | timedelta | None, now: datetime) -> tuple[Any, ...]:
+    def _rep_params(
+        type_: Any,
+        value: str,
+        verdict: str,
+        weight: float,
+        reason: str,
+        source: str,
+        ttl: float | timedelta | None,
+        now: datetime,
+    ) -> tuple[Any, ...]:
         verdict = (verdict or "").lower()
         if verdict not in REPUTATION_VERDICTS:
             raise ValueError(f"reputation verdict must be one of {sorted(REPUTATION_VERDICTS)}")
@@ -473,19 +540,35 @@ class Store:
         if ttl is not None:
             delta = ttl if isinstance(ttl, timedelta) else timedelta(seconds=float(ttl))
             expires = _iso(now + delta)
-        return (t, norm_value(t, value), verdict, float(weight), reason or "", source or "manual",
-                _iso(now), expires)
+        return (
+            t,
+            norm_value(t, value),
+            verdict,
+            float(weight),
+            reason or "",
+            source or "manual",
+            _iso(now),
+            expires,
+        )
 
     _REP_SQL = (
         "INSERT INTO reputation(type, value, verdict, weight, reason, source, added_at,"
         " expires_at) VALUES (?,?,?,?,?,?,?,?)"
         " ON CONFLICT(type, value) DO UPDATE SET verdict=excluded.verdict,"
         " weight=excluded.weight, reason=excluded.reason, source=excluded.source,"
-        " added_at=excluded.added_at, expires_at=excluded.expires_at")
+        " added_at=excluded.added_at, expires_at=excluded.expires_at"
+    )
 
-    def set_reputation(self, type: str, value: str, verdict: str, weight: float = 0.0,
-                       reason: str = "", source: str = "manual",
-                       ttl: float | timedelta | None = None) -> None:
+    def set_reputation(
+        self,
+        type: str,
+        value: str,
+        verdict: str,
+        weight: float = 0.0,
+        reason: str = "",
+        source: str = "manual",
+        ttl: float | timedelta | None = None,
+    ) -> None:
         """Upsert an allow/deny/unknown entry. *ttl* is seconds or a timedelta (None = forever)."""
         params = self._rep_params(type, value, verdict, weight, reason, source, ttl, _utcnow())
         with self._tx() as db:
@@ -503,14 +586,32 @@ class Store:
         prepared: list[tuple[Any, ...]] = []
         for r in rows:
             if isinstance(r, Mapping):
-                prepared.append(self._rep_params(
-                    r["type"], r["value"], r["verdict"], r.get("weight", 0.0),
-                    r.get("reason", ""), r.get("source", "bulk"), r.get("ttl"), now))
+                prepared.append(
+                    self._rep_params(
+                        r["type"],
+                        r["value"],
+                        r["verdict"],
+                        r.get("weight", 0.0),
+                        r.get("reason", ""),
+                        r.get("source", "bulk"),
+                        r.get("ttl"),
+                        now,
+                    )
+                )
             else:
                 a = list(r) + [None] * (7 - len(r))
-                prepared.append(self._rep_params(
-                    a[0], a[1], a[2], a[3] if a[3] is not None else 0.0, a[4] or "",
-                    a[5] or "bulk", a[6], now))
+                prepared.append(
+                    self._rep_params(
+                        a[0],
+                        a[1],
+                        a[2],
+                        a[3] if a[3] is not None else 0.0,
+                        a[4] or "",
+                        a[5] or "bulk",
+                        a[6],
+                        now,
+                    )
+                )
         if not prepared:
             return 0
         with self._tx() as db:
@@ -521,22 +622,27 @@ class Store:
         """Return the live (non-expired) reputation row, or ``None``."""
         t = _type_str(type)
         with self._lock:
-            r = self._db().execute(
-                "SELECT * FROM reputation WHERE type=? AND value=?"
-                " AND (expires_at IS NULL OR expires_at > ?)",
-                (t, norm_value(t, value), _iso())).fetchone()
+            r = (
+                self._db()
+                .execute(
+                    "SELECT * FROM reputation WHERE type=? AND value=?"
+                    " AND (expires_at IS NULL OR expires_at > ?)",
+                    (t, norm_value(t, value), _iso()),
+                )
+                .fetchone()
+            )
         return _row(r)
 
     def delete_reputation(self, type: str, value: str) -> bool:
         """Remove an entry. Returns True if something was deleted."""
         t = _type_str(type)
         with self._tx() as db:
-            cur = db.execute("DELETE FROM reputation WHERE type=? AND value=?",
-                             (t, norm_value(t, value)))
+            cur = db.execute(
+                "DELETE FROM reputation WHERE type=? AND value=?", (t, norm_value(t, value))
+            )
         return cur.rowcount > 0
 
-    def list_reputation(self, verdict: str | None = None, limit: int = 100
-                        ) -> list[dict[str, Any]]:
+    def list_reputation(self, verdict: str | None = None, limit: int = 100) -> list[dict[str, Any]]:
         """Live reputation entries, newest first, optionally filtered by verdict."""
         sql = "SELECT * FROM reputation WHERE (expires_at IS NULL OR expires_at > ?)"
         args: list[Any] = [_iso()]
@@ -551,8 +657,9 @@ class Store:
     def purge_expired(self) -> int:
         """Delete expired reputation rows. Returns how many were removed."""
         with self._tx() as db:
-            cur = db.execute("DELETE FROM reputation WHERE expires_at IS NOT NULL"
-                             " AND expires_at <= ?", (_iso(),))
+            cur = db.execute(
+                "DELETE FROM reputation WHERE expires_at IS NOT NULL AND expires_at <= ?", (_iso(),)
+            )
         return cur.rowcount
 
     def reputation_counts(self) -> dict[str, int]:
@@ -560,28 +667,44 @@ class Store:
         out = dict.fromkeys(sorted(REPUTATION_VERDICTS), 0)
         with self._lock:
             for r in self._db().execute(
-                    "SELECT verdict, COUNT(*) FROM reputation"
-                    " WHERE (expires_at IS NULL OR expires_at > ?) GROUP BY verdict",
-                    (_iso(),)):
+                "SELECT verdict, COUNT(*) FROM reputation"
+                " WHERE (expires_at IS NULL OR expires_at > ?) GROUP BY verdict",
+                (_iso(),),
+            ):
                 out[r[0]] = r[1]
         return out
 
     # ---- hunt events ----------------------------------------------------- #
-    def add_hunt_event(self, source: str, domain: str, score: int = 0, brand: str | None = None,
-                       techniques: Iterable[str] = (), stix: Mapping[str, Any] | None = None,
-                       ts: datetime | str | float | None = None) -> int:
+    def add_hunt_event(
+        self,
+        source: str,
+        domain: str,
+        score: int = 0,
+        brand: str | None = None,
+        techniques: Iterable[str] = (),
+        stix: Mapping[str, Any] | None = None,
+        ts: datetime | str | float | None = None,
+    ) -> int:
         """Record a CT/brand-watch hit. Returns the event id."""
         with self._tx() as db:
             cur = db.execute(
                 "INSERT INTO hunt_events(ts, source, domain, score, brand, techniques, stix_json)"
                 " VALUES (?,?,?,?,?,?,?)",
-                (_iso(ts), source, norm_value("domain", domain), max(0, min(int(score), 100)),
-                 brand, json.dumps(list(techniques)),
-                 json.dumps(stix, default=str) if stix is not None else None))
+                (
+                    _iso(ts),
+                    source,
+                    norm_value("domain", domain),
+                    max(0, min(int(score), 100)),
+                    brand,
+                    json.dumps(list(techniques)),
+                    json.dumps(stix, default=str) if stix is not None else None,
+                ),
+            )
             return int(cur.lastrowid or 0)
 
-    def recent_hunt_events(self, limit: int = 100, min_score: int = 0, brand: str | None = None
-                           ) -> list[dict[str, Any]]:
+    def recent_hunt_events(
+        self, limit: int = 100, min_score: int = 0, brand: str | None = None
+    ) -> list[dict[str, Any]]:
         """Newest-first hunt events with ``techniques`` as a list and ``stix`` parsed."""
         sql = "SELECT * FROM hunt_events WHERE score >= ?"
         args: list[Any] = [int(min_score)]
@@ -605,17 +728,26 @@ class Store:
     def add_stix_object(self, obj: Mapping[str, Any]) -> bool:
         """Store a STIX 2.1 object (needs ``id`` and ``type``). Returns True if new/updated."""
         stix_id, stix_type = obj.get("id"), obj.get("type")
-        if not isinstance(stix_id, str) or not isinstance(stix_type, str) \
-                or not stix_id.startswith(f"{stix_type}--"):
+        if (
+            not isinstance(stix_id, str)
+            or not isinstance(stix_type, str)
+            or not stix_id.startswith(f"{stix_type}--")
+        ):
             raise ValueError("STIX object needs matching 'type' and 'id' (type--uuid)")
         with self._tx() as db:
             cur = db.execute(
                 "INSERT OR REPLACE INTO stix_objects(stix_id, type, added_at, json)"
-                " VALUES (?,?,?,?)", (stix_id, stix_type, _iso(), json.dumps(obj, default=str)))
+                " VALUES (?,?,?,?)",
+                (stix_id, stix_type, _iso(), json.dumps(obj, default=str)),
+            )
         return cur.rowcount > 0
 
-    def stix_objects(self, limit: int = 100, added_after: datetime | str | float | None = None,
-                     synthesize: bool = True) -> list[dict[str, Any]]:
+    def stix_objects(
+        self,
+        limit: int = 100,
+        added_after: datetime | str | float | None = None,
+        synthesize: bool = True,
+    ) -> list[dict[str, Any]]:
         """STIX objects for the TAXII feed, oldest-first by ``added_at`` (stable paging).
 
         Explicit objects come from the ``stix_objects`` table. With *synthesize*, malicious
@@ -629,16 +761,19 @@ class Store:
             db = self._db()
             rows = db.execute(
                 "SELECT json, added_at FROM stix_objects WHERE added_at > ?"
-                " ORDER BY added_at, stix_id LIMIT ?", (after, limit)).fetchall()
+                " ORDER BY added_at, stix_id LIMIT ?",
+                (after, limit),
+            ).fetchall()
             items: list[tuple[str, dict[str, Any]]] = [
-                (r["added_at"], _loads(r["json"], {})) for r in rows]
+                (r["added_at"], _loads(r["json"], {})) for r in rows
+            ]
             if synthesize:
                 for r in db.execute(
-                        "SELECT type, value, first_seen, last_seen FROM indicators"
-                        " WHERE malicious=1 AND last_seen > ? ORDER BY last_seen, id LIMIT ?",
-                        (after, limit)):
-                    obj = _indicator_to_stix(r["type"], r["value"], r["first_seen"],
-                                             r["last_seen"])
+                    "SELECT type, value, first_seen, last_seen FROM indicators"
+                    " WHERE malicious=1 AND last_seen > ? ORDER BY last_seen, id LIMIT ?",
+                    (after, limit),
+                ):
+                    obj = _indicator_to_stix(r["type"], r["value"], r["first_seen"], r["last_seen"])
                     if obj is not None:
                         items.append((r["last_seen"], obj))
         items.sort(key=lambda p: p[0])
@@ -646,9 +781,14 @@ class Store:
 
 
 _STIX_PATTERNS = {
-    "domain": "domain-name:value", "url": "url:value", "ipv4": "ipv4-addr:value",
-    "ipv6": "ipv6-addr:value", "email": "email-addr:value",
-    "sha256": "file:hashes.'SHA-256'", "sha1": "file:hashes.'SHA-1'", "md5": "file:hashes.MD5",
+    "domain": "domain-name:value",
+    "url": "url:value",
+    "ipv4": "ipv4-addr:value",
+    "ipv6": "ipv6-addr:value",
+    "email": "email-addr:value",
+    "sha256": "file:hashes.'SHA-256'",
+    "sha1": "file:hashes.'SHA-1'",
+    "md5": "file:hashes.MD5",
 }
 
 

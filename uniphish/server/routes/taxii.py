@@ -29,23 +29,27 @@ def _taxii(payload: dict[str, Any]) -> JSONResponse:
 @router.get("/taxii2/")
 def discovery(request: Request) -> JSONResponse:
     api_root = str(request.url_for("taxii_api_root"))
-    return _taxii({
-        "title": "UniPhish TAXII Server",
-        "description": "Phishing IOCs (STIX 2.1) with MITRE ATT&CK attribution.",
-        "contact": "https://github.com/jeevithg090/UniPhish",
-        "default": api_root,
-        "api_roots": [api_root],
-    })
+    return _taxii(
+        {
+            "title": "UniPhish TAXII Server",
+            "description": "Phishing IOCs (STIX 2.1) with MITRE ATT&CK attribution.",
+            "contact": "https://github.com/jeevithg090/UniPhish",
+            "default": api_root,
+            "api_roots": [api_root],
+        }
+    )
 
 
 @router.get("/taxii2/api/", name="taxii_api_root")
 def api_root() -> JSONResponse:
-    return _taxii({
-        "title": "UniPhish API root",
-        "description": "Read-only phishing threat-intel collections.",
-        "versions": [TAXII_MEDIA_TYPE],
-        "max_content_length": _MAX_CONTENT_LENGTH,
-    })
+    return _taxii(
+        {
+            "title": "UniPhish API root",
+            "description": "Read-only phishing threat-intel collections.",
+            "versions": [TAXII_MEDIA_TYPE],
+            "max_content_length": _MAX_CONTENT_LENGTH,
+        }
+    )
 
 
 @router.get("/taxii2/api/collections/")
@@ -61,17 +65,21 @@ def collection(collection_id: str) -> JSONResponse:
 
 
 @router.get("/taxii2/api/collections/{collection_id}/objects/")
-def objects(collection_id: str, store=Depends(get_store),
-            limit: int = Query(1000, ge=1, le=10000),
-            added_after: str | None = Query(None)) -> JSONResponse:
+def objects(
+    collection_id: str,
+    store=Depends(get_store),
+    limit: int = Query(1000, ge=1, le=10000),
+    added_after: str | None = Query(None),
+) -> JSONResponse:
     """Return the collection's STIX objects as a TAXII envelope (oldest-first paging)."""
     if collection_id != COLLECTION_ID:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Unknown collection.")
     try:
         objs = store.stix_objects(limit=limit, added_after=added_after)
     except (ValueError, TypeError) as exc:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST,
-                            detail="Invalid 'added_after' timestamp.") from exc
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, detail="Invalid 'added_after' timestamp."
+        ) from exc
     envelope: dict[str, Any] = {"more": False, "objects": objs}
     return JSONResponse(envelope, media_type=STIX_MEDIA_TYPE)
 

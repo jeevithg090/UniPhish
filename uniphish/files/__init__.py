@@ -19,6 +19,15 @@ from uniphish.files.static import (
 )
 
 __all__ = [
-    "INDICATOR_CATALOG", "FileAnalysis", "FileFacts", "FileIndicator", "QRCode",
-    "analyze_file", "classify_payload", "decode_qr", "qr_available", "qr_payload_urls", "sniff",
+    "INDICATOR_CATALOG",
+    "FileAnalysis",
+    "FileFacts",
+    "FileIndicator",
+    "QRCode",
+    "analyze_file",
+    "classify_payload",
+    "decode_qr",
+    "qr_available",
+    "qr_payload_urls",
+    "sniff",
 ]

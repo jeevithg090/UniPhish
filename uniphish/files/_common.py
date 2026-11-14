@@ -23,12 +23,12 @@ log = logging.getLogger("uniphish.files")
 # --------------------------------------------------------------------------- #
 # Resource limits
 # --------------------------------------------------------------------------- #
-MAX_SCAN_BYTES = 16_000_000        # text/regex scans never look past this many bytes
-MAX_CHILD_URLS = 100               # URLs returned for the engine to analyse as children
-MAX_URL_CHARS = 2_048              # longer "URLs" are almost certainly data blobs
-MAX_ARCHIVE_ENTRIES = 5_000        # archives with more entries are not listed
-MAX_MEMBER_BYTES = 5_000_000       # cap when reading one member out of a container
-MAX_RELS_FILES = 200               # OOXML relationship parts inspected
+MAX_SCAN_BYTES = 16_000_000  # text/regex scans never look past this many bytes
+MAX_CHILD_URLS = 100  # URLs returned for the engine to analyse as children
+MAX_URL_CHARS = 2_048  # longer "URLs" are almost certainly data blobs
+MAX_ARCHIVE_ENTRIES = 5_000  # archives with more entries are not listed
+MAX_MEMBER_BYTES = 5_000_000  # cap when reading one member out of a container
+MAX_RELS_FILES = 200  # OOXML relationship parts inspected
 MAX_DECLARED_UNCOMPRESSED = 1 << 30  # 1 GiB declared size => "zip bomb" indicator
 
 # --------------------------------------------------------------------------- #
@@ -37,52 +37,93 @@ MAX_DECLARED_UNCOMPRESSED = 1 << 30  # 1 GiB declared size => "zip bomb" indicat
 INDICATOR_CATALOG: dict[str, tuple[str, float, tuple[str, ...]]] = {
     # --- type of delivery -------------------------------------------------- #
     "file.type.executable": ("Executable program delivered as a file", 3.0, ("T1204.002",)),
-    "file.type.script": ("Script file (JS/VBS/PowerShell/batch/HTA) delivered as a file", 2.5,
-                         ("T1204.002", "T1059.007")),
+    "file.type.script": (
+        "Script file (JS/VBS/PowerShell/batch/HTA) delivered as a file",
+        2.5,
+        ("T1204.002", "T1059.007"),
+    ),
     "file.type.shortcut": ("Windows shortcut (.lnk) delivered as a file", 3.0, ("T1204.002",)),
-    "file.type.disk_image": ("Disk image (ISO/IMG/VHD) used to dodge mark-of-the-web", 2.0,
-                             ("T1553.005",)),
+    "file.type.disk_image": (
+        "Disk image (ISO/IMG/VHD) used to dodge mark-of-the-web",
+        2.0,
+        ("T1553.005",),
+    ),
     "file.type.html_attachment": ("HTML document delivered as a file", 0.8, ("T1566.001",)),
-    "file.type.onenote": ("OneNote file delivered as a file (embedded-object lure)", 1.5,
-                          ("T1204.002",)),
-    "file.executable.packed": ("Executable is packed or encrypted (very high entropy)", 1.0,
-                               ("T1027",)),
+    "file.type.onenote": (
+        "OneNote file delivered as a file (embedded-object lure)",
+        1.5,
+        ("T1204.002",),
+    ),
+    "file.executable.packed": (
+        "Executable is packed or encrypted (very high entropy)",
+        1.0,
+        ("T1027",),
+    ),
     # --- name / extension tricks ------------------------------------------- #
     "file.ext_mismatch": ("File content does not match its extension", 2.5, ("T1036",)),
-    "file.disguised_executable": ("Executable disguised under a harmless extension", 5.0,
-                                  ("T1036", "T1204.002")),
+    "file.disguised_executable": (
+        "Executable disguised under a harmless extension",
+        5.0,
+        ("T1036", "T1204.002"),
+    ),
     "file.double_extension": ("Double extension hides the real file type", 3.5, ("T1036.007",)),
-    "file.rtlo_filename": ("Filename uses a right-to-left override to fake its extension", 4.5,
-                           ("T1036",)),
+    "file.rtlo_filename": (
+        "Filename uses a right-to-left override to fake its extension",
+        4.5,
+        ("T1036",),
+    ),
     # --- archives ----------------------------------------------------------- #
-    "file.archive.encrypted": ("Password-protected archive hides its contents from scanners",
-                               2.0, ("T1027",)),
+    "file.archive.encrypted": (
+        "Password-protected archive hides its contents from scanners",
+        2.0,
+        ("T1027",),
+    ),
     "file.archive.nested": ("Archive contains another archive or disk image", 1.0, ("T1027",)),
     "file.archive.path_traversal": ("Archive entry names escape the extraction folder", 3.0, ()),
-    "file.archive.single_payload": ("Archive wraps a single executable/script/shortcut/macro "
-                                    "file", 2.5, ("T1204.002",)),
-    "file.archive.executable_entry": ("Archive contains an executable or script entry", 1.5,
-                                      ("T1204.002",)),
-    "file.archive.disguised_entry": ("Archive entry has a double extension or RTLO name", 3.0,
-                                     ("T1036.007",)),
+    "file.archive.single_payload": (
+        "Archive wraps a single executable/script/shortcut/macro file",
+        2.5,
+        ("T1204.002",),
+    ),
+    "file.archive.executable_entry": (
+        "Archive contains an executable or script entry",
+        1.5,
+        ("T1204.002",),
+    ),
+    "file.archive.disguised_entry": (
+        "Archive entry has a double extension or RTLO name",
+        3.0,
+        ("T1036.007",),
+    ),
     "file.archive.bomb": ("Archive declares an extreme expansion ratio (zip bomb)", 1.5, ()),
     "file.archive.too_many_entries": ("Archive has too many entries to inspect safely", 0.5, ()),
     "file.archive.malformed": ("Archive structure is corrupt or unreadable", 0.3, ()),
     # --- Office ------------------------------------------------------------- #
     "file.office.macro": ("Office document contains VBA macros", 2.5, ("T1204.002",)),
-    "file.office.autoexec": ("Macro runs automatically when the document opens", 3.0,
-                             ("T1204.002",)),
-    "file.office.suspicious_keywords": ("Macro uses download/execute/obfuscation keywords", 2.0,
-                                        ("T1059.001",)),
-    "file.office.remote_template": ("Document loads a remote template (template injection)", 4.0,
-                                    ("T1204.002",)),
+    "file.office.autoexec": (
+        "Macro runs automatically when the document opens",
+        3.0,
+        ("T1204.002",),
+    ),
+    "file.office.suspicious_keywords": (
+        "Macro uses download/execute/obfuscation keywords",
+        2.0,
+        ("T1059.001",),
+    ),
+    "file.office.remote_template": (
+        "Document loads a remote template (template injection)",
+        4.0,
+        ("T1204.002",),
+    ),
     "file.office.external_object": ("Document links an external OLE object or frame", 2.0, ()),
-    "file.office.protocol_handler": ("Document references a risky URL protocol handler", 5.0,
-                                     ("T1204.002",)),
+    "file.office.protocol_handler": (
+        "Document references a risky URL protocol handler",
+        5.0,
+        ("T1204.002",),
+    ),
     "file.office.dde": ("Document uses DDE field execution", 4.0, ("T1204.002",)),
     "file.office.xlm_macro": ("Excel 4.0 (XLM) macro sheet present", 3.0, ("T1204.002",)),
-    "file.office.embedded_object": ("Document embeds an OLE/ActiveX object", 1.5,
-                                    ("T1027.009",)),
+    "file.office.embedded_object": ("Document embeds an OLE/ActiveX object", 1.5, ("T1027.009",)),
     # --- PDF ---------------------------------------------------------------- #
     "file.pdf.open_action": ("PDF runs an action automatically on open", 1.0, ()),
     "file.pdf.javascript": ("PDF contains JavaScript", 2.5, ("T1059.007",)),
@@ -90,23 +131,36 @@ INDICATOR_CATALOG: dict[str, tuple[str, float, tuple[str, ...]]] = {
     "file.pdf.uri": ("PDF contains outbound link(s)", 0.4, ("T1566.002",)),
     "file.pdf.embedded_file": ("PDF embeds another file", 1.5, ("T1027.009",)),
     "file.pdf.submit_form": ("PDF form submits data to a remote server", 1.5, ()),
-    "file.pdf.obfuscated_names": ("PDF keywords are hex-escaped to evade scanners", 2.0,
-                                  ("T1027",)),
+    "file.pdf.obfuscated_names": (
+        "PDF keywords are hex-escaped to evade scanners",
+        2.0,
+        ("T1027",),
+    ),
     # --- HTML / SVG --------------------------------------------------------- #
-    "file.html.smuggling.payload": ("Embedded base64 blob decodes to an executable/archive", 5.5,
-                                    ("T1027.006", "T1204.002")),
-    "file.html.smuggling.pattern": ("Blob + download-anchor pattern (HTML smuggling)", 3.0,
-                                    ("T1027.006",)),
-    "file.html.password_form": ("Attached page contains a password field", 3.5,
-                                ("T1056.003",)),
-    "file.html.external_form_action": ("Attached page form posts to a remote URL", 2.0,
-                                       ("T1056.003",)),
+    "file.html.smuggling.payload": (
+        "Embedded base64 blob decodes to an executable/archive",
+        5.5,
+        ("T1027.006", "T1204.002"),
+    ),
+    "file.html.smuggling.pattern": (
+        "Blob + download-anchor pattern (HTML smuggling)",
+        3.0,
+        ("T1027.006",),
+    ),
+    "file.html.password_form": ("Attached page contains a password field", 3.5, ("T1056.003",)),
+    "file.html.external_form_action": (
+        "Attached page form posts to a remote URL",
+        2.0,
+        ("T1056.003",),
+    ),
     "file.html.meta_refresh": ("Attached page redirects via meta refresh", 1.5, ()),
-    "file.html.obfuscated_script": ("Heavily obfuscated script (eval/atob/escape chains)", 1.5,
-                                    ("T1027",)),
+    "file.html.obfuscated_script": (
+        "Heavily obfuscated script (eval/atob/escape chains)",
+        1.5,
+        ("T1027",),
+    ),
     "file.html.large_base64": ("Very large base64 blob embedded in the document", 1.0, ()),
-    "file.html.data_uri_navigation": ("Link/frame points at an embedded data: document", 2.0,
-                                      ()),
+    "file.html.data_uri_navigation": ("Link/frame points at an embedded data: document", 2.0, ()),
     "file.svg.script": ("SVG image contains script", 3.5, ("T1059.007",)),
     "file.svg.foreign_object": ("SVG embeds HTML via foreignObject", 2.5, ()),
     "file.svg.external_ref": ("SVG loads external content", 1.5, ()),
@@ -115,10 +169,16 @@ INDICATOR_CATALOG: dict[str, tuple[str, float, tuple[str, ...]]] = {
     "file.svg.redirect": ("SVG script redirects the browser", 3.0, ("T1059.007",)),
     "file.svg.xml_entities": ("SVG declares XML entities (entity-expansion attack)", 2.0, ()),
     # --- scripts / shortcuts ------------------------------------------------ #
-    "file.script.suspicious_commands": ("Script downloads or runs hidden/encoded commands", 3.0,
-                                        ("T1059.001",)),
-    "file.lnk.command": ("Shortcut embeds an interpreter command line", 4.0,
-                         ("T1059.001", "T1204.002")),
+    "file.script.suspicious_commands": (
+        "Script downloads or runs hidden/encoded commands",
+        3.0,
+        ("T1059.001",),
+    ),
+    "file.lnk.command": (
+        "Shortcut embeds an interpreter command line",
+        4.0,
+        ("T1059.001", "T1204.002"),
+    ),
 }
 
 # --------------------------------------------------------------------------- #
@@ -148,15 +208,29 @@ class FileIndicator:
         return (self.code, self.detail, self.weight)
 
     def to_dict(self) -> dict[str, Any]:
-        return {"code": self.code, "title": self.title, "detail": self.detail,
-                "weight": self.weight, "mitre": list(self.mitre), "evidence": self.evidence}
+        return {
+            "code": self.code,
+            "title": self.title,
+            "detail": self.detail,
+            "weight": self.weight,
+            "mitre": list(self.mitre),
+            "evidence": self.evidence,
+        }
 
 
 # Hosts that appear only as XML namespaces / schema identifiers; never real destinations.
 _NAMESPACE_HOSTS = (
-    "w3.org", "schemas.openxmlformats.org", "schemas.microsoft.com", "purl.org",
-    "xmlsoft.org", "ns.adobe.com", "inkscape.org", "sodipodi.sourceforge.net",
-    "creativecommons.org", "openoffice.org", "docs.oasis-open.org",
+    "w3.org",
+    "schemas.openxmlformats.org",
+    "schemas.microsoft.com",
+    "purl.org",
+    "xmlsoft.org",
+    "ns.adobe.com",
+    "inkscape.org",
+    "sodipodi.sourceforge.net",
+    "creativecommons.org",
+    "openoffice.org",
+    "docs.oasis-open.org",
 )
 _URL_SCHEMES = ("http://", "https://", "ftp://")
 _FALLBACK_URL_RE = re.compile(r"(?i)\bhttps?://[^\s<>\"'`\]\}]{1,2000}")
@@ -181,8 +255,9 @@ class Findings:
         self._urlset: set[str] = set()
 
     # ---- indicators ------------------------------------------------------- #
-    def add(self, code: str, detail: str, weight: float | None = None,
-            **evidence: Any) -> FileIndicator | None:
+    def add(
+        self, code: str, detail: str, weight: float | None = None, **evidence: Any
+    ) -> FileIndicator | None:
         """Record an indicator once per code (first detail wins). Unknown codes raise."""
         spec = INDICATOR_CATALOG[code]
         if code in self._codes:
@@ -204,9 +279,13 @@ class Findings:
     def add_url(self, url: str) -> bool:
         """Add an http/https/ftp URL for child analysis (deduped, bounded)."""
         url = (url or "").strip()
-        if (not url.lower().startswith(_URL_SCHEMES) or len(url) > MAX_URL_CHARS
-                or url in self._urlset or len(self.urls) >= MAX_CHILD_URLS
-                or _is_noise_host(url)):
+        if (
+            not url.lower().startswith(_URL_SCHEMES)
+            or len(url) > MAX_URL_CHARS
+            or url in self._urlset
+            or len(self.urls) >= MAX_CHILD_URLS
+            or _is_noise_host(url)
+        ):
             return False
         self._urlset.add(url)
         self.urls.append(url)
@@ -248,7 +327,7 @@ def sniff_magic(head: bytes) -> str | None:
         off = int.from_bytes(head[0x3C:0x40], "little")
         if 0x40 <= off <= 0x100000:
             if off + 4 <= len(head):
-                return "pe" if head[off:off + 4] == b"PE\x00\x00" else "dos"
+                return "pe" if head[off : off + 4] == b"PE\x00\x00" else "dos"
             return "pe"
         return None
     table: tuple[tuple[bytes, str], ...] = (
@@ -295,5 +374,6 @@ def sniff_magic(head: bytes) -> str | None:
 
 
 #: Types that, when found *decoded from an embedded blob*, indicate smuggled delivery.
-SMUGGLED_TYPES = frozenset({"pe", "dos", "elf", "macho", "zip", "rar", "7z", "cab", "iso",
-                            "lnk", "ole", "gzip", "onenote"})
+SMUGGLED_TYPES = frozenset(
+    {"pe", "dos", "elf", "macho", "zip", "rar", "7z", "cab", "iso", "lnk", "ole", "gzip", "onenote"}
+)
