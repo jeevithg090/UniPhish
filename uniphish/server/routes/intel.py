@@ -52,8 +52,8 @@ def get_verdict(verdict_id: str, store=Depends(get_store)) -> dict[str, Any]:
 
 @router.get("/stats")
 def stats(store=Depends(get_store)) -> dict[str, Any]:
-    """Aggregate counts, score histogram and store sizes for the dashboard."""
-    return store.stats()
+    """Aggregate counts, score histogram, store sizes and a 24 h hourly timeline."""
+    return {**store.stats(), "timeline": store.timeline(24)}
 
 
 @router.get("/indicators")
