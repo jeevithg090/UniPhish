@@ -1,8 +1,23 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
-export function Card({ title, right, children, className = "", id }: { title?: ReactNode; right?: ReactNode; children: ReactNode; className?: string; id?: string }) {
+export function Card({
+  title,
+  right,
+  children,
+  className = "",
+  id,
+}: {
+  title?: ReactNode;
+  right?: ReactNode;
+  children: ReactNode;
+  className?: string;
+  id?: string;
+}) {
   return (
-    <section id={id} className={`rounded-2xl border border-line bg-panel/80 backdrop-blur ${className}`}>
+    <section
+      id={id}
+      className={`rounded-2xl border border-line bg-panel/80 backdrop-blur ${className}`}
+    >
       {(title || right) && (
         <header className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3">
           <h2 className="text-sm font-semibold tracking-wide text-ink">{title}</h2>
@@ -14,9 +29,20 @@ export function Card({ title, right, children, className = "", id }: { title?: R
   );
 }
 
-export function Chip({ children, className = "", title }: { children: ReactNode; className?: string; title?: string }) {
+export function Chip({
+  children,
+  className = "",
+  title,
+}: {
+  children: ReactNode;
+  className?: string;
+  title?: string;
+}) {
   return (
-    <span title={title} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${className}`}>
+    <span
+      title={title}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${className}`}
+    >
       {children}
     </span>
   );
@@ -27,7 +53,12 @@ export function Spinner({ label = "Loading" }: { label?: string }) {
     <span role="status" className="inline-flex items-center gap-2 text-sm text-mute">
       <svg className="spin h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity=".25" strokeWidth="3" />
-        <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+        <path
+          d="M21 12a9 9 0 0 0-9-9"
+          stroke="currentColor"
+          strokeWidth="3"
+          strokeLinecap="round"
+        />
       </svg>
       {label}
     </span>
@@ -36,10 +67,17 @@ export function Spinner({ label = "Loading" }: { label?: string }) {
 
 export function ErrorBox({ error, onRetry }: { error: string; onRetry?: () => void }) {
   return (
-    <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-bad/40 bg-bad/10 px-4 py-3 text-sm text-bad">
+    <div
+      role="alert"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-bad/40 bg-bad/10 px-4 py-3 text-sm text-bad"
+    >
       <span>{error}</span>
       {onRetry && (
-        <button onClick={onRetry} className="rounded-lg border border-bad/40 px-3 py-1 text-xs font-medium hover:bg-bad/10">
+        <button
+          type="button"
+          onClick={onRetry}
+          className="rounded-lg border border-bad/40 px-3 py-1 text-xs font-medium hover:bg-bad/10"
+        >
           Retry
         </button>
       )}
@@ -48,12 +86,21 @@ export function ErrorBox({ error, onRetry }: { error: string; onRetry?: () => vo
 }
 
 export function Empty({ children }: { children: ReactNode }) {
-  return <p className="rounded-xl border border-dashed border-line px-4 py-8 text-center text-sm text-mute">{children}</p>;
+  return (
+    <p className="rounded-xl border border-dashed border-line px-4 py-8 text-center text-sm text-mute">
+      {children}
+    </p>
+  );
 }
 
 export function useTimeout() {
   const t = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => { if (t.current) clearTimeout(t.current); }, []);
+  useEffect(
+    () => () => {
+      if (t.current) clearTimeout(t.current);
+    },
+    [],
+  );
   return useCallback((fn: () => void, ms: number) => {
     if (t.current) clearTimeout(t.current);
     t.current = setTimeout(fn, ms);
@@ -82,7 +129,15 @@ export async function copyText(text: string): Promise<boolean> {
   }
 }
 
-export function CopyButton({ text, label = "Copy", className = "" }: { text: string; label?: string; className?: string }) {
+export function CopyButton({
+  text,
+  label = "Copy",
+  className = "",
+}: {
+  text: string;
+  label?: string;
+  className?: string;
+}) {
   const [state, setState] = useState<"idle" | "ok" | "fail">("idle");
   const later = useTimeout();
   return (

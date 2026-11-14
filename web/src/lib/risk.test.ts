@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import type { Verdict } from "../api/types";
+import { defang, refang } from "./defang";
 import {
-  PRIOR_LOGIT,
   buildSegments,
   buildWaterfall,
   collectIndicators,
@@ -8,12 +9,11 @@ import {
   formatMs,
   levelFromScore,
   normLevel,
+  PRIOR_LOGIT,
   revealInvisible,
   segmentClass,
   sigmoid,
 } from "./risk";
-import { defang, refang } from "./defang";
-import type { Verdict } from "../api/types";
 
 const sig = (id: string, weight: number, contribution?: number, span?: [number, number]) => ({
   id,
@@ -94,7 +94,9 @@ describe("waterfall", () => {
 
 describe("segments", () => {
   it("returns a single plain segment without spans", () => {
-    expect(buildSegments("hello", [sig("a", 1)])).toEqual([{ text: "hello", signals: [], weight: 0 }]);
+    expect(buildSegments("hello", [sig("a", 1)])).toEqual([
+      { text: "hello", signals: [], weight: 0 },
+    ]);
   });
   it("splits on spans and rebuilds the original text", () => {
     const text = "https://paypa1.test/login";

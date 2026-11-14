@@ -1,6 +1,6 @@
-import { defineConfig } from "vitest/config";
-import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vitest/config";
 
 // The console is a static SPA. It is built straight into the Python package so the
 // API can serve it with no Node at runtime. `base: "./"` keeps asset URLs relative,

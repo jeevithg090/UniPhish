@@ -29,21 +29,32 @@ export function AnalyzerTable({ runs, totalMs }: { runs: AnalyzerRun[]; totalMs:
             <tr key={`${r.name}${i}`}>
               <td className="py-1.5 pr-3 font-mono">{r.name}</td>
               <td className="py-1.5 pr-3">
-                <Chip className={STATUS[r.status] ?? STATUS.skipped} title={r.error ?? undefined}>{r.status}</Chip>
+                <Chip className={STATUS[r.status] ?? STATUS.skipped} title={r.error ?? undefined}>
+                  {r.status}
+                </Chip>
                 {r.error && <span className="ml-2 text-xs text-bad">{r.error}</span>}
               </td>
               <td className="py-1.5 pr-3 text-right tabular-nums">{r.signals}</td>
               <td className="py-1.5">
                 <span className="flex items-center gap-2">
-                  <span className="h-1.5 w-24 overflow-hidden rounded bg-panel2"><span className="block h-full rounded bg-accent/70" style={{ width: `${(r.duration_ms / max) * 100}%` }} /></span>
-                  <span className="font-mono text-xs tabular-nums text-mute">{formatMs(r.duration_ms)}</span>
+                  <span className="h-1.5 w-24 overflow-hidden rounded bg-panel2">
+                    <span
+                      className="block h-full rounded bg-accent/70"
+                      style={{ width: `${(r.duration_ms / max) * 100}%` }}
+                    />
+                  </span>
+                  <span className="font-mono text-xs tabular-nums text-mute">
+                    {formatMs(r.duration_ms)}
+                  </span>
                 </span>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      <p className="mt-2 text-xs text-mute">Wall-clock total: {formatMs(totalMs)} (analyzers run concurrently within a stage).</p>
+      <p className="mt-2 text-xs text-mute">
+        Wall-clock total: {formatMs(totalMs)} (analyzers run concurrently within a stage).
+      </p>
     </div>
   );
 }
