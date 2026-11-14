@@ -291,6 +291,34 @@ def test_rate_limit_trips(tmp_path):
     assert codes.index(429) >= 3  # first 3 pass, then the bucket empties
 
 
+def test_rate_limit_not_bypassed_by_rotating_invalid_keys(tmp_path):
+    """A fresh junk key per request must not mint a fresh bucket (falls back to the IP)."""
+    app = create_app(make_settings(tmp_path, rate_limit_per_minute=3, api_keys=["real-key"]))
+    with TestClient(app) as c:
+        codes = [c.get("/v1/health", headers={"x-api-key": f"junk-{i}"}).status_code
+                 for i in range(6)]
+    assert 429 in codes
+
+
+def test_rate_limit_valid_key_gets_own_bucket(tmp_path):
+    app = create_app(make_settings(tmp_path, rate_limit_per_minute=2, api_keys=["real-key"]))
+    with TestClient(app) as c:
+        assert [c.get("/v1/health").status_code for _ in range(3)][-1] == 429
+        # the authenticated caller is metered separately from the anonymous IP bucket
+        assert c.get("/v1/health", headers={"x-api-key": "real-key"}).status_code == 200
+
+
+def test_rate_limiter_memory_is_bounded():
+    now = [0.0]
+    rl = security.RateLimiter(60, max_identities=50, clock=lambda: now[0])
+    for i in range(500):
+        assert rl.allow(f"ip:10.0.{i // 256}.{i % 256}")
+    assert len(rl) <= 50
+    # an identity that is still draining its bucket keeps being limited after eviction runs
+    hot = security.RateLimiter(2, max_identities=4, clock=lambda: now[0])
+    assert hot.allow("hot") and hot.allow("hot") and not hot.allow("hot")
+
+
 # --------------------------------------------------------------------------- #
 # request size cap
 # --------------------------------------------------------------------------- #
@@ -300,6 +328,32 @@ def test_request_size_cap(tmp_path, monkeypatch):
     with TestClient(app) as c:
         r = c.post("/v1/scan/url", json={"url": "http://example.com/a-fairly-long-url-path"})
     assert r.status_code == 413
+
+
+def test_request_size_cap_applies_to_chunked_body(tmp_path, monkeypatch):
+    """No Content-Length (chunked transfer): the streamed byte count is still capped."""
+    monkeypatch.setattr(security, "MAX_REQUEST_BYTES", 40)
+    app = create_app(make_settings(tmp_path))
+    payload = b'{"url": "http://example.com/a-fairly-long-url-path-that-is-over-the-cap"}'
+
+    def chunks():
+        for i in range(0, len(payload), 8):
+            yield payload[i:i + 8]
+
+    with TestClient(app) as c:
+        r = c.post("/v1/scan/url", content=chunks(),
+                   headers={"content-type": "application/json"})
+    assert r.status_code == 413
+    assert r.json()["detail"] == "Request body too large."
+
+
+def test_small_chunked_body_still_accepted(tmp_path):
+    app = create_app(make_settings(tmp_path))
+    payload = b'{"url": "http://example.com/"}'
+    with TestClient(app) as c:
+        r = c.post("/v1/scan/url", content=iter([payload[:10], payload[10:]]),
+                   headers={"content-type": "application/json"})
+    assert r.status_code == 200
 
 
 # --------------------------------------------------------------------------- #
