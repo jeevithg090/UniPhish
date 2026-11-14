@@ -1,5 +1,13 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens. Every colour in the console comes from these variables, so the
+ * light and dark themes only differ here. Text colours (ink, mute) and the status
+ * colours meet WCAG AA (>= 4.5:1) against bg, panel and panel2 in both themes.
+ *
+ * The theme follows the OS setting unless the user picks one with the header
+ * toggle, which sets <html data-theme="light|dark"> (see public/theme-init.js).
+ */
 @theme {
   --color-bg: #070b14;
   --color-panel: #0e1424;
@@ -8,6 +16,7 @@
   --color-ink: #e6ebf7;
   --color-mute: #93a0bf;
   --color-accent: #5eead4;
+  --color-on-accent: #04201c;
   --color-ok: #4ade80;
   --color-warn: #fbbf24;
   --color-bad: #fb7185;
@@ -16,21 +25,91 @@
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 }
 
-html { color-scheme: dark; }
-body {
-  margin: 0;
-  background:
-    radial-gradient(1200px 500px at 10% -10%, rgb(94 234 212 / 0.07), transparent 60%),
-    radial-gradient(900px 500px at 100% 0%, rgb(96 165 250 / 0.06), transparent 60%),
-    var(--color-bg);
-  color: var(--color-ink);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-  min-height: 100vh;
-}
-::selection { background: rgb(94 234 212 / 0.3); }
+@layer base {
+  :root {
+    color-scheme: dark;
+    --glow-a: rgb(94 234 212 / 0.07);
+    --glow-b: rgb(96 165 250 / 0.06);
+  }
 
-:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; border-radius: 4px; }
+  /* Light palette: system preference (unless the user forced dark) or explicit choice. */
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      color-scheme: light;
+      --color-bg: #f4f6fb;
+      --color-panel: #ffffff;
+      --color-panel2: #eef2f8;
+      --color-line: #d5dce8;
+      --color-ink: #0f172a;
+      --color-mute: #4a5672;
+      --color-accent: #0f766e;
+      --color-on-accent: #ffffff;
+      --color-ok: #15803d;
+      --color-warn: #a15c07;
+      --color-bad: #be123c;
+      --color-info: #1d4ed8;
+      --glow-a: rgb(15 118 110 / 0.06);
+      --glow-b: rgb(29 78 216 / 0.05);
+    }
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --color-bg: #f4f6fb;
+    --color-panel: #ffffff;
+    --color-panel2: #eef2f8;
+    --color-line: #d5dce8;
+    --color-ink: #0f172a;
+    --color-mute: #4a5672;
+    --color-accent: #0f766e;
+    --color-on-accent: #ffffff;
+    --color-ok: #15803d;
+    --color-warn: #a15c07;
+    --color-bad: #be123c;
+    --color-info: #1d4ed8;
+    --glow-a: rgb(15 118 110 / 0.06);
+    --glow-b: rgb(29 78 216 / 0.05);
+  }
+
+  body {
+    margin: 0;
+    background:
+      radial-gradient(1200px 500px at 10% -10%, var(--glow-a), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, var(--glow-b), transparent 60%),
+      var(--color-bg);
+    background-attachment: fixed;
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  ::selection { background: color-mix(in oklab, var(--color-accent) 30%, transparent); }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  button, a, select, input, textarea, label {
+    transition-property: color, background-color, border-color, opacity, filter, box-shadow;
+    transition-duration: 0.15s;
+    transition-timing-function: ease;
+  }
+
+  button:not(:disabled), select, label[for] { cursor: pointer; }
+
+  /* Comfortable touch targets on coarse pointers (phones, tablets). */
+  @media (pointer: coarse) {
+    button, select, label[for],
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]) {
+      min-height: 40px;
+    }
+    label:has(> input[type="checkbox"]) { min-height: 36px; }
+    input[type="checkbox"] { width: 1.1rem; height: 1.1rem; }
+  }
+}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
@@ -40,6 +119,8 @@ body {
 .pulse-dot { animation: pulse-dot 1.6s ease-in-out infinite; }
 @keyframes slide-in { from { opacity: 0; transform: translateY(-6px) } to { opacity: 1; transform: none } }
 .slide-in { animation: slide-in .25s ease-out; }
+@keyframes fade-in { from { opacity: 0 } to { opacity: 1 } }
+.fade-in { animation: fade-in .2s ease-out; }
 @keyframes spin { to { transform: rotate(360deg) } }
 .spin { animation: spin .8s linear infinite; }
 

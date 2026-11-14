@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, type StatsView } from "../api/client";
 import type { TimelineBucket, VerdictRow } from "../api/types";
 import { Card, Chip, Empty, ErrorBox, relTime, Spinner } from "../components/ui";
@@ -27,76 +27,94 @@ function useLoad<T>(fn: (s: AbortSignal) => Promise<T>, deps: readonly unknown[]
   return { data, error, loading, reload: useCallback(() => setTick((t) => t + 1), []) };
 }
 
+/** Width of an element, tracked so SVG charts can draw at 1:1 and keep labels legible. */
+function useWidth<T extends HTMLElement>(fallback: number) {
+  const ref = useRef<T>(null);
+  const [w, setW] = useState(fallback);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(([e]) => setW(Math.max(240, Math.round(e.contentRect.width))));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  return [ref, w] as const;
+}
+
 export function Timeline({ buckets }: { buckets: TimelineBucket[] }) {
-  const W = 720,
-    H = 150,
+  const [box, W] = useWidth<HTMLDivElement>(720);
+  const H = 150,
     P = { l: 28, r: 6, t: 8, b: 20 };
   const max = Math.max(1, ...buckets.map((b) => b.total));
   const bw = (W - P.l - P.r) / Math.max(buckets.length, 1);
   const y = (n: number) => (n / max) * (H - P.t - P.b);
   if (!buckets.length) return <Empty>No timeline data yet.</Empty>;
   return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      className="w-full"
-      role="img"
-      aria-label={`Verdicts per hour over the last ${buckets.length} hours, peak ${max}`}
-    >
-      {[0, 0.5, 1].map((f) => (
-        <g key={f}>
-          <line
-            x1={P.l}
-            x2={W - P.r}
-            y1={H - P.b - f * (H - P.t - P.b)}
-            y2={H - P.b - f * (H - P.t - P.b)}
-            stroke="var(--color-line)"
-            strokeWidth="1"
-          />
+    <div ref={box}>
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        width={W}
+        height={H}
+        className="block max-w-full"
+        role="img"
+        aria-label={`Verdicts per hour over the last ${buckets.length} hours, peak ${max}`}
+      >
+        {[0, 0.5, 1].map((f) => (
+          <g key={f}>
+            <line
+              x1={P.l}
+              x2={W - P.r}
+              y1={H - P.b - f * (H - P.t - P.b)}
+              y2={H - P.b - f * (H - P.t - P.b)}
+              stroke="var(--color-line)"
+              strokeWidth="1"
+            />
+            <text
+              x={P.l - 4}
+              y={H - P.b - f * (H - P.t - P.b) + 3}
+              textAnchor="end"
+              fontSize="10"
+              fill="var(--color-mute)"
+            >
+              {Math.round(max * f)}
+            </text>
+          </g>
+        ))}
+        {buckets.map((b, i) => {
+          const x = P.l + i * bw + bw * 0.12;
+          const w = bw * 0.76;
+          let base = H - P.b;
+          const parts: [number, string][] = [
+            [b.benign, "var(--color-ok)"],
+            [b.suspicious, "var(--color-warn)"],
+            [b.malicious, "var(--color-bad)"],
+          ];
+          return (
+            <g key={b.hour}>
+              <title>{`${b.hour.slice(5, 16).replace("T", " ")}: ${b.total} (benign ${b.benign}, suspicious ${b.suspicious}, malicious ${b.malicious})`}</title>
+              {parts.map(([n, c], k) => {
+                if (!n) return null;
+                const h = y(n);
+                base -= h;
+                return <rect key={k} x={x} y={base} width={w} height={h} fill={c} rx="1" />;
+              })}
+            </g>
+          );
+        })}
+        {[0, Math.floor(buckets.length / 2), buckets.length - 1].map((i) => (
           <text
-            x={P.l - 4}
-            y={H - P.b - f * (H - P.t - P.b) + 3}
-            textAnchor="end"
-            fontSize="9"
+            key={i}
+            x={P.l + i * bw + bw / 2}
+            y={H - 5}
+            textAnchor="middle"
+            fontSize="10"
             fill="var(--color-mute)"
           >
-            {Math.round(max * f)}
+            {buckets[i].hour.slice(11, 13)}:00
           </text>
-        </g>
-      ))}
-      {buckets.map((b, i) => {
-        const x = P.l + i * bw + bw * 0.12;
-        const w = bw * 0.76;
-        let base = H - P.b;
-        const parts: [number, string][] = [
-          [b.benign, "var(--color-ok)"],
-          [b.suspicious, "var(--color-warn)"],
-          [b.malicious, "var(--color-bad)"],
-        ];
-        return (
-          <g key={b.hour}>
-            <title>{`${b.hour.slice(5, 16).replace("T", " ")}: ${b.total} (benign ${b.benign}, suspicious ${b.suspicious}, malicious ${b.malicious})`}</title>
-            {parts.map(([n, c], k) => {
-              if (!n) return null;
-              const h = y(n);
-              base -= h;
-              return <rect key={k} x={x} y={base} width={w} height={h} fill={c} rx="1" />;
-            })}
-          </g>
-        );
-      })}
-      {[0, Math.floor(buckets.length / 2), buckets.length - 1].map((i) => (
-        <text
-          key={i}
-          x={P.l + i * bw + bw / 2}
-          y={H - 5}
-          textAnchor="middle"
-          fontSize="9"
-          fill="var(--color-mute)"
-        >
-          {buckets[i].hour.slice(11, 13)}:00
-        </text>
-      ))}
-    </svg>
+        ))}
+      </svg>
+    </div>
   );
 }
 
@@ -282,16 +300,16 @@ export function VerdictsView({ onOpenVerdict }: { onOpenVerdict: (id: string) =>
         ) : !rows.data || rows.data.length === 0 ? (
           <Empty>No verdicts match. Analyze something to populate history.</Empty>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[34rem] text-left text-sm">
+          <div>
+            <table className="w-full table-fixed text-left text-sm">
               <caption className="sr-only">Recent verdicts</caption>
               <thead className="text-xs uppercase tracking-wider text-mute">
                 <tr>
-                  <th className="py-1.5 pr-3 font-medium">Score</th>
-                  <th className="py-1.5 pr-3 font-medium">Kind</th>
+                  <th className="w-16 py-1.5 pr-3 font-medium">Score</th>
+                  <th className="w-14 py-1.5 pr-3 font-medium">Kind</th>
                   <th className="py-1.5 pr-3 font-medium">Target</th>
-                  <th className="py-1.5 pr-3 font-medium">Brand</th>
-                  <th className="py-1.5 text-right font-medium">When</th>
+                  <th className="hidden w-32 py-1.5 pr-3 font-medium sm:table-cell">Brand</th>
+                  <th className="w-20 py-1.5 text-right font-medium">When</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
@@ -305,17 +323,19 @@ export function VerdictsView({ onOpenVerdict }: { onOpenVerdict: (id: string) =>
                       </Chip>
                     </td>
                     <td className="py-2 pr-3 text-mute">{r.kind}</td>
-                    <td className="max-w-[28rem] py-2 pr-3">
+                    <td className="py-2 pr-3">
                       <button
                         type="button"
                         onClick={() => onOpenVerdict(r.id)}
-                        className="block max-w-full truncate text-left font-mono hover:text-accent"
+                        className="block w-full truncate text-left font-mono hover:text-accent"
                         title={r.target}
                       >
                         {r.target}
                       </button>
                     </td>
-                    <td className="py-2 pr-3 text-mute">{r.brand ?? ""}</td>
+                    <td className="hidden truncate py-2 pr-3 text-mute sm:table-cell">
+                      {r.brand ?? ""}
+                    </td>
                     <td className="py-2 text-right text-xs text-mute">
                       <time dateTime={r.created_at}>{relTime(r.created_at)}</time>
                     </td>
