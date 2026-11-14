@@ -1,0 +1,4 @@
+# Bulk formatting commits; hidden from `git blame` with:
+#   git config blame.ignoreRevsFile .git-blame-ignore-revs
+# style: adopt ruff format across the Python tree
+27b1669bdcffa2eadabd827ae5cfa247ed7b017c
