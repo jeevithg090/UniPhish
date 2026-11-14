@@ -190,6 +190,14 @@ def test_verdicts_and_stats(client):
     assert stats["verdicts"] >= 1 and "by_level" in stats
 
 
+def test_stats_include_hourly_timeline(client):
+    client.post("/v1/scan/url", json={"url": "http://paypal-login.evil.test/x"})
+    timeline = client.get("/v1/stats").json()["timeline"]
+    assert len(timeline) == 24  # zero-filled, oldest first
+    assert set(timeline[-1]) == {"hour", "total", "benign", "suspicious", "malicious"}
+    assert sum(b["total"] for b in timeline) >= 1  # the scan above lands in the current hour
+
+
 def test_no_persist_option(client):
     client.post("/v1/scan/url", json={"url": "http://a.test", "options": {"persist": False}})
     assert client.get("/v1/stats").json()["verdicts"] == 0

@@ -108,7 +108,7 @@ like when the `url` analyzer times out; a warm scan of the same URL scores 100.)
 |---|---|
 | `GET /v1/verdicts?limit=50&min_score=0&kind=&level=` | newest-first metadata rows (limit 1 to 500) |
 | `GET /v1/verdicts/{id}` | the full verdict |
-| `GET /v1/stats` | counts by level and kind, 10-bucket score histogram, store sizes |
+| `GET /v1/stats` | counts by level and kind, 10-bucket score histogram, store sizes, and `timeline`: 24 zero-filled hourly buckets (`hour`, `total`, `benign`, `suspicious`, `malicious`) |
 | `GET /v1/indicators?type=&value=&limit=100&malicious_only=` | look up an IOC by type and exact value, or list recent ones |
 | `GET /v1/meta/analyzers` | the detection catalog: analyzers with stage, kinds, flags and every signal id and title |
 | `GET /v1/meta/version` | package, engine and schema versions |
