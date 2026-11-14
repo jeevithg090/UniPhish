@@ -3,19 +3,35 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="color-scheme" content="dark" />
-    <meta name="theme-color" content="#070b14" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="theme-color" content="#070b14" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f4f6fb" media="(prefers-color-scheme: light)" />
     <meta
       name="description"
       content="UniPhish SOC console: explainable phishing verdicts for URLs, pages, emails, files and text."
     />
     <meta name="referrer" content="no-referrer" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="UniPhish" />
+    <meta property="og:title" content="UniPhish 2 - SOC Console" />
+    <meta
+      property="og:description"
+      content="Explainable, multilingual phishing detection for URLs, web pages, emails, files and QR codes."
+    />
+    <meta name="twitter:card" content="summary" />
     <title>UniPhish 2 - SOC Console</title>
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
-    <script type="module" crossorigin src="./assets/index-X3FH-68K.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-C2MmMaE7.css">
+    <script src="./theme-init.js"></script>
+    <script type="module" crossorigin src="./assets/index-YPaqlV4i.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-dMBCtvLQ.css">
   </head>
   <body>
+    <noscript>
+      <p style="padding: 2rem; font-family: system-ui, sans-serif">
+        The UniPhish console needs JavaScript. The REST API is available at <code>/v1</code>
+        (see <code>/docs</code>), and the CLI works without a browser.
+      </p>
+    </noscript>
     <div id="root"></div>
   </body>
 </html>

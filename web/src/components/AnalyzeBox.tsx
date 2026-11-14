@@ -40,6 +40,17 @@ const OPTS: { key: keyof ScanOptions; label: string; hint: string; needsOnline?:
   { key: "ai", label: "AI narrative", hint: "LLM-written analyst summary, if configured" },
 ];
 
+/** Demo inputs so a first-time user can see a verdict without hunting for a sample. */
+const EXAMPLES: { label: string; text: string }[] = [
+  // Cyrillic "а" (U+0430) in the host: an IDN homograph of PayPal.
+  { label: "Look-alike URL", text: "https://p\u0430ypal-secure.top/signin?session=1" },
+  {
+    label: "Smishing SMS",
+    text: "USPS: your parcel is on hold because of an unpaid $1.99 fee. Pay within 24h or it will be returned: https://usps-redelivery.top/pay",
+  },
+  { label: "Benign URL", text: "https://www.wikipedia.org/" },
+];
+
 export function AnalyzeBox({
   busy,
   onSubmit,
@@ -91,7 +102,7 @@ export function AnalyzeBox({
       }}
       onDragLeave={() => setDrag(false)}
       onDrop={onDrop}
-      className={`rounded-2xl border bg-panel/80 p-4 backdrop-blur transition-colors ${drag ? "border-accent" : "border-line"}`}
+      className={`rounded-2xl border bg-panel/80 p-4 backdrop-blur sm:p-5 ${drag ? "border-accent ring-2 ring-accent/30" : "border-line"}`}
       aria-label="Analyze an artifact"
     >
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -106,7 +117,7 @@ export function AnalyzeBox({
               type="button"
               onClick={() => setType(t.id)}
               aria-pressed={type === t.id}
-              className={`rounded-md border px-2 py-0.5 text-xs ${type === t.id ? "border-accent/60 bg-accent/10 text-accent" : "border-line text-mute hover:text-ink"}`}
+              className={`rounded-md border px-2.5 py-1 text-xs ${type === t.id ? "border-accent/60 bg-accent/10 text-accent" : "border-line text-mute hover:border-accent/40 hover:text-ink"}`}
             >
               {t.label}
             </button>
@@ -149,8 +160,27 @@ export function AnalyzeBox({
           autoCapitalize="off"
           autoComplete="off"
           placeholder="Paste a URL, an SMS or chat message, a raw email (headers + body), or HTML. Drop a file here to scan an attachment, image or .eml."
-          className="block w-full resize-y rounded-xl border border-line bg-bg/70 p-3 font-mono text-sm leading-6 placeholder:text-mute/70 focus:border-accent/60"
+          aria-describedby="analyze-help"
+          className="block w-full resize-y rounded-xl border border-line bg-bg/70 p-3 font-mono text-sm leading-6 placeholder:text-mute focus:border-accent/60"
         />
+      )}
+      {!file && !text && (
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-mute">
+          <span>Try an example:</span>
+          {EXAMPLES.map((ex) => (
+            <button
+              key={ex.label}
+              type="button"
+              onClick={() => {
+                setType("auto");
+                setText(ex.text);
+              }}
+              className="rounded-full border border-dashed border-line px-2.5 py-1 hover:border-accent/50 hover:text-ink"
+            >
+              {ex.label}
+            </button>
+          ))}
+        </div>
       )}
       {fileError && (
         <p role="alert" className="mt-2 text-sm text-bad">
@@ -175,6 +205,7 @@ export function AnalyzeBox({
                 className="accent-accent"
               />
               {o.label}
+              <span className="sr-only">: {o.hint}</span>
             </label>
           );
         })}
@@ -188,19 +219,19 @@ export function AnalyzeBox({
         />
         <label
           htmlFor="analyze-file"
-          className="cursor-pointer rounded-lg border border-line px-3 py-1.5 text-sm text-mute hover:border-accent/50 hover:text-ink"
+          className="flex items-center rounded-lg border border-line px-3 py-1.5 text-sm text-mute hover:border-accent/50 hover:text-ink"
         >
           Choose file
         </label>
         <button
           type="submit"
           disabled={!canSubmit}
-          className="rounded-lg bg-accent px-5 py-1.5 text-sm font-semibold text-bg hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+          className="rounded-lg bg-accent px-5 py-1.5 text-sm font-semibold text-on-accent hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {busy ? <Spinner label="Analyzing" /> : "Analyze"}
         </button>
       </div>
-      <p className="mt-2 text-xs text-mute">
+      <p id="analyze-help" className="mt-3 text-xs text-mute">
         Content is sent only to your UniPhish server and is never executed. Ctrl/Cmd+Enter to
         analyze.
       </p>

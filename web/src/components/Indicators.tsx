@@ -33,7 +33,10 @@ export function Indicators({ verdict }: { verdict: Verdict }) {
             <Chip className="w-20 justify-center border-line bg-panel2 font-mono text-mute">
               {i.type}
             </Chip>
-            <code className="min-w-0 flex-1 break-all text-ink/90">{shown(i.type, i.value)}</code>
+            <code className="order-last min-w-0 basis-full break-all text-ink/90 sm:order-none sm:basis-0 sm:flex-1">
+              {shown(i.type, i.value)}
+            </code>
+            <span className="flex-1 sm:hidden" />
             {i.role && <Chip className="border-line text-mute">{i.role}</Chip>}
             {i.malicious && <Chip className="border-bad/40 bg-bad/10 text-bad">malicious</Chip>}
             <CopyButton text={shown(i.type, i.value)} />
