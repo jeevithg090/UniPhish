@@ -81,8 +81,8 @@ Vulnerabilities in UniPhish code and bundled data, for example:
 ## Known gaps (already documented, not 0-days)
 
 These are described in detail in [docs/threat-model.md](docs/threat-model.md#known-gaps):
-the TAXII routes and the legacy `POST /scan` and `POST /stix` are not behind API-key auth; the
-API is open when no keys are configured; the rate limiter is naive and in-memory; detonation
+the API is open when no keys are configured; the rate limiter and body-size cap are
+in-process and per worker (enforce hard limits at a reverse proxy); detonation
 cannot pin DNS answers for hostnames; a timed-out CPU-bound analyzer is abandoned rather than
 killed. Reports that add a new exploitation path or a worse impact for these are welcome, as
 are fixes.
