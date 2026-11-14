@@ -13,22 +13,13 @@ PYTEST   = $(PY) -m pytest
 HOST    ?= 127.0.0.1
 PORT    ?= 8080
 IMAGE   ?= uniphish:2
-# Lint scope: the v2 platform. The v1 research modules (uniphish/homoglyphs.py, enrich.py,
-# train.py, ... and scripts/) predate the ruleset and are being superseded; see docs/dev/testing.md.
-LINT_PATHS = uniphish/__init__.py uniphish/core uniphish/url uniphish/page uniphish/mail \
-	uniphish/files uniphish/nlp uniphish/intel uniphish/agent uniphish/hunt uniphish/export \
-	uniphish/ai uniphish/store uniphish/server uniphish/cli uniphish/integrations uniphish/eval \
-	uniphish/analyzers uniphish/assets bot \
-	tests/integration tests/test_smoke.py tests/agent tests/ai tests/analyzers tests/assets \
-	tests/bot tests/cli tests/core tests/eval tests/export tests/files tests/hunt \
-	tests/integrations tests/intel tests/mail tests/nlp tests/page tests/server tests/store \
-	tests/url
 # The v1 baselines test imports TensorFlow at collection time (the 'train' extra).
 DESELECT_LEGACY = --ignore=tests/test_baselines.py
 
 .DEFAULT_GOAL := help
 .PHONY: help setup test test-all test-integration test-smoke test-cov lint fix check \
-	serve scan batch export catalog eval redteam hunt web web-install web-test extension-test \
+	fmt serve scan batch export catalog eval redteam hunt web web-install web-test web-lint \
+	extension-test \
 	build verify-dist docker clean distclean train-data train
 
 help: ## Show this help
@@ -63,11 +54,16 @@ test-cov: ## Test-suite with a coverage report (needs: pip install pytest-cov)
 	$(PYTEST) -m "not network and not slow" $(DESELECT_LEGACY) --cov=uniphish --cov-report=term-missing:skip-covered
 
 # ------------------------------------------------------------------------------- lint
-lint: ## ruff check the v2 surface (see [tool.ruff] in pyproject.toml)
-	$(RUFF) check $(LINT_PATHS)
+lint: ## ruff lint + format check (see [tool.ruff] in pyproject.toml)
+	$(RUFF) check .
+	$(RUFF) format --check .
 
-fix: ## ruff check --fix
-	$(RUFF) check --fix $(LINT_PATHS)
+fix: ## ruff check --fix, then ruff format
+	$(RUFF) check --fix .
+	$(RUFF) format .
+
+fmt: ## ruff format
+	$(RUFF) format .
 
 check: lint test ## Lint + test
 
@@ -119,6 +115,9 @@ web: web-install ## Build the SOC console into uniphish/server/static
 
 web-test: ## Type-check and unit-test the web console
 	cd web && npm run typecheck && npm test
+
+web-lint: ## Lint + format-check the web console (Biome)
+	cd web && npm run lint
 
 extension-test: ## Test the browser extension's on-device engine (node --test)
 	cd extension && npm test

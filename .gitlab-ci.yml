@@ -34,17 +34,8 @@ variables:
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
   PYTHONDONTWRITEBYTECODE: "1"
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.pip-cache"
-  # Same lint scope as `make lint` and the GitHub workflow (newlines are treated as
-  # whitespace by the shell, so this expands to a single argument list). Keep in sync.
-  LINT_PATHS: |-
-    uniphish/__init__.py uniphish/core uniphish/url uniphish/page uniphish/mail
-    uniphish/files uniphish/nlp uniphish/intel uniphish/agent uniphish/hunt uniphish/export
-    uniphish/ai uniphish/store uniphish/server uniphish/cli uniphish/integrations uniphish/eval
-    uniphish/analyzers uniphish/assets bot
-    tests/integration tests/test_smoke.py tests/agent tests/ai tests/analyzers tests/assets
-    tests/bot tests/cli tests/core tests/eval tests/export tests/files tests/hunt
-    tests/integrations tests/intel tests/mail tests/nlp tests/page tests/server tests/store
-    tests/url
+  # Pinned so formatting is identical locally and in CI (keep in sync with pyproject).
+  RUFF_VERSION: "0.17.5"
 
 cache:
   key: "$CI_JOB_NAME"
@@ -54,8 +45,9 @@ lint:
   stage: lint
   image: python:3.12-slim
   script:
-    - python -m pip install "ruff>=0.5"
-    - ruff check $LINT_PATHS --output-format=gitlab > gl-code-quality.json || ruff check $LINT_PATHS
+    - python -m pip install "ruff==$RUFF_VERSION"
+    - ruff check . --output-format=gitlab > gl-code-quality.json || ruff check .
+    - ruff format --check .
   artifacts:
     reports:
       codequality: gl-code-quality.json
@@ -85,6 +77,7 @@ web:
   script:
     - cd web
     - npm ci
+    - npm run lint
     - npm run build
     - npm test
   artifacts:
