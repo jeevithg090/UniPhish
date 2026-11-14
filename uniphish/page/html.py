@@ -31,34 +31,78 @@ from uniphish.url.parse import parse_url
 log = logging.getLogger("uniphish.page")
 
 MAX_HTML_CHARS = 2_000_000
-MAX_TAGS = 20_000          # elements examined per document
-MAX_ITEMS = 1_000          # cap per collection (links, scripts, images, ...)
+MAX_TAGS = 20_000  # elements examined per document
+MAX_ITEMS = 1_000  # cap per collection (links, scripts, images, ...)
 MAX_TEXT_CHARS = 200_000
 MAX_SCRIPT_SCAN = 200_000  # chars of a single inline script that are regex-scanned
 MAX_ATTR_CHARS = 4_000
 
 #: Default brand keywords for the cheap text pass; analyzers cross-check with BrandKB.
 DEFAULT_BRAND_KEYWORDS: tuple[str, ...] = (
-    "paypal", "microsoft", "office 365", "outlook", "onedrive", "sharepoint", "google",
-    "gmail", "apple", "icloud", "amazon", "facebook", "instagram", "meta", "linkedin",
-    "netflix", "dropbox", "docusign", "adobe", "wells fargo", "chase", "bank of america",
-    "citibank", "hsbc", "barclays", "coinbase", "binance", "metamask", "ledger",
-    "steam", "discord", "telegram", "whatsapp", "dhl", "fedex", "ups", "usps", "irs",
-    "okta", "github", "zoom", "webmail", "cloudflare",
+    "paypal",
+    "microsoft",
+    "office 365",
+    "outlook",
+    "onedrive",
+    "sharepoint",
+    "google",
+    "gmail",
+    "apple",
+    "icloud",
+    "amazon",
+    "facebook",
+    "instagram",
+    "meta",
+    "linkedin",
+    "netflix",
+    "dropbox",
+    "docusign",
+    "adobe",
+    "wells fargo",
+    "chase",
+    "bank of america",
+    "citibank",
+    "hsbc",
+    "barclays",
+    "coinbase",
+    "binance",
+    "metamask",
+    "ledger",
+    "steam",
+    "discord",
+    "telegram",
+    "whatsapp",
+    "dhl",
+    "fedex",
+    "ups",
+    "usps",
+    "irs",
+    "okta",
+    "github",
+    "zoom",
+    "webmail",
+    "cloudflare",
 )
 
 _CRED_NAME_RE = re.compile(
     r"pass|pwd|otp|2fa|mfa|totp|pin|cvv|cvc|ssn|card|secret|login|user|email|mail|"
-    r"token|auth|code|account|seed|mnemonic|phrase", re.I)
+    r"token|auth|code|account|seed|mnemonic|phrase",
+    re.I,
+)
 _CRED_EXCLUDE_RE = re.compile(r"csrf|xsrf|authenticity|nonce|viewstate|honeypot", re.I)
 _EVAL_RE = re.compile(
-    r"\b(?:eval|Function|atob|unescape|fromCharCode)\s*\(|document\s*\.\s*write(?:ln)?\s*\(")
+    r"\b(?:eval|Function|atob|unescape|fromCharCode)\s*\(|document\s*\.\s*write(?:ln)?\s*\("
+)
 _NET_RE = re.compile(
     r"\bfetch\s*\(|XMLHttpRequest|\bsendBeacon\b|\$\s*\.\s*(?:post|ajax)\b|\baxios\b|"
-    r"\.submit\s*\(", re.I)
+    r"\.submit\s*\(",
+    re.I,
+)
 _CLIPBOARD_RE = re.compile(
     r"navigator\s*\.\s*clipboard\s*\.\s*write(?:Text)?\s*\(|"
-    r"execCommand\s*\(\s*['\"]copy['\"]", re.I)
+    r"execCommand\s*\(\s*['\"]copy['\"]",
+    re.I,
+)
 _B64_RE = re.compile(r"[A-Za-z0-9+/=_\-]{40,}")
 _WS_RE = re.compile(r"\s+")
 _TAB_NL_RE = re.compile(r"[\t\r\n]")
@@ -67,7 +111,9 @@ _SUSPICIOUS_COMMENT_RE = re.compile(
     r"phish|victim|scam|\bkit\b|saved from url|mirrored from|cloned|telegram|bot\s*token|"
     r"panel|logs?\.txt|result[s]?\.txt|exfil|drop\s*mail|send\s*to\s*mail|"
     r"coded by|created by|developed by|\bcrack(?:ed|er)\b|anti-?bot|"
-    r"redirect.{0,20}(?:victim|bot)", re.I)
+    r"redirect.{0,20}(?:victim|bot)",
+    re.I,
+)
 
 
 @dataclass
@@ -75,7 +121,7 @@ class MetaInfo:
     """Selected ``<meta>`` values (lower-cased keys resolved, values stripped)."""
 
     description: str = ""
-    refresh_target: str = ""   # resolved absolute URL ("" when no meta refresh)
+    refresh_target: str = ""  # resolved absolute URL ("" when no meta refresh)
     refresh_delay: float | None = None
     csp: str = ""
     referrer: str = ""
@@ -88,9 +134,9 @@ class MetaInfo:
 class FormModel:
     """One ``<form>`` and the credential-harvesting facts derived from it."""
 
-    action: str = ""                 # resolved absolute (or "" when absent)
+    action: str = ""  # resolved absolute (or "" when absent)
     method: str = "get"
-    is_cross_origin: bool = False    # action (or a submit formaction) leaves the base site
+    is_cross_origin: bool = False  # action (or a submit formaction) leaves the base site
     has_password: bool = False
     has_hidden_credential: bool = False
     input_names: list[str] = field(default_factory=list)
@@ -156,13 +202,13 @@ class PageModel:
     iframes: list[IframeRef] = field(default_factory=list)
     images: list[ImageRef] = field(default_factory=list)
     favicons: list[tuple[str, str]] = field(default_factory=list)  # (href, rel)
-    has_eval_like: int = 0           # count of eval/Function/atob/... call sites
+    has_eval_like: int = 0  # count of eval/Function/atob/... call sites
     inline_script_entropy: ScriptEntropy = field(default_factory=ScriptEntropy)
     external_form_post: bool = False
     resource_hosts: set[str] = field(default_factory=set)
     brand_text_hits: dict[str, int] = field(default_factory=dict)
     meta_refresh_offsite: bool = False
-    clipboard_write: int = 0         # count of clipboard-write call sites (ClickFix)
+    clipboard_write: int = 0  # count of clipboard-write call sites (ClickFix)
     suspicious_comment_count: int = 0
     truncated: bool = False
     parse_error: str = ""
@@ -180,8 +226,9 @@ class _HostCache:
     def get(self, url: str) -> tuple[str, str]:
         hit = self._c.get(url)
         if hit is None:
-            if not url.lower().startswith(("http://", "https://", "//", "ftp://", "ws://",
-                                           "wss://")):
+            if not url.lower().startswith(
+                ("http://", "https://", "//", "ftp://", "ws://", "wss://")
+            ):
                 hit = ("", "")
             else:
                 try:
@@ -206,8 +253,9 @@ def _resolve(base: str | None, ref: object) -> str:
     ref = _TAB_NL_RE.sub("", ref[:MAX_ATTR_CHARS]).strip(_C0_SPACE)
     if not ref:
         return ""
-    if ref.lower().startswith(("data:", "javascript:", "vbscript:", "mailto:", "tel:",
-                               "blob:", "about:")):
+    if ref.lower().startswith(
+        ("data:", "javascript:", "vbscript:", "mailto:", "tel:", "blob:", "about:")
+    ):
         return ref
     try:
         return urljoin(base, ref) if base else ref
@@ -226,8 +274,14 @@ def _is_hidden_frame(tag: Tag) -> bool:
     if tag.has_attr("hidden"):
         return True
     style = _WS_RE.sub("", _attr(tag, "style").lower())
-    if ("display:none" in style or "visibility:hidden" in style or "opacity:0" in style
-            or "width:0" in style or "height:0" in style or "left:-" in style):
+    if (
+        "display:none" in style
+        or "visibility:hidden" in style
+        or "opacity:0" in style
+        or "width:0" in style
+        or "height:0" in style
+        or "left:-" in style
+    ):
         return True
     for dim in ("width", "height"):
         v = _attr(tag, dim).strip().lower().rstrip("px")
@@ -256,7 +310,7 @@ def _parse_refresh(content: str) -> tuple[float | None, str]:
         if len(parts) == 2:
             head, tail = parts
     else:
-        head, tail = content[:sep], content[sep + 1:]
+        head, tail = content[:sep], content[sep + 1 :]
     try:
         delay: float | None = max(0.0, float(head.strip())) if head.strip() else 0.0
     except ValueError:
@@ -303,8 +357,9 @@ def _brand_hits(text: str, keywords: Iterable[str]) -> dict[str, int]:
 # --------------------------------------------------------------------------- #
 # main entry point
 # --------------------------------------------------------------------------- #
-def parse_html(html: str, base_url: str | None = None, *,
-               brand_keywords: Iterable[str] | None = None) -> PageModel:
+def parse_html(
+    html: str, base_url: str | None = None, *, brand_keywords: Iterable[str] | None = None
+) -> PageModel:
     """Parse ``html`` into a :class:`PageModel`. Never executes content; never raises.
 
     ``base_url`` is the page's own URL: relative references are resolved against it
@@ -329,8 +384,9 @@ def parse_html(html: str, base_url: str | None = None, *,
     return model
 
 
-def _extract(html: str, base_url: str | None, m: PageModel,
-             brand_keywords: Iterable[str] | None) -> None:
+def _extract(
+    html: str, base_url: str | None, m: PageModel, brand_keywords: Iterable[str] | None
+) -> None:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", MarkupResemblesLocatorWarning)
         soup = BeautifulSoup(html, "lxml")
@@ -416,22 +472,28 @@ def _extract(html: str, base_url: str | None, m: PageModel,
     for ftag in by("form")[:MAX_ITEMS]:
         m.forms.append(_build_form(ftag, eff_base, hosts, is_external, note_resource))
     m.external_form_post = any(
-        f.is_cross_origin and (f.method == "post" or f.has_password) for f in m.forms)
+        f.is_cross_origin and (f.method == "post" or f.has_password) for f in m.forms
+    )
 
     # password inputs anywhere (forms are often synthesised by JS or malformed) -------
     m.password_input_count = sum(
-        1 for i in by("input")[:5_000]
-        if _attr(i, "type").strip().lower() == "password")
+        1 for i in by("input")[:5_000] if _attr(i, "type").strip().lower() == "password"
+    )
     m.password_field_present = m.password_input_count > 0
 
     # links ---------------------------------------------------------------------------
     ext_hosts: dict[str, None] = {}
-    for a in [a for a in by("a") if a.has_attr("href")][:MAX_ITEMS * 2]:
+    for a in [a for a in by("a") if a.has_attr("href")][: MAX_ITEMS * 2]:
         href = _resolve(eff_base, _attr(a, "href"))
         if len(m.links) < MAX_ITEMS:
-            m.links.append(LinkRef(href=href, text=_clean(a.get_text(), 200),
-                                   rel=_clean(_attr(a, "rel"), 100),
-                                   target=_clean(_attr(a, "target"), 30)))
+            m.links.append(
+                LinkRef(
+                    href=href,
+                    text=_clean(a.get_text(), 200),
+                    rel=_clean(_attr(a, "rel"), 100),
+                    target=_clean(_attr(a, "target"), 30),
+                )
+            )
         host, _ = hosts.get(href)
         if host and is_external(href) and len(ext_hosts) < MAX_ITEMS:
             ext_hosts[host] = None
@@ -445,8 +507,7 @@ def _extract(html: str, base_url: str | None, m: PageModel,
         if src:
             rsrc = _resolve(eff_base, src)
             host, _ = hosts.get(rsrc)
-            m.scripts.append(ScriptRef(src=rsrc, inline_len=0, is_external=bool(host),
-                                       host=host))
+            m.scripts.append(ScriptRef(src=rsrc, inline_len=0, is_external=bool(host), host=host))
             note_resource(rsrc)
         text = _script_text(s)
         if text.strip():
@@ -506,8 +567,9 @@ def _extract(html: str, base_url: str | None, m: PageModel,
     m.brand_text_hits = _brand_hits(f"{m.title} {text}", kws)
 
 
-def _build_form(ftag: Tag, base: str | None, hosts: _HostCache, is_external, note_resource
-                ) -> FormModel:
+def _build_form(
+    ftag: Tag, base: str | None, hosts: _HostCache, is_external, note_resource
+) -> FormModel:
     raw_action = _attr(ftag, "action")
     action = _resolve(base, raw_action)
     method = _attr(ftag, "method").strip().lower()
@@ -524,8 +586,13 @@ def _build_form(ftag: Tag, base: str | None, hosts: _HostCache, is_external, not
         name = _clean(_attr(inp, "name") or _attr(inp, "id"), 100)
         if inp.name == "input" and itype == "password":
             f.has_password = True
-        if (inp.name == "input" and itype == "hidden" and name
-                and _CRED_NAME_RE.search(name) and not _CRED_EXCLUDE_RE.search(name)):
+        if (
+            inp.name == "input"
+            and itype == "hidden"
+            and name
+            and _CRED_NAME_RE.search(name)
+            and not _CRED_EXCLUDE_RE.search(name)
+        ):
             f.has_hidden_credential = True
         if name and len(names) < 200:
             names.append(name)

@@ -55,11 +55,11 @@ from uniphish.page.html import PageModel, parse_html
 
 log = logging.getLogger("uniphish.kits")
 
-MAX_HTML_SCAN = 750_000      # characters of raw markup that regexes may scan
-MAX_TEXT_SCAN = 200_000      # characters of visible text that matchers may scan
-MAX_DOM_CHARS = 400_000      # characters re-parsed for dom_pattern matchers
-MAX_REPEAT_BOUND = 1_000     # largest allowed regex repeat bound
-MAX_DETAIL_ITEMS = 4         # matcher summaries quoted in a signal detail
+MAX_HTML_SCAN = 750_000  # characters of raw markup that regexes may scan
+MAX_TEXT_SCAN = 200_000  # characters of visible text that matchers may scan
+MAX_DOM_CHARS = 400_000  # characters re-parsed for dom_pattern matchers
+MAX_REPEAT_BOUND = 1_000  # largest allowed regex repeat bound
+MAX_DETAIL_ITEMS = 4  # matcher summaries quoted in a signal detail
 RULES_FILE = ("rules", "kit_signatures.yaml")
 
 FAMILIES: dict[str, str] = {
@@ -75,8 +75,19 @@ FAMILIES: dict[str, str] = {
 }
 
 _ID_RE = re.compile(r"^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)+$")
-_META_FIELDS = frozenset({"description", "refresh_target", "refresh_delay", "csp", "referrer",
-                          "generator", "og_site_name", "theme_color", "refresh_offsite"})
+_META_FIELDS = frozenset(
+    {
+        "description",
+        "refresh_target",
+        "refresh_delay",
+        "csp",
+        "referrer",
+        "generator",
+        "og_site_name",
+        "theme_color",
+        "refresh_offsite",
+    }
+)
 
 
 class KitRuleError(ValueError):
@@ -255,8 +266,9 @@ def _build_html_regex(spec: Mapping[str, Any]) -> tuple[int, Callable[[_Ctx], Hi
 def _build_form(spec: Mapping[str, Any]) -> tuple[int, Callable[[_Ctx], Hit | None]]:
     _expect(spec, {"require_password", "action_regex"}, "form_action_cross_origin")
     need_pw = bool(spec.get("require_password", False))
-    rx = _regex(spec, "form_action_cross_origin", "action_regex") if "action_regex" in spec \
-        else None
+    rx = (
+        _regex(spec, "form_action_cross_origin", "action_regex") if "action_regex" in spec else None
+    )
     desc = str(spec.get("desc") or "form posts to another site")
 
     def fn(ctx: _Ctx) -> Hit | None:
@@ -267,8 +279,9 @@ def _build_form(spec: Mapping[str, Any]) -> tuple[int, Callable[[_Ctx], Hit | No
                 continue
             if rx is not None and not rx.search(f.action[:2_000]):
                 continue
-            return Hit(f"{desc} ({f.action_host or 'unknown host'})",
-                       {"action_host": f.action_host})
+            return Hit(
+                f"{desc} ({f.action_host or 'unknown host'})", {"action_host": f.action_host}
+            )
         return None
 
     return 1, fn
@@ -281,8 +294,11 @@ def _build_clipboard(spec: Mapping[str, Any]) -> tuple[int, Callable[[_Ctx], Hit
 
     def fn(ctx: _Ctx) -> Hit | None:
         n = ctx.page.clipboard_write
-        return Hit(f"{desc} ({n} call site{'s' if n != 1 else ''})", {"clipboard_write": n}) \
-            if n >= need else None
+        return (
+            Hit(f"{desc} ({n} call site{'s' if n != 1 else ''})", {"clipboard_write": n})
+            if n >= need
+            else None
+        )
 
     return 0, fn
 
@@ -304,7 +320,7 @@ def _build_resource(spec: Mapping[str, Any]) -> tuple[int, Callable[[_Ctx], Hit 
     suffixes = [s.lower().strip(".") for s in _str_list(spec, "suffixes", "resource_host_suffix")]
 
     def fn(ctx: _Ctx) -> Hit | None:
-        if not ctx.host:   # without the page's own host we cannot say a resource is foreign
+        if not ctx.host:  # without the page's own host we cannot say a resource is foreign
             return None
         for s in suffixes:
             if _host_under(ctx.host, s):
@@ -329,8 +345,11 @@ def _build_meta(spec: Mapping[str, Any]) -> tuple[int, Callable[[_Ctx], Hit | No
         raise KitRuleError("meta: give one of equals, contains, regex, present")
 
     def fn(ctx: _Ctx) -> Hit | None:
-        raw = ctx.page.meta_refresh_offsite if fname == "refresh_offsite" \
+        raw = (
+            ctx.page.meta_refresh_offsite
+            if fname == "refresh_offsite"
             else getattr(ctx.page.meta, str(fname))
+        )
         val = "" if raw in (None, False) else str(raw)[:2_000]
         ok = (
             (present is None or bool(val) == bool(present))
@@ -463,8 +482,13 @@ class KitMatch:
         if what:
             detail += f" Matched: {what}."
         return Signal(
-            id=sig.signal_id, title=sig.name, detail=detail, weight=sig.weight, category="kit",
-            mitre=list(sig.mitre), tags=[sig.family],
+            id=sig.signal_id,
+            title=sig.name,
+            detail=detail,
+            weight=sig.weight,
+            category="kit",
+            mitre=list(sig.mitre),
+            tags=[sig.family],
             evidence={"signature": sig.id, "family": sig.family, **self.evidence},
         )
 
@@ -494,15 +518,23 @@ def _compile_signature(raw: Any) -> Signature:
     scope = raw.get("host_scope") or {}
     if not isinstance(scope, Mapping) or set(scope) - {"not_suffix", "require_url"}:
         raise KitRuleError(f"{sid}: bad host_scope")
-    unknown = set(raw) - {"id", "name", "family", "severity_weight", "mitre", "description",
-                          "host_scope", "all_of", "any_of", "min_any"}
+    unknown = set(raw) - {
+        "id",
+        "name",
+        "family",
+        "severity_weight",
+        "mitre",
+        "description",
+        "host_scope",
+        "all_of",
+        "any_of",
+        "min_any",
+    }
     if unknown:
         raise KitRuleError(f"{sid}: unknown keys {sorted(unknown)}")
     try:
-        all_of = sorted((_build_matcher(m) for m in raw.get("all_of") or ()),
-                        key=lambda m: m.cost)
-        any_of = sorted((_build_matcher(m) for m in raw.get("any_of") or ()),
-                        key=lambda m: m.cost)
+        all_of = sorted((_build_matcher(m) for m in raw.get("all_of") or ()), key=lambda m: m.cost)
+        any_of = sorted((_build_matcher(m) for m in raw.get("any_of") or ()), key=lambda m: m.cost)
     except KitRuleError as exc:
         raise KitRuleError(f"{sid}: {exc}") from exc
     if not all_of and not any_of:
@@ -513,9 +545,15 @@ def _compile_signature(raw: Any) -> Signature:
     if all(m.negate for m in (*all_of, *any_of)):
         raise KitRuleError(f"{sid}: needs at least one positive matcher")
     return Signature(
-        id=sid, name=name, family=family, weight=weight, mitre=mitre,
+        id=sid,
+        name=name,
+        family=family,
+        weight=weight,
+        mitre=mitre,
         description=" ".join(str(raw.get("description", "")).split()),
-        all_of=tuple(all_of), any_of=tuple(any_of), min_any=min_any,
+        all_of=tuple(all_of),
+        any_of=tuple(any_of),
+        min_any=min_any,
         not_suffix=tuple(str(s).lower().strip(".") for s in scope.get("not_suffix") or ()),
         require_url=bool(scope.get("require_url", False)),
     )
@@ -588,17 +626,26 @@ def _eval_one(sig: Signature, ctx: _Ctx) -> KitMatch | None:
     return KitMatch(sig, tuple(hits))
 
 
-def evaluate(page: PageModel, html: str, url: str | None = None, *,
-             signatures: Sequence[Signature] | None = None,
-             favicon_hashes: Iterable[int] = ()) -> list[KitMatch]:
+def evaluate(
+    page: PageModel,
+    html: str,
+    url: str | None = None,
+    *,
+    signatures: Sequence[Signature] | None = None,
+    favicon_hashes: Iterable[int] = (),
+) -> list[KitMatch]:
     """Evaluate ``signatures`` (default: packaged set) against an already parsed page.
 
     ``html`` is the raw markup (truncated to :data:`MAX_HTML_SCAN` characters).
     ``favicon_hashes`` are Shodan-style mmh3 hashes of the page's favicons, if known.
     """
     sigs = default_signatures() if signatures is None else signatures
-    ctx = _Ctx(page=page, html=html[:MAX_HTML_SCAN], host=_host_of(url),
-               favicon_hashes=frozenset(int(h) for h in favicon_hashes))
+    ctx = _Ctx(
+        page=page,
+        html=html[:MAX_HTML_SCAN],
+        host=_host_of(url),
+        favicon_hashes=frozenset(int(h) for h in favicon_hashes),
+    )
     out = []
     for sig in sigs:
         m = _eval_one(sig, ctx)
@@ -607,9 +654,13 @@ def evaluate(page: PageModel, html: str, url: str | None = None, *,
     return out
 
 
-def match_html(html: str | bytes, url: str | None = None, *,
-               favicon_hashes: Iterable[int] = (),
-               signatures: Sequence[Signature] | None = None) -> list[KitMatch]:
+def match_html(
+    html: str | bytes,
+    url: str | None = None,
+    *,
+    favicon_hashes: Iterable[int] = (),
+    signatures: Sequence[Signature] | None = None,
+) -> list[KitMatch]:
     """Parse ``html`` and return matched signatures. Never raises on hostile input.
 
     Convenience entry point for callers without a :class:`PageModel` (for example the
@@ -620,7 +671,7 @@ def match_html(html: str | bytes, url: str | None = None, *,
     if not isinstance(html, str):
         return []
     try:
-        html = html[:MAX_HTML_SCAN]       # bound the parse as well as the regex scans
+        html = html[:MAX_HTML_SCAN]  # bound the parse as well as the regex scans
         page = parse_html(html, url)
         return evaluate(page, html, url, signatures=signatures, favicon_hashes=favicon_hashes)
     except Exception:  # defensive
@@ -655,15 +706,25 @@ def build_result(matches: Sequence[KitMatch], evaluated: int) -> AnalyzerResult:
         host = str(m.evidence.get("action_host") or "").lower()
         if host and host not in seen_hosts:
             seen_hosts.add(host)
-            indicators.append(Indicator(type=IndicatorType.DOMAIN, value=host,
-                                        role="exfil-endpoint",
-                                        context=f"password form target ({m.signature.id})"))
+            indicators.append(
+                Indicator(
+                    type=IndicatorType.DOMAIN,
+                    value=host,
+                    role="exfil-endpoint",
+                    context=f"password form target ({m.signature.id})",
+                )
+            )
     return AnalyzerResult(
         signals=[m.to_signal() for m in matches],
         indicators=indicators,
         techniques=techniques,
-        meta={"kits": {"matched": [m.signature.id for m in matches],
-                       "families": techniques, "signatures_evaluated": evaluated}},
+        meta={
+            "kits": {
+                "matched": [m.signature.id for m in matches],
+                "families": techniques,
+                "signatures_evaluated": evaluated,
+            }
+        },
     )
 
 
@@ -676,18 +737,25 @@ class KitAnalyzer(Analyzer):
     stage = 0
     requires_online = False
     blocking = True
-    description = ("Phishing-kit fingerprints: AiTM reverse proxies, ClickFix, "
-                   "Browser-in-the-Browser, OAuth/device-code, callback and wallet-drainer pages")
+    description = (
+        "Phishing-kit fingerprints: AiTM reverse proxies, ClickFix, "
+        "Browser-in-the-Browser, OAuth/device-code, callback and wallet-drainer pages"
+    )
     signals = {s.signal_id: s.name for s in default_signatures()}
 
     def analyze_sync(self, artifact: Artifact, ctx: AnalysisContext) -> AnalyzerResult:
         html = artifact.html()[:MAX_HTML_SCAN]
         if not html.strip():
             return AnalyzerResult()
-        page = ctx.shared.get("page.model")      # reuse the page analyzer's parse if present
+        page = ctx.shared.get("page.model")  # reuse the page analyzer's parse if present
         if not isinstance(page, PageModel):
             page = ctx.memo("kits.page_model", lambda: parse_html(html, artifact.url))
         sigs = default_signatures()
-        matches = evaluate(page, html, artifact.url, signatures=sigs,
-                           favicon_hashes=_favicon_hashes_from_meta(artifact.meta))
+        matches = evaluate(
+            page,
+            html,
+            artifact.url,
+            signatures=sigs,
+            favicon_hashes=_favicon_hashes_from_meta(artifact.meta),
+        )
         return build_result(matches, len(sigs))

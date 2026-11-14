@@ -29,8 +29,8 @@ def by_domain(perms: list[Permutation]) -> dict[str, Permutation]:
 
 def test_known_forms_present(paypal):
     d = by_domain(paypal)
-    assert d["paypa1.com"].kind == "homoglyph"            # ASCII look-alike digit
-    assert d["xn--pypal-4ve.com"].kind == "homoglyph"     # Cyrillic a, A-label
+    assert d["paypa1.com"].kind == "homoglyph"  # ASCII look-alike digit
+    assert d["xn--pypal-4ve.com"].kind == "homoglyph"  # Cyrillic a, A-label
     assert d["pay-pal.com"].kind == "hyphenation"
     assert d["pay.pal.com"].kind == "subdomain"
     assert d["paypal-secure.com"].kind == "combosquat"
@@ -38,8 +38,8 @@ def test_known_forms_present(paypal):
     assert d["paypal.tk"].kind == "tld_swap"
     assert d["paypal.co.uk"].kind == "tld_swap"
     assert d["paypall.com"].kind in {"addition", "double_char"}
-    assert d["pyapal.com"].kind == "typo"                 # transposition
-    assert d["paypul.com"].kind == "vowel_swap"   # a->u differs by two bits
+    assert d["pyapal.com"].kind == "typo"  # transposition
+    assert d["paypul.com"].kind == "vowel_swap"  # a->u differs by two bits
     assert d["paypl.com"].kind == "omission"
 
 
@@ -72,7 +72,7 @@ def test_output_is_valid_ascii_hostnames(paypal):
             assert 1 <= len(label) <= 63
             assert not label.startswith("-") and not label.endswith("-")
             if label.startswith("xn--"):
-                idna.decode(label)                       # valid A-label
+                idna.decode(label)  # valid A-label
 
 
 def test_homoglyphs_fold_back_to_the_brand(paypal):
@@ -103,7 +103,7 @@ def test_display_roundtrip():
 def test_bounded_and_round_robin():
     out = generate_permutations("paypal.com", max=40)
     assert len(out) == 40
-    assert len({p.kind for p in out}) == len(KINDS)       # nothing starved
+    assert len({p.kind for p in out}) == len(KINDS)  # nothing starved
     assert generate_permutations("paypal.com", max=0) == []
     assert len(generate_permutations("paypal.com")) <= DEFAULT_MAX
 
@@ -119,9 +119,9 @@ def test_kind_filter_and_aliases():
 
 def test_priority_applies_among_requested_kinds():
     full = by_domain(generate_permutations("paypal.com"))
-    assert full["paypall.com"].kind == "addition"          # higher priority than double_char
+    assert full["paypall.com"].kind == "addition"  # higher priority than double_char
     only = by_domain(generate_permutations("paypal.com", kinds=["double_char"]))
-    assert only["paypall.com"].kind == "double_char"       # nothing outranks it here
+    assert only["paypall.com"].kind == "double_char"  # nothing outranks it here
     assert "ppaypal.com" in only
 
 
@@ -142,8 +142,9 @@ def test_deterministic():
     assert generate_permutations("paypal.com") == generate_permutations("paypal.com")
 
 
-@pytest.mark.parametrize("bad", ["", "   ", "localhost", "192.0.2.1", "a" * 300 + ".com",
-                                 "http://"])
+@pytest.mark.parametrize(
+    "bad", ["", "   ", "localhost", "192.0.2.1", "a" * 300 + ".com", "http://"]
+)
 def test_invalid_input_rejected(bad):
     with pytest.raises(ValueError):
         generate_permutations(bad)

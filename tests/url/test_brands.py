@@ -20,15 +20,18 @@ def tech(url: str) -> tuple[str, str] | None:
     return (m.brand, m.technique) if m else None
 
 
-@pytest.mark.parametrize("url", [
-    "https://www.paypal.com/signin",
-    "https://paypal.com/",
-    "https://login.microsoftonline.com/common/oauth2",
-    "https://accounts.google.com/",
-    "https://appleid.apple.com/",
-    "https://www.amazon.co.uk/gp/css",
-    "https://ssl.gstatic.com/x.js",
-])
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://www.paypal.com/signin",
+        "https://paypal.com/",
+        "https://login.microsoftonline.com/common/oauth2",
+        "https://accounts.google.com/",
+        "https://appleid.apple.com/",
+        "https://www.amazon.co.uk/gp/css",
+        "https://ssl.gstatic.com/x.js",
+    ],
+)
 def test_official_hosts_are_official_not_impersonation(url):
     m = brand_impersonation(url)
     assert m is not None and m.official and m.technique == "official"
@@ -36,13 +39,16 @@ def test_official_hosts_are_official_not_impersonation(url):
     assert [c.official for c in brand_candidates(url)] == [True]
 
 
-@pytest.mark.parametrize("url", [
-    "https://evil.sharepoint.com/sites/x",
-    "https://myapp.web.app/",
-    "https://someone.github.io/page",
-    "https://example.com/",
-    "https://www.example.org/news",
-])
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://evil.sharepoint.com/sites/x",
+        "https://myapp.web.app/",
+        "https://someone.github.io/page",
+        "https://example.com/",
+        "https://www.example.org/news",
+    ],
+)
 def test_user_content_and_unrelated_hosts_not_flagged(url):
     assert brand_impersonation(url) is None
 
@@ -101,10 +107,15 @@ def test_tld_swap_is_low_confidence_and_abused_tld_raises_it():
     assert low.confidence < 0.6 <= high.confidence + 0.01
 
 
-@pytest.mark.parametrize("url", [
-    "https://paypal-secure.test/", "https://paypalsecure.com/",
-    "https://secure-appleid-verify.test/", "https://paypa1-login.top/",
-])
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://paypal-secure.test/",
+        "https://paypalsecure.com/",
+        "https://secure-appleid-verify.test/",
+        "https://paypa1-login.top/",
+    ],
+)
 def test_combosquat(url):
     m = brand_impersonation(url)
     assert m is not None and m.technique == "combosquat" and m.confidence >= 0.8

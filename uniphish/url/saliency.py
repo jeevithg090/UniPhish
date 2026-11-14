@@ -70,10 +70,10 @@ class CharSaliency:
 class SalientSpan:
     """A merged run of adjacent incriminating characters (for UI highlighting)."""
 
-    start: int          # inclusive char index
-    end: int            # exclusive char index
-    text: str           # url[start:end]
-    delta: float        # peak per-character delta within the span
+    start: int  # inclusive char index
+    end: int  # exclusive char index
+    text: str  # url[start:end]
+    delta: float  # peak per-character delta within the span
     space: Space = "logit"
 
 
@@ -88,8 +88,9 @@ def _char_byte_spans(url: str) -> list[tuple[int, int]]:
     return spans
 
 
-def occlusion_saliency(url: str, model: UrlModel | None = None, *,
-                       max_chars: int = _MAX_CHARS, on: Space = "prob") -> list[CharSaliency]:
+def occlusion_saliency(
+    url: str, model: UrlModel | None = None, *, max_chars: int = _MAX_CHARS, on: Space = "prob"
+) -> list[CharSaliency]:
     """Per-character occlusion saliency for ``url``.
 
     Args:
@@ -111,7 +112,7 @@ def occlusion_saliency(url: str, model: UrlModel | None = None, *,
     if not url:
         return []
 
-    base_seq = model.encode([url])[0]                 # (MAX_LEN,) uint8
+    base_seq = model.encode([url])[0]  # (MAX_LEN,) uint8
     byte_spans = _char_byte_spans(url)
 
     # Row 0 is the unmodified URL; rows 1..n each zero out one character's bytes in-place
@@ -129,8 +130,14 @@ def occlusion_saliency(url: str, model: UrlModel | None = None, *,
     deltas = base - scores[1:]
 
     return [
-        CharSaliency(index=i, char=ch, start_byte=byte_spans[i][0],
-                     end_byte=byte_spans[i][1], delta=float(deltas[i]), space=on)
+        CharSaliency(
+            index=i,
+            char=ch,
+            start_byte=byte_spans[i][0],
+            end_byte=byte_spans[i][1],
+            delta=float(deltas[i]),
+            space=on,
+        )
         for i, ch in enumerate(url)
     ]
 
@@ -140,9 +147,15 @@ def occlusion_saliency(url: str, model: UrlModel | None = None, *,
 _FLOOR = {"logit": 0.1, "prob": 0.02}
 
 
-def top_spans(url: str, k: int = 5, model: UrlModel | None = None, *,
-              on: Space = "logit", min_frac: float = 0.25,
-              min_delta: float | None = None) -> list[SalientSpan]:
+def top_spans(
+    url: str,
+    k: int = 5,
+    model: UrlModel | None = None,
+    *,
+    on: Space = "logit",
+    min_frac: float = 0.25,
+    min_delta: float | None = None,
+) -> list[SalientSpan]:
     """Merge adjacent incriminating characters into the top ``k`` spans for highlighting.
 
     Defaults to ``on="logit"`` because the model's probabilities saturate near 0/1: on a

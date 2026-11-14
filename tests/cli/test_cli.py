@@ -23,7 +23,7 @@ from uniphish.cli import render
 runner = CliRunner()
 ENV = {"COLUMNS": "200", "NO_COLOR": "1"}
 
-HOMOGLYPH = "https://pаypal.com/signin"       # Cyrillic 'a'
+HOMOGLYPH = "https://pаypal.com/signin"  # Cyrillic 'a'
 COMBOSQUAT = "https://paypa1-secure-login.test/signin"
 BENIGN = "https://www.python.org/"
 
@@ -96,7 +96,7 @@ def test_scan_json_is_valid_raw_verdict():
     data = json.loads(r.stdout)
     assert data["level"] == "malicious"
     assert data["brand"]["brand"] == "paypal"
-    assert data["target"] == HOMOGLYPH            # raw, not defanged
+    assert data["target"] == HOMOGLYPH  # raw, not defanged
     assert {"signals", "indicators", "analyzers", "logit", "risk"} <= set(data)
     assert "ai" not in data
 
@@ -192,15 +192,18 @@ def test_scan_text_file_and_stdin_variants(tmp_path: Path):
     assert json.loads(r.stdout)["kind"] == "text"
 
 
-@pytest.mark.parametrize("args", [
-    ("scan", "./definitely-missing-file.eml"),
-    ("scan", "missing_report.pdf"),
-    ("scan", ""),
-    ("scan", "   "),
-    ("scan", "-"),                              # empty stdin
-    ("scan", "x", "--type", "file"),            # not a path
-    ("scan", "x", "--type", "bogus"),
-])
+@pytest.mark.parametrize(
+    "args",
+    [
+        ("scan", "./definitely-missing-file.eml"),
+        ("scan", "missing_report.pdf"),
+        ("scan", ""),
+        ("scan", "   "),
+        ("scan", "-"),  # empty stdin
+        ("scan", "x", "--type", "file"),  # not a path
+        ("scan", "x", "--type", "bogus"),
+    ],
+)
 def test_scan_bad_input_exits_2(args):
     r = run(*args, input="")
     assert r.exit_code == 2, r.output
@@ -237,8 +240,10 @@ def test_terminal_output_cannot_be_hijacked_by_markup_or_escapes():
 @pytest.fixture
 def batch_file(tmp_path: Path) -> Path:
     p = tmp_path / "list.txt"
-    p.write_text(f"# comment\n{HOMOGLYPH}\n\n{BENIGN}\n"
-                 "=cmd|' /C calc'!A0 verify your account now\n", encoding="utf-8")
+    p.write_text(
+        f"# comment\n{HOMOGLYPH}\n\n{BENIGN}\n=cmd|' /C calc'!A0 verify your account now\n",
+        encoding="utf-8",
+    )
     return p
 
 
@@ -268,9 +273,10 @@ def test_batch_csv_defanged_and_formula_safe(batch_file: Path):
     assert len(rows) == 3
     assert rows[0]["level"] == "malicious" and rows[0]["brand"] == "PayPal"
     assert rows[0]["input"].startswith("hxxps://")
-    assert rows[2]["input"].startswith("'=")           # formula neutralised
-    raw = list(csv.DictReader(io.StringIO(run("batch", str(batch_file), "--csv",
-                                              "--no-defang").stdout)))
+    assert rows[2]["input"].startswith("'=")  # formula neutralised
+    raw = list(
+        csv.DictReader(io.StringIO(run("batch", str(batch_file), "--csv", "--no-defang").stdout))
+    )
     assert raw[0]["input"].startswith("https://")
 
 
@@ -362,7 +368,7 @@ def test_export_to_file(tmp_path: Path):
     r = run("export", HOMOGLYPH, "-f", "stix", "-o", str(out))
     assert r.exit_code == 0, r.output
     assert json.loads(out.read_text())["type"] == "bundle"
-    assert r.stdout.strip() == ""                       # data went to the file, not stdout
+    assert r.stdout.strip() == ""  # data went to the file, not stdout
 
 
 def test_export_benign_has_nothing_to_deploy():
@@ -409,7 +415,7 @@ def test_no_args_shows_help():
 
 
 def test_serve_without_server_extra(monkeypatch):
-    monkeypatch.setitem(sys.modules, "uvicorn", None)       # forces ImportError
+    monkeypatch.setitem(sys.modules, "uvicorn", None)  # forces ImportError
     r = run("serve")
     assert r.exit_code == 1
     assert "uniphish[server]" in r.output
@@ -420,13 +426,19 @@ def test_serve_launches_uvicorn(monkeypatch):
     fake = types.SimpleNamespace(run=lambda target, **kw: calls.update(target=target, **kw))
     monkeypatch.setitem(sys.modules, "uvicorn", fake)
     real_find = cli.importlib.util.find_spec
-    monkeypatch.setattr(cli.importlib.util, "find_spec",
-                        lambda name, *a: object() if name == "uniphish.server.app"
-                        else real_find(name, *a))
+    monkeypatch.setattr(
+        cli.importlib.util,
+        "find_spec",
+        lambda name, *a: object() if name == "uniphish.server.app" else real_find(name, *a),
+    )
     r = run("serve", "--port", "9999", "--reload")
     assert r.exit_code == 0, r.output
-    assert calls == {"target": "uniphish.server.app:app", "host": "127.0.0.1", "port": 9999,
-                     "reload": True}
+    assert calls == {
+        "target": "uniphish.server.app:app",
+        "host": "127.0.0.1",
+        "port": 9999,
+        "reload": True,
+    }
     assert "unauthenticated" not in r.output
     r = run("serve", "--host", "0.0.0.0")
     assert "unauthenticated" in r.output
@@ -476,25 +488,28 @@ def test_hunt_delegates_to_typer_app(monkeypatch):
 # --------------------------------------------------------------------------- #
 # input detection helpers
 # --------------------------------------------------------------------------- #
-@pytest.mark.parametrize("s,expected", [
-    ("https://example.com/a?b=c", True),
-    ("example.com", True),
-    ("www.example.com/path", True),
-    ("pаypal.com", True),
-    ("javascript:alert(1)", True),
-    ("hello world", False),
-    ("user@example.com", False),
-    ("Hello.", False),
-    ("", False),
-    ("a" * 9000, False),
-])
+@pytest.mark.parametrize(
+    "s,expected",
+    [
+        ("https://example.com/a?b=c", True),
+        ("example.com", True),
+        ("www.example.com/path", True),
+        ("pаypal.com", True),
+        ("javascript:alert(1)", True),
+        ("hello world", False),
+        ("user@example.com", False),
+        ("Hello.", False),
+        ("", False),
+        ("a" * 9000, False),
+    ],
+)
 def test_looks_like_url(s, expected):
     assert cli.looks_like_url(s) is expected
 
 
 def test_looks_like_email_requires_header_block():
     assert cli.looks_like_email(EML.encode())
-    assert not cli.looks_like_email(b"Subject: hi\nthis is a note")   # one header only
+    assert not cli.looks_like_email(b"Subject: hi\nthis is a note")  # one header only
     assert not cli.looks_like_email(b"just some text\nwith lines")
 
 
@@ -518,7 +533,7 @@ def test_defang_and_offsets():
     assert render.defang("99.5% sure") == "99.5% sure"
     assert render.defang("ip 10.0.0.1 ok") == "ip 10[.]0[.]0[.]1 ok"
     once = render.defang("https://evil.test/a")
-    assert render.defang(once) == once                          # idempotent
+    assert render.defang(once) == once  # idempotent
     raw = "see http://a.b now"
     out, offs = render.defang_map(raw)
     assert len(offs) == len(raw) + 1 and offs[-1] == len(out)
@@ -536,7 +551,7 @@ def test_safe_text_is_not_markup_and_highlights_spans():
     assert "[link=http://evil.test]" in t.plain
     assert "\x1b" not in t.plain
     t = render.safe_text("abcdef", do_defang=False, spans=[(2, 4)])
-    styled = [(t.plain[s.start:s.end], str(s.style)) for s in t.spans]
+    styled = [(t.plain[s.start : s.end], str(s.style)) for s in t.spans]
     assert any(txt == "cd" and "red" in st for txt, st in styled)
     t = render.safe_text("aаb", do_defang=False, flag_non_ascii=True)
     assert any("magenta" in str(s.style) for s in t.spans)
@@ -545,8 +560,17 @@ def test_safe_text_is_not_markup_and_highlights_spans():
 def test_gauge_reflects_level():
     from uniphish.core.types import Action, ArtifactKind, Level, Verdict
 
-    v = Verdict(kind=ArtifactKind.URL, target="x", artifact_id="1", risk=0.9, score=90,
-                logit=2.2, level=Level.MALICIOUS, action=Action.BLOCK, confidence=0.5)
+    v = Verdict(
+        kind=ArtifactKind.URL,
+        target="x",
+        artifact_id="1",
+        risk=0.9,
+        score=90,
+        logit=2.2,
+        level=Level.MALICIOUS,
+        action=Action.BLOCK,
+        confidence=0.5,
+    )
     g = render.risk_gauge(v)
     assert "MALICIOUS" in g.plain and "90/100" in g.plain
     assert g.plain.count("█") == round(0.9 * 32)

@@ -91,7 +91,14 @@ export interface WaterfallStep {
 export function buildWaterfall(v: Pick<Verdict, "signals" | "logit">): WaterfallStep[] {
   const steps: WaterfallStep[] = [];
   let acc = PRIOR_LOGIT;
-  steps.push({ key: "prior", label: "Prior (base rate)", kind: "prior", delta: 0, from: acc, to: acc });
+  steps.push({
+    key: "prior",
+    label: "Prior (base rate)",
+    kind: "prior",
+    delta: 0,
+    from: acc,
+    to: acc,
+  });
   const sorted = [...v.signals]
     .map((s, i) => ({ s, i, c: signalContribution(s) }))
     .filter((x) => x.c !== 0)
@@ -121,7 +128,14 @@ export function buildWaterfall(v: Pick<Verdict, "signals" | "logit">): Waterfall
     });
     acc = finalLogit;
   }
-  steps.push({ key: "total", label: "Fused log-odds", kind: "total", delta: 0, from: acc, to: acc });
+  steps.push({
+    key: "total",
+    label: "Fused log-odds",
+    kind: "total",
+    delta: 0,
+    from: acc,
+    to: acc,
+  });
   return steps;
 }
 
@@ -137,7 +151,10 @@ export interface Segment {
  * Split `text` into segments by signal spans. Spans are [start, end) in Unicode code
  * points (Python str indices), so we index by code point, not UTF-16 unit.
  */
-export function buildSegments(text: string, signals: Pick<Signal, "span" | "weight" | "contribution">[]): Segment[] {
+export function buildSegments(
+  text: string,
+  signals: Pick<Signal, "span" | "weight" | "contribution">[],
+): Segment[] {
   const chars = Array.from(text);
   const n = chars.length;
   if (n === 0) return [];
@@ -172,17 +189,20 @@ export function buildSegments(text: string, signals: Pick<Signal, "span" | "weig
 /** Tailwind classes for a highlighted segment by its strongest contribution. */
 export function segmentClass(weight: number): string {
   if (weight === 0) return "";
-  if (weight < 0) return "bg-ok/20 text-ok underline decoration-ok/60 decoration-2 underline-offset-4";
-  if (weight >= 2.5) return "bg-bad/25 text-bad underline decoration-bad decoration-2 underline-offset-4";
-  if (weight >= 1.0) return "bg-warn/25 text-warn underline decoration-warn decoration-2 underline-offset-4";
+  if (weight < 0)
+    return "bg-ok/20 text-ok underline decoration-ok/60 decoration-2 underline-offset-4";
+  if (weight >= 2.5)
+    return "bg-bad/25 text-bad underline decoration-bad decoration-2 underline-offset-4";
+  if (weight >= 1.0)
+    return "bg-warn/25 text-warn underline decoration-warn decoration-2 underline-offset-4";
   return "bg-info/20 text-info underline decoration-info/70 decoration-2 underline-offset-4";
 }
 
 /** Show characters that are invisible or confusable-prone so analysts can see them. */
 export function revealInvisible(text: string): string {
-  // eslint-disable-next-line no-misleading-character-class
-  return text.replace(/[​-‏‪-‮⁠-⁤⁦-⁩﻿]/g, (c) =>
-    `<U+${c.codePointAt(0)!.toString(16).toUpperCase().padStart(4, "0")}>`,
+  return text.replace(
+    /[​-‏‪-‮⁠-⁤⁦-⁩﻿]/g,
+    (c) => `<U+${c.codePointAt(0)!.toString(16).toUpperCase().padStart(4, "0")}>`,
   );
 }
 

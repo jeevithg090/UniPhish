@@ -29,26 +29,33 @@ _MAX_SCRIPT_CHARS = 2_000_000
 
 _B64_RUN_RE = re.compile(r"[A-Za-z0-9+/]{1024,}={0,2}")
 _BLOB_API_RE = re.compile(
-    r"(?i)\bnew\s+Blob\b|createObjectURL|msSaveOrOpenBlob|msSaveBlob|\bsaveAs\s*\(")
+    r"(?i)\bnew\s+Blob\b|createObjectURL|msSaveOrOpenBlob|msSaveBlob|\bsaveAs\s*\("
+)
 _DOWNLOAD_RE = re.compile(
-    r"(?i)\.download\s*=|\bdownload\s*=\s*[\"']|setAttribute\(\s*[\"']download[\"']")
+    r"(?i)\.download\s*=|\bdownload\s*=\s*[\"']|setAttribute\(\s*[\"']download[\"']"
+)
 _ATOB_RE = re.compile(r"\batob\s*\(")
 _OBFUSC_RE = re.compile(
     r"(?i)\beval\s*\(|\bunescape\s*\(|String\.fromCharCode|\bFunction\s*\(\s*[\"']"
-    r"|(?:\\x[0-9a-f]{2}){16,}|(?:\\u[0-9a-f]{4}){12,}")
+    r"|(?:\\x[0-9a-f]{2}){16,}|(?:\\u[0-9a-f]{4}){12,}"
+)
 _REDIRECT_RE = re.compile(
     r"(?i)\b(?:window\.|document\.|top\.|self\.|parent\.)?location(?:\.href)?\s*=(?!=)"
-    r"|\blocation\.(?:replace|assign)\s*\(|\bwindow\.open\s*\(")
+    r"|\blocation\.(?:replace|assign)\s*\(|\bwindow\.open\s*\("
+)
 _ATTR_RE = re.compile(
     r"""(?i)\b(?P<n>href|src|action|formaction|poster|xlink:href)\s*=\s*"""
-    r"""(?:"(?P<d>[^"]{0,4096})"|'(?P<s>[^']{0,4096})'|(?P<u>[^\s>"']{1,4096}))""")
+    r"""(?:"(?P<d>[^"]{0,4096})"|'(?P<s>[^']{0,4096})'|(?P<u>[^\s>"']{1,4096}))"""
+)
 _FORM_TAG_RE = re.compile(r"(?i)<form\b[^>]{0,2000}>")
 _PASSWORD_RE = re.compile(r"(?i)<input\b[^>]{0,500}?\btype\s*=\s*[\"']?password")
 _META_REFRESH_RE = re.compile(
-    r"(?i)<meta\b[^>]{0,1000}?http-equiv\s*=\s*[\"']?refresh[\"']?[^>]{0,1000}>")
+    r"(?i)<meta\b[^>]{0,1000}?http-equiv\s*=\s*[\"']?refresh[\"']?[^>]{0,1000}>"
+)
 _META_URL_RE = re.compile(r"(?i)url\s*=\s*[\"']?([^\"'>\s;]{1,2048})")
 _DATA_NAV_RE = re.compile(
-    r"""(?i)\b(?:href|src|action|formaction)\s*=\s*["']?\s*data:\s*([a-z0-9.+/-]{1,80})""")
+    r"""(?i)\b(?:href|src|action|formaction)\s*=\s*["']?\s*data:\s*([a-z0-9.+/-]{1,80})"""
+)
 _SVG_MARKER_RE = re.compile(r"(?i)<svg\b")
 _FOREIGN_RE = re.compile(r"(?i)<foreignObject\b")
 _EVENT_ATTR_RE = re.compile(r"""(?i)\s(on[a-z]{3,20})\s*=\s*["']""")
@@ -84,22 +91,36 @@ def smuggling_checks(text: str, f: Findings) -> None:
     download = len(_DOWNLOAD_RE.findall(text))
     atob = len(_ATOB_RE.findall(text))
     if bad:
-        f.add("file.html.smuggling.payload",
-              f"A base64 blob embedded in the document decodes to a {bad[0]['type'].upper()} "
-              "file; script can drop it to disk when opened.",
-              blobs=bad[:10], atob_calls=atob, blob_api=blob_api)
+        f.add(
+            "file.html.smuggling.payload",
+            f"A base64 blob embedded in the document decodes to a {bad[0]['type'].upper()} "
+            "file; script can drop it to disk when opened.",
+            blobs=bad[:10],
+            atob_calls=atob,
+            blob_api=blob_api,
+        )
     if blob_api and (download or atob) and (count or atob >= 1):
-        f.add("file.html.smuggling.pattern",
-              "Script builds a Blob from decoded data and offers it as a download.",
-              blob_api=blob_api, download_anchor=download, atob_calls=atob, base64_blobs=count)
+        f.add(
+            "file.html.smuggling.pattern",
+            "Script builds a Blob from decoded data and offers it as a download.",
+            blob_api=blob_api,
+            download_anchor=download,
+            atob_calls=atob,
+            base64_blobs=count,
+        )
     if count and total >= 200_000 and not bad:
-        f.add("file.html.large_base64",
-              f"{count} large base64 blob(s) totalling {total:,} characters are embedded.",
-              blobs=count, chars=total)
+        f.add(
+            "file.html.large_base64",
+            f"{count} large base64 blob(s) totalling {total:,} characters are embedded.",
+            blobs=count,
+            chars=total,
+        )
     if len(_OBFUSC_RE.findall(text)) >= 3 or atob >= 3:
-        f.add("file.html.obfuscated_script",
-              "Script relies on eval/unescape/fromCharCode/atob chains to hide its logic.",
-              atob_calls=atob)
+        f.add(
+            "file.html.obfuscated_script",
+            "Script relies on eval/unescape/fromCharCode/atob chains to hide its logic.",
+            atob_calls=atob,
+        )
 
 
 def _attr_values(text: str) -> list[tuple[str, str]]:
@@ -120,9 +141,11 @@ def _abs_http(url: str) -> bool:
 def analyze_html(data: bytes, f: Findings) -> None:
     """Indicators for an HTML document delivered as a file."""
     text = decode_text(data)
-    f.add("file.type.html_attachment",
-          "An HTML document was delivered as a file instead of a link; attackers use this to "
-          "bypass URL filtering.")
+    f.add(
+        "file.type.html_attachment",
+        "An HTML document was delivered as a file instead of a link; attackers use this to "
+        "bypass URL filtering.",
+    )
     smuggling_checks(text, f)
     if _PASSWORD_RE.search(text):
         f.add("file.html.password_form", "The page contains a password input field.")
@@ -132,25 +155,35 @@ def analyze_html(data: bytes, f: Findings) -> None:
             if n == "action" and _abs_http(v):
                 form_urls.append("https:" + v if v.startswith("//") else v)
     if form_urls:
-        f.add("file.html.external_form_action",
-              f"A form posts to a remote URL: {form_urls[0][:200]}.", actions=form_urls[:10])
+        f.add(
+            "file.html.external_form_action",
+            f"A form posts to a remote URL: {form_urls[0][:200]}.",
+            actions=form_urls[:10],
+        )
         for u in form_urls:
             f.add_url(u)
     mm = _META_REFRESH_RE.search(text)
     if mm:
         um = _META_URL_RE.search(mm.group(0))
         target = um.group(1) if um else ""
-        f.add("file.html.meta_refresh",
-              "A <meta http-equiv=refresh> tag redirects the browser"
-              + (f" to {target[:200]}." if target else "."), target=target)
+        f.add(
+            "file.html.meta_refresh",
+            "A <meta http-equiv=refresh> tag redirects the browser"
+            + (f" to {target[:200]}." if target else "."),
+            target=target,
+        )
         if target:
             f.add_url(target)
     for dm in _DATA_NAV_RE.finditer(text):
         mime = dm.group(1).lower()
-        if mime in ("text/html", "application/xhtml+xml", "image/svg+xml") \
-                or mime.startswith("application/"):
-            f.add("file.html.data_uri_navigation",
-                  f"A link or frame targets an embedded data: document ({mime}).", mime=mime)
+        if mime in ("text/html", "application/xhtml+xml", "image/svg+xml") or mime.startswith(
+            "application/"
+        ):
+            f.add(
+                "file.html.data_uri_navigation",
+                f"A link or frame targets an embedded data: document ({mime}).",
+                mime=mime,
+            )
             break
     for n, v in _attr_values(text):
         if n in ("href", "src", "action", "formaction", "xlink:href", "poster") and _abs_http(v):
@@ -187,8 +220,10 @@ def analyze_svg(data: bytes, f: Findings) -> None:
     try:
         root = DET.fromstring(text.encode("utf-8", "replace"))
     except DefusedXmlException:
-        f.add("file.svg.xml_entities",
-              "The SVG declares XML entities or external references (blocked, not expanded).")
+        f.add(
+            "file.svg.xml_entities",
+            "The SVG declares XML entities or external references (blocked, not expanded).",
+        )
         _svg_fallback(text, f)
         return
     except Exception as e:
@@ -233,23 +268,36 @@ def analyze_svg(data: bytes, f: Findings) -> None:
             elif lname == "src" and tag == "script" and _abs_http(v):
                 external.append(v)
     if scripts or js_uris:
-        f.add("file.svg.script",
-              "The SVG contains executable script"
-              + (" (javascript: link)." if js_uris and not scripts else "."),
-              script_elements=scripts, javascript_uris=js_uris)
+        f.add(
+            "file.svg.script",
+            "The SVG contains executable script"
+            + (" (javascript: link)." if js_uris and not scripts else "."),
+            script_elements=scripts,
+            javascript_uris=js_uris,
+        )
     if foreign:
-        f.add("file.svg.foreign_object",
-              "The SVG embeds HTML through <foreignObject> (used for fake login forms).")
+        f.add(
+            "file.svg.foreign_object",
+            "The SVG embeds HTML through <foreignObject> (used for fake login forms).",
+        )
     if handlers:
-        f.add("file.svg.event_handler",
-              f"SVG elements carry event handler(s): {', '.join(sorted(set(handlers))[:5])}.",
-              handlers=sorted(set(handlers)))
+        f.add(
+            "file.svg.event_handler",
+            f"SVG elements carry event handler(s): {', '.join(sorted(set(handlers))[:5])}.",
+            handlers=sorted(set(handlers)),
+        )
     if external:
-        f.add("file.svg.external_ref", f"The SVG loads external content from {external[0][:200]}.",
-              urls=external[:10])
+        f.add(
+            "file.svg.external_ref",
+            f"The SVG loads external content from {external[0][:200]}.",
+            urls=external[:10],
+        )
     if links:
-        f.add("file.svg.external_link",
-              f"The SVG is clickable and links to {links[0][:200]}.", urls=links[:10])
+        f.add(
+            "file.svg.external_link",
+            f"The SVG is clickable and links to {links[0][:200]}.",
+            urls=links[:10],
+        )
     for u in links + external:
         f.add_url(u)
     _script_checks("\n".join(script_parts)[:_MAX_SCRIPT_CHARS], f, svg=True)
@@ -263,8 +311,11 @@ def _svg_fallback(text: str, f: Findings) -> None:
         f.add("file.svg.foreign_object", "The SVG embeds HTML through <foreignObject>.")
     ev = sorted({m.group(1).lower() for m in _EVENT_ATTR_RE.finditer(text)})
     if ev:
-        f.add("file.svg.event_handler",
-              f"SVG elements carry event handler(s): {', '.join(ev[:5])}.", handlers=ev)
+        f.add(
+            "file.svg.event_handler",
+            f"SVG elements carry event handler(s): {', '.join(ev[:5])}.",
+            handlers=ev,
+        )
     if _REDIRECT_RE.search(text) and f.has("file.svg.script"):
         f.add("file.svg.redirect", "The embedded script navigates the browser elsewhere.")
     for n, v in _attr_values(text):

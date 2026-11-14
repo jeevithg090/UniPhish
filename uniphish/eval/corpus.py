@@ -93,7 +93,8 @@ def corpus_dir(root: str | os.PathLike[str] | None = None) -> Path:
     p = p.expanduser().resolve()
     if not p.is_dir():
         raise CorpusError(
-            f"sample corpus not found at {p}; use a source checkout or set {CORPUS_ENV}")
+            f"sample corpus not found at {p}; use a source checkout or set {CORPUS_ENV}"
+        )
     return p
 
 
@@ -138,11 +139,17 @@ class CorpusItem:
     def meta(self) -> dict[str, Any]:
         """Everything except the payload, as a plain dict."""
         return {
-            "id": self.id, "category": self.category, "lang": self.lang,
-            "script": self.script, "note": self.note,
+            "id": self.id,
+            "category": self.category,
+            "lang": self.lang,
+            "script": self.script,
+            "note": self.note,
             "headline_signal": self.headline_signal,
-            "expected_techniques": list(self.expected_techniques), "hard": self.hard,
-            "path": self.path, "url": self.url, "filename": self.filename,
+            "expected_techniques": list(self.expected_techniques),
+            "hard": self.hard,
+            "path": self.path,
+            "url": self.url,
+            "filename": self.filename,
         }
 
     def to_artifact(self) -> Artifact:
@@ -166,8 +173,11 @@ class CorpusItem:
 
         if self.kind == "file":
             raise CorpusError("file items cannot be expressed as an ArtifactSpec")
-        value = _as_str(self.payload) if self.kind != "email" \
+        value = (
+            _as_str(self.payload)
+            if self.kind != "email"
             else _as_bytes(self.payload).decode("utf-8", "replace")
+        )
         return ArtifactSpec(self.kind, value, self.url if self.kind == "page" else None)
 
     def to_eval_item(self, dataset: str = "corpus") -> Any:
@@ -175,9 +185,17 @@ class CorpusItem:
         from uniphish.eval.datasets import EvalItem
 
         tags = tuple(self.tags) + (("hard",) if self.hard else ())
-        return EvalItem(id=self.id, dataset=dataset, category=self.category,
-                        label=self.label_int, spec=self.to_spec(), lang=self.lang,
-                        script=self.script, tags=tags, note=self.note)
+        return EvalItem(
+            id=self.id,
+            dataset=dataset,
+            category=self.category,
+            label=self.label_int,
+            spec=self.to_spec(),
+            lang=self.lang,
+            script=self.script,
+            tags=tags,
+            note=self.note,
+        )
 
 
 def _as_str(p: str | bytes) -> str:
@@ -254,8 +272,11 @@ def _load_jsonl(root: Path, name: str) -> dict[str, dict[str, Any]]:
             rec = json.loads(line)
         except json.JSONDecodeError as e:
             raise CorpusError(f"{name}:{n}: invalid JSON ({e.msg})") from e
-        if not isinstance(rec, dict) or not isinstance(rec.get("id"), str) \
-                or not isinstance(rec.get("input"), str):
+        if (
+            not isinstance(rec, dict)
+            or not isinstance(rec.get("id"), str)
+            or not isinstance(rec.get("input"), str)
+        ):
             raise CorpusError(f"{name}:{n}: record needs string 'id' and 'input'")
         if rec["id"] in out:
             raise CorpusError(f"{name}:{n}: duplicate id {rec['id']!r}")
@@ -263,8 +284,11 @@ def _load_jsonl(root: Path, name: str) -> dict[str, dict[str, Any]]:
     return out
 
 
-def _build_item(root: Path, e: dict[str, Any], jsonl: dict[str, dict[str, dict[str, Any]]],
-                ) -> CorpusItem:
+def _build_item(
+    root: Path,
+    e: dict[str, Any],
+    jsonl: dict[str, dict[str, dict[str, Any]]],
+) -> CorpusItem:
     kind, iid = e["kind"], e["id"]
     rec: dict[str, Any] = {}
     payload: str | bytes
@@ -283,16 +307,31 @@ def _build_item(root: Path, e: dict[str, Any], jsonl: dict[str, dict[str, dict[s
     if not isinstance(techs, list):
         raise CorpusError(f"{iid}: expected_techniques must be a list")
     return CorpusItem(
-        id=iid, kind=kind, payload=payload, label=e["label"], category=e["category"],
-        lang=str(e.get("lang") or "en"), script=str(e.get("script") or "Latn"),
-        note=str(rec.get("note") or ""), headline_signal=e.get("headline_signal"),
-        expected_techniques=tuple(str(t) for t in techs), hard=bool(e.get("hard", False)),
-        path=e.get("path") or e.get("source"), url=e.get("url"), filename=e.get("filename"))
+        id=iid,
+        kind=kind,
+        payload=payload,
+        label=e["label"],
+        category=e["category"],
+        lang=str(e.get("lang") or "en"),
+        script=str(e.get("script") or "Latn"),
+        note=str(rec.get("note") or ""),
+        headline_signal=e.get("headline_signal"),
+        expected_techniques=tuple(str(t) for t in techs),
+        hard=bool(e.get("hard", False)),
+        path=e.get("path") or e.get("source"),
+        url=e.get("url"),
+        filename=e.get("filename"),
+    )
 
 
-def load_items(*, kinds: Iterable[str] | None = None, labels: Iterable[str] | None = None,
-               categories: Iterable[str] | None = None, include_hard: bool = True,
-               root: str | os.PathLike[str] | None = None) -> list[CorpusItem]:
+def load_items(
+    *,
+    kinds: Iterable[str] | None = None,
+    labels: Iterable[str] | None = None,
+    categories: Iterable[str] | None = None,
+    include_hard: bool = True,
+    root: str | os.PathLike[str] | None = None,
+) -> list[CorpusItem]:
     """Load the corpus (manifest order), optionally filtered.
 
     Args:
@@ -325,8 +364,11 @@ def load_items(*, kinds: Iterable[str] | None = None, labels: Iterable[str] | No
     return items
 
 
-def _norm_filter(values: Iterable[str] | None, allowed: tuple[str, ...], what: str,
-                 ) -> set[str] | None:
+def _norm_filter(
+    values: Iterable[str] | None,
+    allowed: tuple[str, ...],
+    what: str,
+) -> set[str] | None:
     if values is None:
         return None
     s = {values} if isinstance(values, str) else set(values)
@@ -352,8 +394,10 @@ def counts(items: Iterable[CorpusItem] | None = None) -> dict[str, Any]:
         "total": len(its),
         "by_kind": {k: by_kind.get(k, 0) for k in KINDS},
         "by_label": {k: by_label.get(k, 0) for k in LABELS},
-        "by_kind_label": {k: {lb: sum(1 for i in its if i.kind == k and i.label == lb)
-                              for lb in LABELS} for k in KINDS},
+        "by_kind_label": {
+            k: {lb: sum(1 for i in its if i.kind == k and i.label == lb) for lb in LABELS}
+            for k in KINDS
+        },
         "by_category": dict(sorted(Counter(i.category for i in its).items())),
         "hard": sum(1 for i in its if i.hard),
     }
@@ -410,8 +454,9 @@ def _main(argv: list[str] | None = None) -> int:  # pragma: no cover - thin CLI
     out = [f"UniPhish sample corpus: {c['total']} items ({c['hard']} marked hard)"]
     for k in KINDS:
         kl = c["by_kind_label"][k]
-        out.append(f"  {k:<6} {c['by_kind'][k]:>3}  malicious={kl['malicious']} "
-                   f"benign={kl['benign']}")
+        out.append(
+            f"  {k:<6} {c['by_kind'][k]:>3}  malicious={kl['malicious']} benign={kl['benign']}"
+        )
     problems = validate_corpus()
     out.extend(f"PROBLEM: {p}" for p in problems)
     sys.stdout.write("\n".join(out) + "\n")

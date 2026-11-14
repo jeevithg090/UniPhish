@@ -38,8 +38,7 @@ _BATCH_CONCURRENCY = 8
 
 
 @router.post("/scan")
-async def scan(req: ScanRequest, request: Request,
-               engine=Depends(get_engine)) -> dict[str, Any]:
+async def scan(req: ScanRequest, request: Request, engine=Depends(get_engine)) -> dict[str, Any]:
     """Analyse a single input; ``input_type`` is auto-detected when omitted."""
     artifact = artifact_from_scan(req)
     opts = resolve_options(req.options, request.app.state.settings)
@@ -47,52 +46,56 @@ async def scan(req: ScanRequest, request: Request,
 
 
 @router.post("/scan/url")
-async def scan_url(req: UrlRequest, request: Request,
-                   engine=Depends(get_engine)) -> dict[str, Any]:
+async def scan_url(req: UrlRequest, request: Request, engine=Depends(get_engine)) -> dict[str, Any]:
     artifact = build_artifact(input_type="url", url=req.url)
     opts = resolve_options(req.options, request.app.state.settings)
     return await run_scan(engine, artifact, opts)
 
 
 @router.post("/scan/text")
-async def scan_text(req: TextRequest, request: Request,
-                    engine=Depends(get_engine)) -> dict[str, Any]:
+async def scan_text(
+    req: TextRequest, request: Request, engine=Depends(get_engine)
+) -> dict[str, Any]:
     artifact = build_artifact(input_type="text", text=req.text)
     opts = resolve_options(req.options, request.app.state.settings)
     return await run_scan(engine, artifact, opts)
 
 
 @router.post("/scan/email")
-async def scan_email(req: EmailRequest, request: Request,
-                     engine=Depends(get_engine)) -> dict[str, Any]:
+async def scan_email(
+    req: EmailRequest, request: Request, engine=Depends(get_engine)
+) -> dict[str, Any]:
     if req.email is not None:
         artifact = build_artifact(input_type="email", email=req.email)
     elif req.raw is not None:
-        artifact = build_artifact(input_type="email",
-                                  email=_to_b64(req.raw))
+        artifact = build_artifact(input_type="email", email=_to_b64(req.raw))
     else:
-        raise HTTPException(422,
-                            detail="Provide base64 'email' or UTF-8 'raw'.")
+        raise HTTPException(422, detail="Provide base64 'email' or UTF-8 'raw'.")
     opts = resolve_options(req.options, request.app.state.settings)
     return await run_scan(engine, artifact, opts)
 
 
 @router.post("/scan/page")
-async def scan_page(req: PageRequest, request: Request,
-                    engine=Depends(get_engine)) -> dict[str, Any]:
+async def scan_page(
+    req: PageRequest, request: Request, engine=Depends(get_engine)
+) -> dict[str, Any]:
     artifact = build_artifact(input_type="html", html=req.html, url=req.url)
     opts = resolve_options(req.options, request.app.state.settings)
     return await run_scan(engine, artifact, opts)
 
 
 @router.post("/scan/file")
-async def scan_file(request: Request, file: UploadFile = File(...),
-                    options: str | None = Form(default=None),
-                    engine=Depends(get_engine)) -> dict[str, Any]:
+async def scan_file(
+    request: Request,
+    file: UploadFile = File(...),
+    options: str | None = Form(default=None),
+    engine=Depends(get_engine),
+) -> dict[str, Any]:
     """Multipart file upload. ``options`` is an optional JSON string form field."""
     data = await _read_upload(file)
     try:
         from uniphish.core.types import Artifact
+
         artifact = Artifact.from_file(data, filename=file.filename)
     except ArtifactTooLarge as exc:
         raise HTTPException(413, detail=str(exc)) from exc
@@ -101,8 +104,9 @@ async def scan_file(request: Request, file: UploadFile = File(...),
 
 
 @router.post("/scan/batch")
-async def scan_batch(req: BatchRequest, request: Request,
-                     engine=Depends(get_engine)) -> dict[str, Any]:
+async def scan_batch(
+    req: BatchRequest, request: Request, engine=Depends(get_engine)
+) -> dict[str, Any]:
     """Analyse up to 50 inputs concurrently (bounded). One bad item never fails the batch."""
     settings = request.app.state.settings
     sem = asyncio.Semaphore(_BATCH_CONCURRENCY)
@@ -125,8 +129,7 @@ async def scan_batch(req: BatchRequest, request: Request,
 
 
 @router.post("/explain")
-async def explain(req: ScanRequest, request: Request,
-                  engine=Depends(get_engine)) -> dict[str, Any]:
+async def explain(req: ScanRequest, request: Request, engine=Depends(get_engine)) -> dict[str, Any]:
     """Scan with explanations forced on, then attach an analyst narrative + triage.
 
     The narrative/triage come from :class:`uniphish.ai.AIAnalyst`, which uses an LLM when a
@@ -144,8 +147,7 @@ async def explain(req: ScanRequest, request: Request,
     try:
         narrative = await analyst.narrative(verdict)
         triage = await analyst.triage(verdict)
-        report = {"narrative": narrative, "triage": triage,
-                  "ai_available": bool(analyst.available)}
+        report = {"narrative": narrative, "triage": triage, "ai_available": bool(analyst.available)}
     except Exception:  # analyst methods are defensive, but never let this break /explain
         log.exception("analyst report failed")
     out = verdict.model_dump(mode="json")
@@ -158,6 +160,7 @@ async def explain(req: ScanRequest, request: Request,
 # --------------------------------------------------------------------------- #
 def _to_b64(raw: str) -> str:
     import base64
+
     return base64.b64encode(raw.encode("utf-8", "replace")).decode("ascii")
 
 
@@ -167,8 +170,9 @@ def _parse_form_options(options: str | None) -> OptionsModel | None:
     try:
         return OptionsModel.model_validate_json(options)
     except ValueError as exc:
-        raise HTTPException(status.HTTP_400_BAD_REQUEST,
-                            detail="'options' form field is not valid JSON options.") from exc
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, detail="'options' form field is not valid JSON options."
+        ) from exc
 
 
 async def _read_upload(file: UploadFile) -> bytes:
@@ -181,7 +185,6 @@ async def _read_upload(file: UploadFile) -> bytes:
             break
         total += len(chunk)
         if total > MAX_REQUEST_BYTES:
-            raise HTTPException(413,
-                                detail="Uploaded file too large.")
+            raise HTTPException(413, detail="Uploaded file too large.")
         chunks.append(chunk)
     return b"".join(chunks)

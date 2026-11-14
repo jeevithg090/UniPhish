@@ -50,13 +50,13 @@ log = logging.getLogger("uniphish.export")
 TEMPLATE_NAME = "report.html.j2"
 TEMPLATE_DIR = Path(__file__).resolve().parents[1] / "server" / "templates"
 
-MAX_TARGET_CHARS = 4_000        # displayed characters of the analysed target
-MAX_FIELD_CHARS = 600           # any other free-text field
+MAX_TARGET_CHARS = 4_000  # displayed characters of the analysed target
+MAX_FIELD_CHARS = 600  # any other free-text field
 MAX_SIGNAL_ROWS = 200
 MAX_IOC_ROWS = 500
 MAX_TREE_NODES = 200
 MAX_TREE_DEPTH = 8
-MAX_WATERFALL = 12              # individually drawn signals; the rest fold into "other"
+MAX_WATERFALL = 12  # individually drawn signals; the rest fold into "other"
 MAX_JSON_CHARS = 150_000
 MAX_SPANS = 64
 
@@ -80,16 +80,22 @@ def _pieces(text: str) -> list[str]:
     """Per-character defanged rendering (one string per input character)."""
     swap: set[int] = set()
     for m in _SCHEME_RE.finditer(text):
-        swap.update((m.start() + 1, m.start() + 2))          # "tt" -> "xx"
-    ip_dots = {i for m in _IPV4_RE.finditer(text) for i in range(m.start(), m.end())
-               if text[i] == "."}
+        swap.update((m.start() + 1, m.start() + 2))  # "tt" -> "xx"
+    ip_dots = {
+        i for m in _IPV4_RE.finditer(text) for i in range(m.start(), m.end()) if text[i] == "."
+    }
     n = len(text)
     out: list[str] = []
     for i, c in enumerate(text):
         if i in swap:
             out.append("x")
-        elif c == "." and 0 < i < n - 1 and text[i - 1].isalnum() and text[i + 1].isalnum() \
-                and (i in ip_dots or not (text[i - 1].isdigit() and text[i + 1].isdigit())):
+        elif (
+            c == "."
+            and 0 < i < n - 1
+            and text[i - 1].isalnum()
+            and text[i + 1].isalnum()
+            and (i in ip_dots or not (text[i - 1].isdigit() and text[i + 1].isdigit()))
+        ):
             out.append("[.]")
         elif c == "@" and not (0 < i < n - 1 and text[i - 1] == "[" and text[i + 1] == "]"):
             out.append("[@]")
@@ -216,6 +222,7 @@ def _highlight(text: str, spans: list[_Span]) -> Markup:
 def _thresholds() -> tuple[float, float]:
     try:
         from uniphish.core.config import get_settings
+
         st = get_settings()
         return float(st.suspicious_threshold), float(st.malicious_threshold)
     except Exception:  # pragma: no cover - settings are always loadable in practice
@@ -226,6 +233,7 @@ def _arc(cx: float, cy: float, r: float, s0: float, s1: float) -> str:
     def pt(s: float) -> tuple[float, float]:
         ang = math.pi * (1.0 - s / 100.0)
         return cx + r * math.cos(ang), cy - r * math.sin(ang)
+
     (x0, y0), (x1, y1) = pt(s0), pt(s1)
     return f"M {x0:.2f} {y0:.2f} A {r:g} {r:g} 0 0 1 {x1:.2f} {y1:.2f}"
 
@@ -247,7 +255,8 @@ def gauge_svg(score: int, level: str) -> Markup:
         f'<line class="g-needle" x1="{cx:g}" y1="{cy:g}" x2="{nx:.2f}" y2="{ny:.2f}" '
         f'stroke-width="3" stroke-linecap="round"/><circle class="g-hub" cx="{cx:g}" '
         f'cy="{cy:g}" r="6"/><text class="g-score" x="{cx:g}" y="{cy + 26:g}" '
-        f'text-anchor="middle">{score}</text></svg>')
+        f'text-anchor="middle">{score}</text></svg>'
+    )
 
 
 def _contrib(s: Signal) -> float:
@@ -260,19 +269,33 @@ def _waterfall_rows(verdict: Verdict) -> list[tuple[str, float, str, str]]:
     shown, hidden = sigs[:MAX_WATERFALL], sigs[MAX_WATERFALL:]
     shown.sort(key=_contrib, reverse=True)
     rows: list[tuple[str, float, str, str]] = [
-        ("Prior (base rate)", PRIOR_LOGIT, "prior", "Log-odds before any evidence")]
+        ("Prior (base rate)", PRIOR_LOGIT, "prior", "Log-odds before any evidence")
+    ]
     for s in shown:
         c = _contrib(s)
-        rows.append((defang_text(s.title, 60), c, "pos" if c >= 0 else "neg",
-                     defang_text(f"{s.id}: {s.title}", 200)))
+        rows.append(
+            (
+                defang_text(s.title, 60),
+                c,
+                "pos" if c >= 0 else "neg",
+                defang_text(f"{s.id}: {s.title}", 200),
+            )
+        )
     other = sum(_contrib(s) for s in hidden) + (
-        verdict.logit - PRIOR_LOGIT - sum(_contrib(s) for s in sigs))
+        verdict.logit - PRIOR_LOGIT - sum(_contrib(s) for s in sigs)
+    )
     if abs(other) >= 0.005:
         parts = [f"{len(hidden)} more signal(s)"] if hidden else []
         parts.append("child evidence / clamping")
         rows.append(("Other evidence", other, "other", "; ".join(parts)))
-    rows.append(("Final log-odds", verdict.logit, "total",
-                 f"risk {verdict.risk:.4f} -> score {verdict.score}"))
+    rows.append(
+        (
+            "Final log-odds",
+            verdict.logit,
+            "total",
+            f"risk {verdict.risk:.4f} -> score {verdict.score}",
+        )
+    )
     return rows
 
 
@@ -300,23 +323,28 @@ def waterfall_svg(verdict: Verdict) -> Markup:
     def x(v: float) -> float:
         return left + (v - lo) / (hi - lo) * width
 
-    out = [f'<svg class="waterfall" viewBox="0 0 760 {height:g}" role="img" '
-           f'aria-label="Signal contribution waterfall" xmlns="http://www.w3.org/2000/svg">'
-           f'<title>Signal contribution waterfall (log-odds)</title>']
+    out = [
+        f'<svg class="waterfall" viewBox="0 0 760 {height:g}" role="img" '
+        f'aria-label="Signal contribution waterfall" xmlns="http://www.w3.org/2000/svg">'
+        f"<title>Signal contribution waterfall (log-odds)</title>"
+    ]
     for v, name in marks:
-        out.append(f'<line class="thr" x1="{x(v):.1f}" y1="{top - 6:g}" x2="{x(v):.1f}" '
-                   f'y2="{height - 6:g}"/><text class="thr-l" x="{x(v):.1f}" y="10" '
-                   f'text-anchor="middle">{name}</text>')
+        out.append(
+            f'<line class="thr" x1="{x(v):.1f}" y1="{top - 6:g}" x2="{x(v):.1f}" '
+            f'y2="{height - 6:g}"/><text class="thr-l" x="{x(v):.1f}" y="10" '
+            f'text-anchor="middle">{name}</text>'
+        )
     for i, ((label, delta, kind, tip), (a, b)) in enumerate(zip(rows, spans, strict=True)):
         y = top + i * row_h
         x0, x1 = sorted((x(a), x(b)))
         out.append(
-            f'<g><title>{escape(tip)}</title>'
+            f"<g><title>{escape(tip)}</title>"
             f'<text class="w-label" x="0" y="{y + 16:g}">{escape(label)}</text>'
             f'<rect class="bar-{kind}" x="{x0:.1f}" y="{y + 3:g}" '
             f'width="{max(x1 - x0, 1.5):.1f}" height="{row_h - 8:g}" rx="2"/>'
             f'<text class="w-val" x="755" y="{y + 16:g}" text-anchor="end">'
-            f'{delta:+.2f}</text></g>')
+            f"{delta:+.2f}</text></g>"
+        )
     out.append("</svg>")
     return Markup("".join(out))  # noqa: S704 - built from escaped pieces
 
@@ -325,10 +353,13 @@ def waterfall_svg(verdict: Verdict) -> Markup:
 # Context assembly
 # --------------------------------------------------------------------------- #
 def _ind_row(ind: Indicator) -> dict[str, Any]:
-    return {"type": ind.type.value, "value": defang_text(ind.value, 400),
-            "role": _plain(ind.role, 60) if ind.role else "",
-            "malicious": ind.malicious, "context": defang_text(ind.context, 160)
-            if ind.context else ""}
+    return {
+        "type": ind.type.value,
+        "value": defang_text(ind.value, 400),
+        "role": _plain(ind.role, 60) if ind.role else "",
+        "malicious": ind.malicious,
+        "context": defang_text(ind.context, 160) if ind.context else "",
+    }
 
 
 def _mitre_rows(verdict: Verdict) -> list[dict[str, Any]]:
@@ -344,12 +375,18 @@ def _mitre_rows(verdict: Verdict) -> list[dict[str, Any]]:
     for tid in sorted(ids):
         valid = bool(_TECH_ID_RE.match(tid)) and tid in _mitre.CATALOG
         t = _mitre.resolve(tid) if valid else None
-        rows.append({
-            "id": _plain(tid, 40), "name": defang_text(t.name if t else tid, 120),
-            "tactic": t.tactic if t else "", "framework": t.framework if t else "unknown",
-            "url": t.url if t and t.url.startswith(("https://attack.mitre.org/",
-                                                    "https://atlas.mitre.org/")) else "",
-            "signals": [_plain(s, 80) for s in sorted(ids[tid])][:8]})
+        rows.append(
+            {
+                "id": _plain(tid, 40),
+                "name": defang_text(t.name if t else tid, 120),
+                "tactic": t.tactic if t else "",
+                "framework": t.framework if t else "unknown",
+                "url": t.url
+                if t and t.url.startswith(("https://attack.mitre.org/", "https://atlas.mitre.org/"))
+                else "",
+                "signals": [_plain(s, 80) for s in sorted(ids[tid])][:8],
+            }
+        )
     return rows
 
 
@@ -362,11 +399,18 @@ def _tree(verdict: Verdict) -> tuple[list[dict[str, Any]], bool]:
         if len(rows) >= MAX_TREE_NODES or depth > MAX_TREE_DEPTH:
             truncated = True
             return
-        rows.append({
-            "depth": depth, "kind": v.kind.value, "origin": _plain(v.origin or "", 40),
-            "target": defang_text(v.target, 110), "level": v.level.value, "score": v.score,
-            "brand": defang_text(v.brand.name, 60) if v.brand and not v.brand.official else "",
-            "signals": len(v.signals)})
+        rows.append(
+            {
+                "depth": depth,
+                "kind": v.kind.value,
+                "origin": _plain(v.origin or "", 40),
+                "target": defang_text(v.target, 110),
+                "level": v.level.value,
+                "score": v.score,
+                "brand": defang_text(v.brand.name, 60) if v.brand and not v.brand.official else "",
+                "signals": len(v.signals),
+            }
+        )
         for c in v.children:
             visit(c, depth + 1)
 
@@ -390,6 +434,7 @@ def _facts(meta: dict[str, Any]) -> list[tuple[str, str]]:
 def _stix_pattern(verdict: Verdict) -> str | None:
     try:
         from uniphish.export.stix import build_pattern, select_indicators
+
         pat = build_pattern(select_indicators(verdict))
     except Exception:  # optional section: never break the report
         log.debug("STIX pattern unavailable", exc_info=True)
@@ -398,8 +443,9 @@ def _stix_pattern(verdict: Verdict) -> str | None:
 
 
 def _json_appendix(verdict: Verdict) -> tuple[str, bool]:
-    text = json.dumps(_defang_json(verdict.model_dump(mode="json")), indent=2,
-                      ensure_ascii=True, default=str)
+    text = json.dumps(
+        _defang_json(verdict.model_dump(mode="json")), indent=2, ensure_ascii=True, default=str
+    )
     if len(text) > MAX_JSON_CHARS:
         return text[:MAX_JSON_CHARS] + "\n... [truncated]", True
     return text, False
@@ -416,8 +462,9 @@ def _default_title(verdict: Verdict) -> str:
     return f"UniPhish analyst report - {verdict.kind.value} - {defang_text(verdict.target, 60)}"
 
 
-def build_context(verdict: Verdict, *, ai_narrative: str | None = None,
-                  title: str | None = None) -> dict[str, Any]:
+def build_context(
+    verdict: Verdict, *, ai_narrative: str | None = None, title: str | None = None
+) -> dict[str, Any]:
     """Assemble the (already neutralised) template context. Public for testing/embedding."""
     target_raw = verdict.target[:MAX_TARGET_CHARS]
     use_spans = verdict.kind in (ArtifactKind.URL, ArtifactKind.TEXT, ArtifactKind.PAGE)
@@ -432,47 +479,77 @@ def build_context(verdict: Verdict, *, ai_narrative: str | None = None,
         "id": _plain(verdict.id, 64),
         "created": verdict.created_at.isoformat(timespec="seconds"),
         "engine_version": _plain(verdict.engine_version, 30),
-        "kind": verdict.kind.value, "origin": _plain(verdict.origin or "", 40),
-        "level": verdict.level.value, "action": verdict.action.value,
-        "score": verdict.score, "risk_pct": f"{verdict.risk * 100:.1f}",
-        "logit": f"{verdict.logit:+.2f}", "confidence_pct": f"{verdict.confidence * 100:.0f}",
+        "kind": verdict.kind.value,
+        "origin": _plain(verdict.origin or "", 40),
+        "level": verdict.level.value,
+        "action": verdict.action.value,
+        "score": verdict.score,
+        "risk_pct": f"{verdict.risk * 100:.1f}",
+        "logit": f"{verdict.logit:+.2f}",
+        "confidence_pct": f"{verdict.confidence * 100:.0f}",
         "duration_ms": f"{verdict.duration_ms:.0f}",
         "summary": defang_text(verdict.summary, 800),
         "gauge": gauge_svg(verdict.score, verdict.level.value),
         "waterfall": waterfall_svg(verdict),
-        "brand": None if brand is None else {
-            "name": defang_text(brand.name, 80), "technique": _plain(brand.technique, 40),
-            "confidence_pct": f"{brand.confidence * 100:.0f}", "official": brand.official,
+        "brand": None
+        if brand is None
+        else {
+            "name": defang_text(brand.name, 80),
+            "technique": _plain(brand.technique, 40),
+            "confidence_pct": f"{brand.confidence * 100:.0f}",
+            "official": brand.official,
             "legit_domains": [defang_text(d, 120) for d in brand.legit_domains[:8]],
-            "evidence": defang_text(brand.evidence, 300)},
+            "evidence": defang_text(brand.evidence, 300),
+        },
         "techniques": [_plain(t, 40) for t in verdict.techniques[:20]],
         "target": _highlight(target_raw, spans),
         "target_cut": len(verdict.target) > MAX_TARGET_CHARS,
-        "span_rows": [{"text": defang_text(target_raw[s.start:s.end], 80), "title": s.title,
-                       "salient": s.salient} for s in spans],
+        "span_rows": [
+            {
+                "text": defang_text(target_raw[s.start : s.end], 80),
+                "title": s.title,
+                "salient": s.salient,
+            }
+            for s in spans
+        ],
         "facts": _facts(verdict.meta),
-        "signals": [{
-            "id": _plain(s.id, 80), "title": defang_text(s.title, 160),
-            "detail": defang_text(s.detail, 500), "category": _plain(s.category, 30),
-            "severity": (s.severity.value if s.severity else "info"),
-            "weight": f"{s.weight:+.2f}", "contribution": f"{_contrib(s):+.2f}",
-            "positive": _contrib(s) >= 0, "confidence": f"{s.confidence:.2f}",
-            "analyzer": _plain(s.analyzer, 30),
-            "mitre": [_plain(m, 30) for m in s.mitre[:8]]}
-            for s in sigs[:MAX_SIGNAL_ROWS]],
+        "signals": [
+            {
+                "id": _plain(s.id, 80),
+                "title": defang_text(s.title, 160),
+                "detail": defang_text(s.detail, 500),
+                "category": _plain(s.category, 30),
+                "severity": (s.severity.value if s.severity else "info"),
+                "weight": f"{s.weight:+.2f}",
+                "contribution": f"{_contrib(s):+.2f}",
+                "positive": _contrib(s) >= 0,
+                "confidence": f"{s.confidence:.2f}",
+                "analyzer": _plain(s.analyzer, 30),
+                "mitre": [_plain(m, 30) for m in s.mitre[:8]],
+            }
+            for s in sigs[:MAX_SIGNAL_ROWS]
+        ],
         "signals_total": len(sigs),
         "iocs": [_ind_row(i) for i in inds[:MAX_IOC_ROWS]],
         "iocs_total": len(inds),
         "ioc_list": "\n".join(defang_text(i.value, 400) for i in inds[:MAX_IOC_ROWS]),
         "mitre": _mitre_rows(verdict),
-        "tree": tree, "tree_truncated": tree_cut,
-        "runs": [{"name": _plain(a.name, 40), "status": _plain(a.status, 20),
-                  "duration_ms": f"{a.duration_ms:.1f}", "signals": a.signals,
-                  "error": defang_text(a.error, 200) if a.error else ""}
-                 for a in verdict.analyzers],
+        "tree": tree,
+        "tree_truncated": tree_cut,
+        "runs": [
+            {
+                "name": _plain(a.name, 40),
+                "status": _plain(a.status, 20),
+                "duration_ms": f"{a.duration_ms:.1f}",
+                "signals": a.signals,
+                "error": defang_text(a.error, 200) if a.error else "",
+            }
+            for a in verdict.analyzers
+        ],
         "narrative": _paragraphs(ai_narrative),
         "stix_pattern": _stix_pattern(verdict),
-        "raw_json": raw_json, "json_truncated": json_cut,
+        "raw_json": raw_json,
+        "json_truncated": json_cut,
     }
 
 
@@ -487,12 +564,18 @@ class ReportTemplateError(RuntimeError):
 def _env() -> Environment:
     if not (TEMPLATE_DIR / TEMPLATE_NAME).is_file():
         raise ReportTemplateError(f"report template not found: {TEMPLATE_DIR / TEMPLATE_NAME}")
-    return Environment(loader=FileSystemLoader(str(TEMPLATE_DIR)), autoescape=True,
-                       undefined=StrictUndefined, trim_blocks=True, lstrip_blocks=True)
+    return Environment(
+        loader=FileSystemLoader(str(TEMPLATE_DIR)),
+        autoescape=True,
+        undefined=StrictUndefined,
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
 
 
-def render_report(verdict: Verdict, *, ai_narrative: str | None = None,
-                  title: str | None = None) -> str:
+def render_report(
+    verdict: Verdict, *, ai_narrative: str | None = None, title: str | None = None
+) -> str:
     """Render a self-contained, offline, XSS-safe HTML analyst report for ``verdict``.
 
     Args:
@@ -530,41 +613,62 @@ def report_markdown(verdict: Verdict, *, ai_narrative: str | None = None) -> str
     """Ticketing-friendly Markdown (defanged, escaped) version of the report."""
     c = build_context(verdict, ai_narrative=ai_narrative)
     L: list[str] = [
-        "# UniPhish analyst report", "",
+        "# UniPhish analyst report",
+        "",
         f"**Verdict:** {c['level'].upper()} - score **{c['score']}/100** "
         f"(risk {c['risk_pct']}%, log-odds {c['logit']}, confidence {c['confidence_pct']}%) "
-        f"- recommended action: **{c['action']}**", "",
+        f"- recommended action: **{c['action']}**",
+        "",
         f"- Target ({c['kind']}): {_code(verdict.target, 300)}",
         f"- Verdict id: {_code(c['id'], fang=False)}  "
-        f"Engine: {_md(c['engine_version'], fang=False)}  Created: {c['created']}"]
+        f"Engine: {_md(c['engine_version'], fang=False)}  Created: {c['created']}",
+    ]
     if c["summary"]:
         L += ["", f"> {_md(c['summary'], 800)}"]
     b = c["brand"]
     if b:
         state = "official asset" if b["official"] else "impersonated brand"
-        L += ["", f"**Brand ({state}):** {_md(b['name'])} - technique "
-                  f"{_md(b['technique'], fang=False)}, confidence {b['confidence_pct']}%"]
+        L += [
+            "",
+            f"**Brand ({state}):** {_md(b['name'])} - technique "
+            f"{_md(b['technique'], fang=False)}, confidence {b['confidence_pct']}%",
+        ]
         if b["legit_domains"]:
             L.append("Legitimate domains: " + ", ".join(_code(d) for d in b["legit_domains"]))
     if c["techniques"]:
-        L += ["", "**Construction techniques:** "
-              + ", ".join(_code(t, fang=False) for t in c["techniques"])]
+        L += [
+            "",
+            "**Construction techniques:** "
+            + ", ".join(_code(t, fang=False) for t in c["techniques"]),
+        ]
     if c["narrative"]:
         L += ["", "## AI narrative (machine-generated, verify before acting)", ""]
         L += [f"{_md(p, 4000)}\n" for p in c["narrative"]]
-    L += ["", f"## Signals ({c['signals_total']})", "",
-          "| Contribution | Weight | Severity | Category | Signal | Detail |",
-          "|---:|---:|---|---|---|---|"]
+    L += [
+        "",
+        f"## Signals ({c['signals_total']})",
+        "",
+        "| Contribution | Weight | Severity | Category | Signal | Detail |",
+        "|---:|---:|---|---|---|---|",
+    ]
     for s in c["signals"]:
-        L.append(f"| {s['contribution']} | {s['weight']} | {s['severity']} | "
-                 f"{_md(s['category'], fang=False)} | {_code(s['id'], fang=False)} "
-                 f"{_md(s['title'])} | {_md(s['detail'], 300)} |")
-    L += ["", f"## Indicators of compromise ({c['iocs_total']}, defanged)", "",
-          "| Type | Value | Role | Malicious |", "|---|---|---|---|"]
+        L.append(
+            f"| {s['contribution']} | {s['weight']} | {s['severity']} | "
+            f"{_md(s['category'], fang=False)} | {_code(s['id'], fang=False)} "
+            f"{_md(s['title'])} | {_md(s['detail'], 300)} |"
+        )
+    L += [
+        "",
+        f"## Indicators of compromise ({c['iocs_total']}, defanged)",
+        "",
+        "| Type | Value | Role | Malicious |",
+        "|---|---|---|---|",
+    ]
     for i in c["iocs"]:
         mal = {True: "yes", False: "no", None: "-"}[i["malicious"]]
-        L.append(f"| {i['type']} | {_code(i['value'], 400)} | "
-                 f"{_md(i['role'], fang=False)} | {mal} |")
+        L.append(
+            f"| {i['type']} | {_code(i['value'], 400)} | {_md(i['role'], fang=False)} | {mal} |"
+        )
     if c["mitre"]:
         L += ["", "## MITRE ATT&CK / ATLAS", ""]
         for m in c["mitre"]:
@@ -574,13 +678,23 @@ def report_markdown(verdict: Verdict, *, ai_narrative: str | None = None) -> str
     L += ["", "## Artifact tree", ""]
     for t in c["tree"]:
         brand = f" - {_md(t['brand'])}" if t["brand"] else ""
-        L.append(f"{'  ' * t['depth']}- {t['kind']} {_code(t['target'], 120)} = "
-                 f"{t['level']} {t['score']}/100{brand}")
+        L.append(
+            f"{'  ' * t['depth']}- {t['kind']} {_code(t['target'], 120)} = "
+            f"{t['level']} {t['score']}/100{brand}"
+        )
     if c["runs"]:
-        L += ["", "## Analyzer runs", "", "| Analyzer | Status | ms | Signals |",
-              "|---|---|---:|---:|"]
-        L += [f"| {_md(r['name'], fang=False)} | {_md(r['status'], fang=False)} | "
-              f"{r['duration_ms']} | {r['signals']} |" for r in c["runs"]]
+        L += [
+            "",
+            "## Analyzer runs",
+            "",
+            "| Analyzer | Status | ms | Signals |",
+            "|---|---|---:|---:|",
+        ]
+        L += [
+            f"| {_md(r['name'], fang=False)} | {_md(r['status'], fang=False)} | "
+            f"{r['duration_ms']} | {r['signals']} |"
+            for r in c["runs"]
+        ]
     if c["stix_pattern"]:
         pattern = c["stix_pattern"].replace("```", "'''").replace("<", "‹").replace(">", "›")
         L += ["", "## STIX pattern (scheme defanged)", "", "```", pattern, "```"]
@@ -595,7 +709,7 @@ class PdfResult:
     """Outcome of :func:`to_pdf`: where the file went and in which format."""
 
     path: Path
-    format: str                # "pdf" or "html" (fallback)
+    format: str  # "pdf" or "html" (fallback)
     note: str | None = None
 
     @property
@@ -614,14 +728,24 @@ def _print_pdf(html: str, out: Path, timeout_s: float) -> None:
             context.route("**/*", lambda route: route.abort())
             page = context.new_page()
             page.set_content(html, wait_until="load", timeout=int(timeout_s * 1000))
-            page.pdf(path=str(out), format="A4", print_background=True,
-                     margin={"top": "14mm", "bottom": "14mm", "left": "12mm", "right": "12mm"})
+            page.pdf(
+                path=str(out),
+                format="A4",
+                print_background=True,
+                margin={"top": "14mm", "bottom": "14mm", "left": "12mm", "right": "12mm"},
+            )
         finally:
             browser.close()
 
 
-def to_pdf(verdict: Verdict, path: str | Path, *, ai_narrative: str | None = None,
-           title: str | None = None, timeout_s: float = 30.0) -> PdfResult:
+def to_pdf(
+    verdict: Verdict,
+    path: str | Path,
+    *,
+    ai_narrative: str | None = None,
+    title: str | None = None,
+    timeout_s: float = 30.0,
+) -> PdfResult:
     """Write the report to ``path`` as PDF; fall back to HTML when PDF is unavailable.
 
     PDF needs the optional ``sandbox`` extra (``pip install 'uniphish[sandbox]'`` then
@@ -649,10 +773,22 @@ def to_pdf(verdict: Verdict, path: str | Path, *, ai_narrative: str | None = Non
             reason = f"PDF rendering failed ({type(exc).__name__})"
     html_path = out if out.suffix.lower() in (".html", ".htm") else out.with_suffix(".html")
     html_path.write_text(html, encoding="utf-8")
-    return PdfResult(html_path, "html",
-                     f"{reason}; wrote HTML instead. PDF output needs the optional 'sandbox' "
-                     "extra: pip install 'uniphish[sandbox]' && playwright install chromium")
+    return PdfResult(
+        html_path,
+        "html",
+        f"{reason}; wrote HTML instead. PDF output needs the optional 'sandbox' "
+        "extra: pip install 'uniphish[sandbox]' && playwright install chromium",
+    )
 
 
-__all__ = ["PdfResult", "ReportTemplateError", "build_context", "defang_text", "gauge_svg",
-           "render_report", "report_markdown", "to_pdf", "waterfall_svg"]
+__all__ = [
+    "PdfResult",
+    "ReportTemplateError",
+    "build_context",
+    "defang_text",
+    "gauge_svg",
+    "render_report",
+    "report_markdown",
+    "to_pdf",
+    "waterfall_svg",
+]

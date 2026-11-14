@@ -9,6 +9,11 @@ dist/
 venv/
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
 .ipynb_checkpoints/
 
 # Data & artifacts (large / regenerable)
@@ -32,6 +37,23 @@ results/*.json
 # CT-hunter IOC store (regenerable)
 data/iocs/
 
-# OS
-.DS_Store
+# Node (web console, extension)
+node_modules/
+npm-debug.log*
 
+# Local configuration and secrets (see .env.example)
+.env
+.env.*
+!.env.example
+
+# Local databases
+*.db
+*.sqlite
+*.sqlite3
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

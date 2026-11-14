@@ -65,9 +65,12 @@ class _Run:
 class Engine:
     """Orchestrates analyzers. Thread-safe to share; cheap to construct."""
 
-    def __init__(self, settings: Settings | None = None,
-                 analyzers: Iterable[Analyzer] | None = None,
-                 hooks: Iterable[Hook] | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        analyzers: Iterable[Analyzer] | None = None,
+        hooks: Iterable[Hook] | None = None,
+    ) -> None:
         self.settings = settings or get_settings()
         if analyzers is None:
             from uniphish.analyzers import load_builtin_analyzers
@@ -112,8 +115,7 @@ class Engine:
             except Exception as e:  # optional dep / missing asset -> skip
                 log.debug("warm_up skipped %s: %s", label, e)
 
-    async def analyze(self, artifact: Artifact,
-                      options: AnalysisOptions | None = None) -> Verdict:
+    async def analyze(self, artifact: Artifact, options: AnalysisOptions | None = None) -> Verdict:
         opts = options or AnalysisOptions()
         run = _Run(deadline=time.monotonic() + opts.timeout_s)
         verdict = await self._analyze(artifact, opts, run, depth=0, parent=None)
@@ -121,8 +123,7 @@ class Engine:
         events.publish("verdict", _event_payload(verdict))
         return verdict
 
-    def analyze_sync(self, artifact: Artifact,
-                     options: AnalysisOptions | None = None) -> Verdict:
+    def analyze_sync(self, artifact: Artifact, options: AnalysisOptions | None = None) -> Verdict:
         """Blocking wrapper usable from sync code, even inside a running event loop."""
         try:
             asyncio.get_running_loop()
@@ -153,14 +154,13 @@ class Engine:
     async def analyze_email(self, raw: bytes | str, **opts: Any) -> Verdict:
         return await self.analyze(Artifact.from_email(raw), AnalysisOptions.from_dict(opts))
 
-    async def analyze_page(self, html: str | bytes, url: str | None = None,
-                           **opts: Any) -> Verdict:
+    async def analyze_page(self, html: str | bytes, url: str | None = None, **opts: Any) -> Verdict:
         return await self.analyze(Artifact.from_page(html, url), AnalysisOptions.from_dict(opts))
 
-    async def analyze_file(self, data: bytes, filename: str | None = None,
-                           **opts: Any) -> Verdict:
-        return await self.analyze(Artifact.from_file(data, filename),
-                                  AnalysisOptions.from_dict(opts))
+    async def analyze_file(self, data: bytes, filename: str | None = None, **opts: Any) -> Verdict:
+        return await self.analyze(
+            Artifact.from_file(data, filename), AnalysisOptions.from_dict(opts)
+        )
 
     # ------------------------------------------------------------ internals #
     def _select(self, artifact: Artifact, ctx: AnalysisContext) -> list[Analyzer]:
@@ -180,8 +180,9 @@ class Engine:
             out.append(a)
         return out
 
-    async def _run_one(self, a: Analyzer, artifact: Artifact, ctx: AnalysisContext,
-                       run: _Run) -> tuple[AnalyzerResult | None, AnalyzerRun]:
+    async def _run_one(
+        self, a: Analyzer, artifact: Artifact, ctx: AnalysisContext, run: _Run
+    ) -> tuple[AnalyzerResult | None, AnalyzerRun]:
         budget = min(ctx.options.analyzer_timeout_s, run.remaining())
         if budget <= 0:
             return None, AnalyzerRun(name=a.name, status="skipped", error="time budget exhausted")
@@ -194,20 +195,35 @@ class Engine:
             res = res or AnalyzerResult()
             for s in res.signals:
                 s.analyzer = s.analyzer or a.name
-            return res, AnalyzerRun(name=a.name, status="ok", duration_ms=round(ms, 2),
-                                    signals=len(res.signals))
+            return res, AnalyzerRun(
+                name=a.name, status="ok", duration_ms=round(ms, 2), signals=len(res.signals)
+            )
         except asyncio.TimeoutError:
             ms = (time.perf_counter() - t0) * 1000
-            return None, AnalyzerRun(name=a.name, status="timeout", duration_ms=round(ms, 2),
-                                     error=f"exceeded {budget:.1f}s")
+            return None, AnalyzerRun(
+                name=a.name,
+                status="timeout",
+                duration_ms=round(ms, 2),
+                error=f"exceeded {budget:.1f}s",
+            )
         except Exception as e:  # fault isolation: one analyzer never breaks a verdict
             ms = (time.perf_counter() - t0) * 1000
             log.exception("analyzer %s failed on %s", a.name, artifact.id)
-            return None, AnalyzerRun(name=a.name, status="error", duration_ms=round(ms, 2),
-                                     error=f"{type(e).__name__}: {e}"[:300])
+            return None, AnalyzerRun(
+                name=a.name,
+                status="error",
+                duration_ms=round(ms, 2),
+                error=f"{type(e).__name__}: {e}"[:300],
+            )
 
-    async def _analyze(self, artifact: Artifact, opts: AnalysisOptions, run: _Run,
-                       depth: int, parent: Artifact | None) -> Verdict:
+    async def _analyze(
+        self,
+        artifact: Artifact,
+        opts: AnalysisOptions,
+        run: _Run,
+        depth: int,
+        parent: Artifact | None,
+    ) -> Verdict:
         t0 = time.perf_counter()
         run.visited.add(artifact.id)
         ctx = AnalysisContext(options=opts, settings=self.settings, depth=depth, parent=parent)
@@ -215,8 +231,7 @@ class Engine:
         runs: list[AnalyzerRun] = []
         for stage in sorted({a.stage for a in selected}):
             batch = [a for a in selected if a.stage == stage]
-            outcomes = await asyncio.gather(*(self._run_one(a, artifact, ctx, run)
-                                              for a in batch))
+            outcomes = await asyncio.gather(*(self._run_one(a, artifact, ctx, run) for a in batch))
             for a, (res, ar) in zip(batch, outcomes, strict=True):
                 runs.append(ar)
                 if res is not None:
@@ -264,17 +279,25 @@ class Engine:
             for cv in child_verdicts:
                 w = scoring.child_weight(cv)
                 if w > 0:
-                    signals.append(Signal(
-                        id=f"engine.child.{cv.kind.value}",
-                        title=f"Contains {cv.level.value} {cv.kind.value}"
-                              + (f" ({cv.origin})" if cv.origin else ""),
-                        detail=f"{cv.target[:200]} — {cv.summary}",
-                        weight=w, category="child", analyzer="engine",
-                        evidence={"child_id": cv.id, "child_score": cv.score},
-                        mitre=sorted({m.id for m in cv.mitre})[:6],
-                    ))
-                if brand is None and cv.brand and not cv.brand.official \
-                        and cv.level is not Level.BENIGN:
+                    signals.append(
+                        Signal(
+                            id=f"engine.child.{cv.kind.value}",
+                            title=f"Contains {cv.level.value} {cv.kind.value}"
+                            + (f" ({cv.origin})" if cv.origin else ""),
+                            detail=f"{cv.target[:200]} — {cv.summary}",
+                            weight=w,
+                            category="child",
+                            analyzer="engine",
+                            evidence={"child_id": cv.id, "child_score": cv.score},
+                            mitre=sorted({m.id for m in cv.mitre})[:6],
+                        )
+                    )
+                if (
+                    brand is None
+                    and cv.brand
+                    and not cv.brand.official
+                    and cv.level is not Level.BENIGN
+                ):
                     brand = cv.brand
                 techniques.extend(t for t in cv.techniques if cv.level is not Level.BENIGN)
 
@@ -286,17 +309,25 @@ class Engine:
                 mitre_ids.update(m.id for m in cv.mitre)
 
         verdict = Verdict(
-            kind=artifact.kind, target=artifact.label, artifact_id=artifact.id,
-            origin=artifact.origin, signals=signals, indicators=list(indicators.values()),
-            brand=brand, techniques=list(dict.fromkeys(techniques)),
-            mitre=mitre.resolve_many(mitre_ids), children=child_verdicts, analyzers=runs,
-            meta=meta, duration_ms=round((time.perf_counter() - t0) * 1000, 2), **fused,
+            kind=artifact.kind,
+            target=artifact.label,
+            artifact_id=artifact.id,
+            origin=artifact.origin,
+            signals=signals,
+            indicators=list(indicators.values()),
+            brand=brand,
+            techniques=list(dict.fromkeys(techniques)),
+            mitre=mitre.resolve_many(mitre_ids),
+            children=child_verdicts,
+            analyzers=runs,
+            meta=meta,
+            duration_ms=round((time.perf_counter() - t0) * 1000, 2),
+            **fused,
         )
         verdict.summary = scoring.summarize(verdict)
         return verdict
 
-    async def _run_hooks(self, verdict: Verdict, artifact: Artifact,
-                         opts: AnalysisOptions) -> None:
+    async def _run_hooks(self, verdict: Verdict, artifact: Artifact, opts: AnalysisOptions) -> None:
         for hook in self.hooks:
             try:
                 r = hook(verdict, artifact, opts)
@@ -307,9 +338,16 @@ class Engine:
 
 
 def _event_payload(v: Verdict) -> dict[str, Any]:
-    return {"id": v.id, "kind": v.kind.value, "target": v.target, "score": v.score,
-            "level": v.level.value, "summary": v.summary,
-            "brand": v.brand.name if v.brand else None, "techniques": v.techniques[:5]}
+    return {
+        "id": v.id,
+        "kind": v.kind.value,
+        "target": v.target,
+        "score": v.score,
+        "level": v.level.value,
+        "summary": v.summary,
+        "brand": v.brand.name if v.brand else None,
+        "techniques": v.techniques[:5],
+    }
 
 
 _default: Engine | None = None

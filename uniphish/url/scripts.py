@@ -321,8 +321,9 @@ _BIDI_CONTROLS: dict[int, str] = {
 
 def find_bidi_controls(s: str) -> list[tuple[int, int, str]]:
     """Bidirectional override/isolate controls in ``s`` ('Trojan Source' / RTLO spoofing)."""
-    return [(i, ord(ch), _BIDI_CONTROLS[ord(ch)])
-            for i, ch in enumerate(s) if ord(ch) in _BIDI_CONTROLS]
+    return [
+        (i, ord(ch), _BIDI_CONTROLS[ord(ch)]) for i, ch in enumerate(s) if ord(ch) in _BIDI_CONTROLS
+    ]
 
 
 _TAG_BASE = 0xE0000

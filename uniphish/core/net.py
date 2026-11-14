@@ -96,34 +96,34 @@ IPAddr = Union[IPv4Address, IPv6Address]
 # Non-public IPv4 ranges. ``ipaddress`` flags differ subtly between CPython patch
 # releases, so we enumerate them explicitly as well as checking the flags.
 _V4_BLOCK: tuple[ipaddress.IPv4Network, ...] = (
-    ip_network("0.0.0.0/8"),        # "this" network / unspecified
-    ip_network("10.0.0.0/8"),       # RFC 1918 private
-    ip_network("100.64.0.0/10"),    # RFC 6598 carrier-grade NAT
-    ip_network("127.0.0.0/8"),      # loopback
-    ip_network("169.254.0.0/16"),   # link-local incl. 169.254.169.254 metadata
-    ip_network("172.16.0.0/12"),    # RFC 1918 private
-    ip_network("192.0.0.0/24"),     # IETF protocol assignments
-    ip_network("192.0.2.0/24"),     # TEST-NET-1
-    ip_network("192.88.99.0/24"),   # 6to4 relay anycast (deprecated)
-    ip_network("192.168.0.0/16"),   # RFC 1918 private
-    ip_network("198.18.0.0/15"),    # benchmarking
+    ip_network("0.0.0.0/8"),  # "this" network / unspecified
+    ip_network("10.0.0.0/8"),  # RFC 1918 private
+    ip_network("100.64.0.0/10"),  # RFC 6598 carrier-grade NAT
+    ip_network("127.0.0.0/8"),  # loopback
+    ip_network("169.254.0.0/16"),  # link-local incl. 169.254.169.254 metadata
+    ip_network("172.16.0.0/12"),  # RFC 1918 private
+    ip_network("192.0.0.0/24"),  # IETF protocol assignments
+    ip_network("192.0.2.0/24"),  # TEST-NET-1
+    ip_network("192.88.99.0/24"),  # 6to4 relay anycast (deprecated)
+    ip_network("192.168.0.0/16"),  # RFC 1918 private
+    ip_network("198.18.0.0/15"),  # benchmarking
     ip_network("198.51.100.0/24"),  # TEST-NET-2
-    ip_network("203.0.113.0/24"),   # TEST-NET-3
-    ip_network("224.0.0.0/4"),      # multicast
-    ip_network("240.0.0.0/4"),      # reserved (future use)
+    ip_network("203.0.113.0/24"),  # TEST-NET-3
+    ip_network("224.0.0.0/4"),  # multicast
+    ip_network("240.0.0.0/4"),  # reserved (future use)
     ip_network("255.255.255.255/32"),  # limited broadcast
 )
 
 # Non-public IPv6 ranges not already caught by the standard flags.
 _V6_BLOCK: tuple[ipaddress.IPv6Network, ...] = (
-    ip_network("::/128"),            # unspecified
-    ip_network("::1/128"),           # loopback
-    ip_network("64:ff9b::/96"),      # NAT64 well-known prefix
-    ip_network("64:ff9b:1::/48"),    # NAT64 local-use prefix
-    ip_network("100::/64"),          # discard-only
-    ip_network("2001:db8::/32"),     # documentation
-    ip_network("2001:20::/28"),      # ORCHIDv2
-    ip_network("5f00::/16"),         # reserved
+    ip_network("::/128"),  # unspecified
+    ip_network("::1/128"),  # loopback
+    ip_network("64:ff9b::/96"),  # NAT64 well-known prefix
+    ip_network("64:ff9b:1::/48"),  # NAT64 local-use prefix
+    ip_network("100::/64"),  # discard-only
+    ip_network("2001:db8::/32"),  # documentation
+    ip_network("2001:20::/28"),  # ORCHIDv2
+    ip_network("5f00::/16"),  # reserved
 )
 
 
@@ -310,11 +310,7 @@ class FetchResult:
     @property
     def ok(self) -> bool:
         """True when a response was received without error, block or HTTP failure."""
-        return (
-            self.error is None
-            and self.blocked_reason is None
-            and 200 <= self.status < 400
-        )
+        return self.error is None and self.blocked_reason is None and 200 <= self.status < 400
 
     def text(self, errors: str = "replace") -> str:
         """Decode the body using the response charset (falling back to UTF-8)."""
@@ -439,9 +435,7 @@ async def _prepare_hop(
     return pinned, _host_header(hostname, port, scheme), sni, pin_ip
 
 
-async def _read_capped(
-    resp: httpx.Response, raw_cap: int, decomp_cap: int
-) -> tuple[bytes, bool]:
+async def _read_capped(resp: httpx.Response, raw_cap: int, decomp_cap: int) -> tuple[bytes, bool]:
     """Stream the body, stopping at the raw-wire cap or the decompressed-size cap.
 
     ``num_bytes_downloaded`` counts bytes read off the wire (compressed), while the
@@ -615,7 +609,10 @@ async def _run(
 
             try:
                 pinned, host_header, sni, pin_ip = await _prepare_hop(
-                    current, allowed_ports, allow_private, resolver,
+                    current,
+                    allowed_ports,
+                    allow_private,
+                    resolver,
                     min(remaining, _DNS_TIMEOUT),
                 )
             except BlockedDestination as exc:
@@ -657,8 +654,10 @@ async def _run(
             if sni:
                 request.extensions["sni_hostname"] = sni
             request.extensions["timeout"] = {
-                "connect": remaining, "read": remaining,
-                "write": remaining, "pool": remaining,
+                "connect": remaining,
+                "read": remaining,
+                "write": remaining,
+                "pool": remaining,
             }
 
             host_semaphore = _host_sem(limiters, host_header)
@@ -688,7 +687,8 @@ async def _run(
                 body, truncated = await _read_capped(resp, raw_cap, decomp_cap)
                 content_type, charset = _parse_content_type(resp.headers.get("content-type"))
                 return _build(
-                    prog, start,
+                    prog,
+                    start,
                     status=status,
                     headers=_lower_headers(resp.headers),
                     body=body,

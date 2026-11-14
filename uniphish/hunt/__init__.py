@@ -10,8 +10,13 @@ from importlib import import_module
 from typing import Any
 
 _LAZY = {
-    "CTHunter": "ct", "HuntHit": "ct", "HuntStats": "ct", "stream_certstream": "ct",
-    "parse_record": "ct", "clean_domain": "ct", "CERTSTREAM_URL": "ct",
+    "CTHunter": "ct",
+    "HuntHit": "ct",
+    "HuntStats": "ct",
+    "stream_certstream": "ct",
+    "parse_record": "ct",
+    "clean_domain": "ct",
+    "CERTSTREAM_URL": "ct",
     "SAMPLE_DOMAINS": "ct",
 }
 __all__ = sorted(_LAZY)

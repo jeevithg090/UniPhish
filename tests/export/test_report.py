@@ -67,49 +67,105 @@ def parse(html: str) -> _Balance:
     return p
 
 
-def make(signals=None, *, target=URL, kind=ArtifactKind.URL, level=Level.MALICIOUS,
-         children=None, brand=True, indicators=None, **kw) -> Verdict:
-    sigs = signals if signals is not None else [
-        Signal(id="url.brand.homoglyph", title="Domain imitates PayPal with look-alike digit",
-               detail="The digit 1 stands in for the letter l in the host.", weight=4.5,
-               category="brand", span=(8, 32), mitre=["T1566.002", "T1656"]),
-        Signal(id="kit.aitm.fingerprint", title="AiTM reverse-proxy kit fingerprint",
-               weight=7.0, category="kit", mitre=["T1557"]),
-        Signal(id="ml.cnn.salient_chars", title="Characters that drove the ML model's score",
-               weight=1.5, category="ml",
-               evidence={"spans": [{"start": 32, "end": 38, "text": "/signi"}]}),
-        Signal(id="rep.top_site", title="Ranked in top sites", weight=-1.2,
-               category="reputation"),
-    ]
+def make(
+    signals=None,
+    *,
+    target=URL,
+    kind=ArtifactKind.URL,
+    level=Level.MALICIOUS,
+    children=None,
+    brand=True,
+    indicators=None,
+    **kw,
+) -> Verdict:
+    sigs = (
+        signals
+        if signals is not None
+        else [
+            Signal(
+                id="url.brand.homoglyph",
+                title="Domain imitates PayPal with look-alike digit",
+                detail="The digit 1 stands in for the letter l in the host.",
+                weight=4.5,
+                category="brand",
+                span=(8, 32),
+                mitre=["T1566.002", "T1656"],
+            ),
+            Signal(
+                id="kit.aitm.fingerprint",
+                title="AiTM reverse-proxy kit fingerprint",
+                weight=7.0,
+                category="kit",
+                mitre=["T1557"],
+            ),
+            Signal(
+                id="ml.cnn.salient_chars",
+                title="Characters that drove the ML model's score",
+                weight=1.5,
+                category="ml",
+                evidence={"spans": [{"start": 32, "end": 38, "text": "/signi"}]},
+            ),
+            Signal(
+                id="rep.top_site", title="Ranked in top sites", weight=-1.2, category="reputation"
+            ),
+        ]
+    )
     logit_ = PRIOR_LOGIT + apply_contributions(sigs)
     return Verdict(
-        kind=kind, target=target, artifact_id="a" * 24, risk=0.97, score=97, logit=logit_,
-        level=level, action=Action.BLOCK, confidence=0.92,
+        kind=kind,
+        target=target,
+        artifact_id="a" * 24,
+        risk=0.97,
+        score=97,
+        logit=logit_,
+        level=level,
+        action=Action.BLOCK,
+        confidence=0.92,
         summary="Malicious (97/100): AiTM kit; impersonates PayPal.",
-        brand=BrandMatch(brand="paypal", name="PayPal", technique="homoglyph",
-                         confidence=0.91, legit_domains=["paypal.com"],
-                         evidence="paypa1 resembles paypal") if brand else None,
+        brand=BrandMatch(
+            brand="paypal",
+            name="PayPal",
+            technique="homoglyph",
+            confidence=0.91,
+            legit_domains=["paypal.com"],
+            evidence="paypa1 resembles paypal",
+        )
+        if brand
+        else None,
         signals=sigs,
-        indicators=indicators if indicators is not None else [
+        indicators=indicators
+        if indicators is not None
+        else [
             Indicator(type=IndicatorType.URL, value=URL, role="landing", malicious=True),
-            Indicator(type=IndicatorType.DOMAIN, value="login.paypa1-secure.test",
-                      malicious=True),
+            Indicator(type=IndicatorType.DOMAIN, value="login.paypa1-secure.test", malicious=True),
             Indicator(type=IndicatorType.IPV4, value="198.51.100.7"),
             Indicator(type=IndicatorType.SHA256, value="ab" * 32, malicious=True),
         ],
         techniques=["homoglyph_domain"],
-        analyzers=[AnalyzerRun(name="url", status="ok", duration_ms=3.2, signals=2),
-                   AnalyzerRun(name="infra", status="timeout", duration_ms=500.0,
-                               error="timed out")],
-        children=children or [], meta={"title": "Sign in", "subject": "Your account"},
-        duration_ms=41.0, **kw)
+        analyzers=[
+            AnalyzerRun(name="url", status="ok", duration_ms=3.2, signals=2),
+            AnalyzerRun(name="infra", status="timeout", duration_ms=500.0, error="timed out"),
+        ],
+        children=children or [],
+        meta={"title": "Sign in", "subject": "Your account"},
+        duration_ms=41.0,
+        **kw,
+    )
 
 
 def child() -> Verdict:
-    c = make(target="https://cdn.evil.test/kit.js", level=Level.SUSPICIOUS, brand=False,
-             signals=[Signal(id="page.obfuscated_script", title="Obfuscated script",
-                             weight=2.0, category="page")], indicators=[],
-             origin="page.script")
+    c = make(
+        target="https://cdn.evil.test/kit.js",
+        level=Level.SUSPICIOUS,
+        brand=False,
+        signals=[
+            Signal(
+                id="page.obfuscated_script", title="Obfuscated script", weight=2.0, category="page"
+            )
+        ],
+        indicators=[],
+        origin="page.script",
+    )
     c.score = 60
     return c
 
@@ -122,18 +178,20 @@ def svgs(html: str) -> list[str]:
 def test_html_contains_core_facts():
     html = render_report(make(children=[child()]))
     assert html.startswith("<!doctype html>")
-    assert "97/100" in html and ">97<" in html            # score text + gauge number
+    assert "97/100" in html and ">97<" in html  # score text + gauge number
     assert "PayPal" in html and "Impersonated brand" in html
-    for title in ("Domain imitates PayPal with look-alike digit",
-                  "AiTM reverse-proxy kit fingerprint"):
+    for title in (
+        "Domain imitates PayPal with look-alike digit",
+        "AiTM reverse-proxy kit fingerprint",
+    ):
         assert title in html
     assert "url.brand.homoglyph" in html and "kit.aitm.fingerprint" in html
     assert "hxxps://login[.]paypa1-secure[.]test/signin/verify?id=7" in html
     assert "198[.]51[.]100[.]7" in html
     assert "login[.]paypa1-secure[.]test" in html
     assert "homoglyph_domain" in html
-    assert "page.script" in html and "cdn[.]evil[.]test/kit[.]js" in html   # child tree
-    assert "timed out" in html and "infra" in html                          # analyzer runs
+    assert "page.script" in html and "cdn[.]evil[.]test/kit[.]js" in html  # child tree
+    assert "timed out" in html and "infra" in html  # analyzer runs
 
 
 def test_no_live_urls_anywhere():
@@ -143,22 +201,32 @@ def test_no_live_urls_anywhere():
     # the only anchors are MITRE links
     p = parse(html)
     hrefs = [a.get("href") for t, a in p.tags if t == "a"]
-    assert hrefs and all(h.startswith(("https://attack.mitre.org/techniques/",
-                                       "https://atlas.mitre.org/techniques/")) for h in hrefs)
+    assert hrefs and all(
+        h.startswith(
+            ("https://attack.mitre.org/techniques/", "https://atlas.mitre.org/techniques/")
+        )
+        for h in hrefs
+    )
     assert "https://attack.mitre.org/techniques/T1566/002" in hrefs
-    assert not any(t in ("script", "iframe", "object", "embed", "link", "img", "form")
-                   for t, _ in p.tags)
+    assert not any(
+        t in ("script", "iframe", "object", "embed", "link", "img", "form") for t, _ in p.tags
+    )
 
 
 def test_mitre_section_and_atlas_link():
-    sig = Signal(id="agent.injection.role_hijack", title="Role hijack", weight=3.5,
-                 category="agent", mitre=["AML.T0051.001", "T9999", "javascript:alert(1)"])
+    sig = Signal(
+        id="agent.injection.role_hijack",
+        title="Role hijack",
+        weight=3.5,
+        category="agent",
+        mitre=["AML.T0051.001", "T9999", "javascript:alert(1)"],
+    )
     html = render_report(make(signals=[sig]))
     assert "https://atlas.mitre.org/techniques/AML.T0051.001" in html
     hrefs = [a.get("href") for t, a in parse(html).tags if t == "a"]
     assert all(h.startswith("https://") for h in hrefs)
     assert not any("javascript" in h for h in hrefs)
-    assert "T9999" in html                                   # unknown id listed, not linked
+    assert "T9999" in html  # unknown id listed, not linked
     assert not [h for h in hrefs if "T9999" in h]
 
 
@@ -169,7 +237,7 @@ def test_is_well_formed_html_and_svg():
     found = svgs(html)
     assert len(found) == 2
     for s in found:
-        root = ET.fromstring(s)                              # valid XML
+        root = ET.fromstring(s)  # valid XML
         assert root.tag.endswith("svg")
     assert 'role="img"' in found[0]
 
@@ -192,8 +260,10 @@ def test_waterfall_sums_to_final_logit():
 
 
 def test_waterfall_folds_many_signals_into_other():
-    many = [Signal(id=f"url.weak.{i}", title=f"weak {i}", weight=0.3, category=f"c{i}")
-            for i in range(30)]
+    many = [
+        Signal(id=f"url.weak.{i}", title=f"weak {i}", weight=0.3, category=f"c{i}")
+        for i in range(30)
+    ]
     v = make(signals=many)
     rows = rpt._waterfall_rows(v)
     assert len(rows) == rpt.MAX_WATERFALL + 3
@@ -213,15 +283,28 @@ def test_highlight_spans_and_salient():
     t = str(c["target"])
     assert '<mark class="hl">' in t
     assert any(r["salient"] for r in c["span_rows"]) and any(
-        not r["salient"] for r in c["span_rows"])
+        not r["salient"] for r in c["span_rows"]
+    )
     # marked text matches the signal span [8, 32)
     assert any(r["text"] == "login[.]paypa1-secure[.]test" for r in c["span_rows"])
 
 
 def test_span_out_of_range_and_bad_types_ignored():
-    sig = Signal(id="url.x", title="x", weight=2, category="url", span=(900, 990),
-                 evidence={"spans": [{"start": "a", "end": 3}, {"start": True, "end": 5},
-                                     "junk", {"start": -4, "end": 3}]})
+    sig = Signal(
+        id="url.x",
+        title="x",
+        weight=2,
+        category="url",
+        span=(900, 990),
+        evidence={
+            "spans": [
+                {"start": "a", "end": 3},
+                {"start": True, "end": 5},
+                "junk",
+                {"start": -4, "end": 3},
+            ]
+        },
+    )
     c = build_context(make(signals=[sig]))
     assert [r["text"] for r in c["span_rows"]] == [defang_text(URL[:3])]
 
@@ -229,33 +312,53 @@ def test_span_out_of_range_and_bad_types_ignored():
 def test_non_ascii_and_invisible_flagged():
     target = "https://pаypal.test/‮login​"
     html = render_report(make(target=target, signals=[]))
-    assert '<mark class="na">' in html                       # Cyrillic a
+    assert '<mark class="na">' in html  # Cyrillic a
     assert "&lt;U+202E&gt;" in html and "&lt;U+200B&gt;" in html
     assert "‮" not in html and "​" not in html
 
 
 # ------------------------------------------------------------------------------ XSS
-XSS = '<script>alert(1)</script><img src=x onerror=alert(1)>"\'&'
+XSS = "<script>alert(1)</script><img src=x onerror=alert(1)>\"'&"
 
 
 def hostile() -> Verdict:
-    sig = Signal(id="url.<b>x</b>", title=XSS, detail=XSS, weight=3, category="<i>c</i>",
-                 mitre=[XSS], span=(0, 5), evidence={"spans": [{"start": 0, "end": 2}]})
+    sig = Signal(
+        id="url.<b>x</b>",
+        title=XSS,
+        detail=XSS,
+        weight=3,
+        category="<i>c</i>",
+        mitre=[XSS],
+        span=(0, 5),
+        evidence={"spans": [{"start": 0, "end": 2}]},
+    )
     return _hostile_verdict(sig)
 
 
 def _hostile_verdict(sig: Signal) -> Verdict:
     v = make(
-        target=XSS + " https://evil.test/a?x=<svg onload=alert(1)>", signals=[sig],
-        indicators=[Indicator(type=IndicatorType.URL, value="https://e.test/" + XSS,
-                              role=XSS, context=XSS),
-                    Indicator(type=IndicatorType.FILENAME, value=XSS)],
-        children=[make(target=XSS, kind=ArtifactKind.TEXT, signals=[], indicators=[],
-                       origin=XSS, brand=False)])
+        target=XSS + " https://evil.test/a?x=<svg onload=alert(1)>",
+        signals=[sig],
+        indicators=[
+            Indicator(type=IndicatorType.URL, value="https://e.test/" + XSS, role=XSS, context=XSS),
+            Indicator(type=IndicatorType.FILENAME, value=XSS),
+        ],
+        children=[
+            make(
+                target=XSS,
+                kind=ArtifactKind.TEXT,
+                signals=[],
+                indicators=[],
+                origin=XSS,
+                brand=False,
+            )
+        ],
+    )
     v.summary = XSS
     v.meta = {XSS: XSS, "nested": {"a": XSS}}
-    v.brand = BrandMatch(brand="b", name=XSS, technique=XSS, confidence=0.5,
-                         legit_domains=[XSS], evidence=XSS)
+    v.brand = BrandMatch(
+        brand="b", name=XSS, technique=XSS, confidence=0.5, legit_domains=[XSS], evidence=XSS
+    )
     v.analyzers = [AnalyzerRun(name=XSS, status=XSS, error=XSS)]
     return v
 
@@ -270,7 +373,7 @@ def test_xss_everything_is_escaped():
     assert not any(k.startswith("on") for _, a in p.tags for k in a)
     assert p.errors == [] and p.stack == []
     assert "&lt;script&gt;alert(1)&lt;/script&gt;" in html
-    assert "onerror=alert(1)" in html                        # present only as inert text
+    assert "onerror=alert(1)" in html  # present only as inert text
     # svg tags in the page come from our builders only (gauge + waterfall)
     assert [t for t, _ in p.tags].count("svg") == 2
     for s in svgs(html):
@@ -286,8 +389,8 @@ def test_xss_title_and_default_title_escaped():
 
 def test_xss_in_markdown_is_neutralised():
     md = report_markdown(hostile())
-    body = md.replace("\n> ", "\n")                      # drop blockquote markers
-    assert not re.search(r"(?<!\\)[<>]", body)           # every angle bracket is escaped
+    body = md.replace("\n> ", "\n")  # drop blockquote markers
+    assert not re.search(r"(?<!\\)[<>]", body)  # every angle bracket is escaped
     assert "&lt;" not in md
 
 
@@ -296,6 +399,7 @@ def test_json_appendix_defanged_and_valid():
     m = re.search(r"Raw verdict \(JSON\).*?<pre>(.*?)</pre>", html, flags=re.S)
     assert m
     import html as h
+
     data = json.loads(h.unescape(m.group(1)))
     assert data["score"] == 97 and data["target"].startswith("hxxps://")
     assert "https://login.paypa1" not in m.group(1)
@@ -309,8 +413,14 @@ def test_stix_pattern_in_appendix_scheme_defanged():
 
 
 def test_benign_verdict_without_extras():
-    v = make(signals=[], indicators=[], brand=False, level=Level.BENIGN, kind=ArtifactKind.TEXT,
-             target="hello")
+    v = make(
+        signals=[],
+        indicators=[],
+        brand=False,
+        level=Level.BENIGN,
+        kind=ArtifactKind.TEXT,
+        target="hello",
+    )
     v.risk, v.score, v.action = 0.03, 3, Action.ALLOW
     html = render_report(v)
     assert "No signals were raised" in html and "No indicators were extracted" in html
@@ -332,10 +442,14 @@ def test_custom_title_and_determinism():
 
 
 def test_limits_bound_output():
-    sigs = [Signal(id=f"url.s{i}", title=f"s{i}", weight=0.1, category="url")
-            for i in range(rpt.MAX_SIGNAL_ROWS + 20)]
-    inds = [Indicator(type=IndicatorType.DOMAIN, value=f"d{i}.test")
-            for i in range(rpt.MAX_IOC_ROWS + 5)]
+    sigs = [
+        Signal(id=f"url.s{i}", title=f"s{i}", weight=0.1, category="url")
+        for i in range(rpt.MAX_SIGNAL_ROWS + 20)
+    ]
+    inds = [
+        Indicator(type=IndicatorType.DOMAIN, value=f"d{i}.test")
+        for i in range(rpt.MAX_IOC_ROWS + 5)
+    ]
     c = build_context(make(signals=sigs, indicators=inds))
     assert len(c["signals"]) == rpt.MAX_SIGNAL_ROWS and c["signals_total"] == len(sigs)
     assert len(c["iocs"]) == rpt.MAX_IOC_ROWS and c["iocs_total"] == len(inds)
@@ -355,15 +469,18 @@ def test_huge_target_is_truncated():
 
 
 # --------------------------------------------------------------------------- defang
-@pytest.mark.parametrize("raw,expected", [
-    ("https://a.example.com/x", "hxxps://a[.]example[.]com/x"),
-    ("http://1.2.3.4/a", "hxxp://1[.]2[.]3[.]4/a"),
-    ("user@example.com", "user[@]example[.]com"),
-    ("version 1.5 released.", "version 1.5 released."),
-])
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("https://a.example.com/x", "hxxps://a[.]example[.]com/x"),
+        ("http://1.2.3.4/a", "hxxp://1[.]2[.]3[.]4/a"),
+        ("user@example.com", "user[@]example[.]com"),
+        ("version 1.5 released.", "version 1.5 released."),
+    ],
+)
 def test_defang_text(raw, expected):
     assert defang_text(raw) == expected
-    assert defang_text(expected) == expected               # idempotent
+    assert defang_text(expected) == expected  # idempotent
 
 
 def test_defang_bounds_and_whitespace():
@@ -397,6 +514,7 @@ def test_markdown_table_cells_cannot_break_out():
 def test_to_pdf_falls_back_to_html(tmp_path, monkeypatch):
     def boom(*_a, **_k):
         raise RuntimeError("no browser")
+
     monkeypatch.setattr(rpt, "_print_pdf", boom)
     res = to_pdf(make(), tmp_path / "out" / "case.pdf")
     assert not res.is_pdf and res.format == "html"
@@ -407,12 +525,14 @@ def test_to_pdf_falls_back_to_html(tmp_path, monkeypatch):
 
 def test_to_pdf_without_playwright(tmp_path, monkeypatch):
     import builtins
+
     real = builtins.__import__
 
     def fake(name, *a, **k):
         if name.split(".")[0] == "playwright":
             raise ImportError(name)
         return real(name, *a, **k)
+
     monkeypatch.setattr(builtins, "__import__", fake)
     res = to_pdf(make(), tmp_path / "r.html")
     assert res.format == "html" and res.path == tmp_path / "r.html"
@@ -423,6 +543,7 @@ def test_to_pdf_success_path_with_stub(tmp_path, monkeypatch):
     def fake(html, out, timeout):
         assert html.startswith("<!doctype html>")
         out.write_bytes(b"%PDF-1.7 stub")
+
     monkeypatch.setattr(rpt, "_print_pdf", fake)
     pytest.importorskip("playwright")
     res = to_pdf(make(), tmp_path / "ok.pdf")

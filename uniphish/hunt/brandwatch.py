@@ -62,25 +62,56 @@ _LIVE_BONUS = 15
 _DEAD_FACTOR = 0.7
 _DEFAULT_DEEP = 30
 _DEFAULT_LIVE_CHECKS = 500
-_CREDENTIAL_KEYWORDS = frozenset({
-    "login", "signin", "secure", "security", "verify", "account", "support", "update",
-    "billing", "wallet", "portal", "id", "help", "official",
-})
+_CREDENTIAL_KEYWORDS = frozenset(
+    {
+        "login",
+        "signin",
+        "secure",
+        "security",
+        "verify",
+        "account",
+        "support",
+        "update",
+        "billing",
+        "wallet",
+        "portal",
+        "id",
+        "help",
+        "official",
+    }
+)
 
 #: Prior probability that a candidate of this kind is a deliberate impersonation.
 KIND_PRIOR: dict[str, float] = {
-    "idn_homograph": 0.90, "homoglyph": 0.85, "combosquat": 0.60, "bitsquat": 0.45,
-    "typo": 0.50, "hyphenation": 0.55, "subdomain": 0.45, "tld_swap": 0.35,
-    "omission": 0.45, "double_char": 0.40, "vowel_swap": 0.40, "addition": 0.30,
+    "idn_homograph": 0.90,
+    "homoglyph": 0.85,
+    "combosquat": 0.60,
+    "bitsquat": 0.45,
+    "typo": 0.50,
+    "hyphenation": 0.55,
+    "subdomain": 0.45,
+    "tld_swap": 0.35,
+    "omission": 0.45,
+    "double_char": 0.40,
+    "vowel_swap": 0.40,
+    "addition": 0.30,
 }
 _KIND_TECHNIQUE = {
-    "homoglyph": "homoglyph", "idn_homograph": "idn_homograph", "typo": "typosquat",
-    "omission": "typosquat", "addition": "typosquat", "double_char": "typosquat",
-    "vowel_swap": "typosquat", "hyphenation": "typosquat", "bitsquat": "typosquat",
-    "combosquat": "combosquat", "subdomain": "subdomain_stuffing",
+    "homoglyph": "homoglyph",
+    "idn_homograph": "idn_homograph",
+    "typo": "typosquat",
+    "omission": "typosquat",
+    "addition": "typosquat",
+    "double_char": "typosquat",
+    "vowel_swap": "typosquat",
+    "hyphenation": "typosquat",
+    "bitsquat": "typosquat",
+    "combosquat": "combosquat",
+    "subdomain": "subdomain_stuffing",
 }
-_TYPO_KINDS = frozenset({"typo", "omission", "addition", "double_char", "vowel_swap",
-                         "bitsquat", "hyphenation"})
+_TYPO_KINDS = frozenset(
+    {"typo", "omission", "addition", "double_char", "vowel_swap", "bitsquat", "hyphenation"}
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,12 +144,21 @@ class Candidate:
     def to_dict(self) -> dict[str, Any]:
         """JSON-safe representation."""
         return {
-            "domain": self.domain, "display": self.display, "kind": self.kind,
-            "note": self.note, "target": self.target, "brand": self.brand,
-            "score": self.score, "technique": self.technique,
-            "confidence": round(self.confidence, 3), "techniques": list(self.techniques),
-            "mitre": list(self.mitre), "reasons": list(self.reasons), "live": self.live,
-            "ips": list(self.ips), "verdict_score": self.verdict_score,
+            "domain": self.domain,
+            "display": self.display,
+            "kind": self.kind,
+            "note": self.note,
+            "target": self.target,
+            "brand": self.brand,
+            "score": self.score,
+            "technique": self.technique,
+            "confidence": round(self.confidence, 3),
+            "techniques": list(self.techniques),
+            "mitre": list(self.mitre),
+            "reasons": list(self.reasons),
+            "live": self.live,
+            "ips": list(self.ips),
+            "verdict_score": self.verdict_score,
             "verdict_id": self.verdict_id,
         }
 
@@ -140,8 +180,13 @@ class BrandWatch:
     network; ``resolver`` is a test / custom-DNS injection point for :meth:`check_live`.
     """
 
-    def __init__(self, engine: Engine | None = None, store: Store | None = None, *,
-                 resolver: Resolver | None = None) -> None:
+    def __init__(
+        self,
+        engine: Engine | None = None,
+        store: Store | None = None,
+        *,
+        resolver: Resolver | None = None,
+    ) -> None:
         self.engine = engine
         self.store = store
         self.resolver = resolver
@@ -152,8 +197,9 @@ class BrandWatch:
             self._kb = BrandKB([])
 
     # ------------------------------------------------------------------ targets #
-    def resolve_target(self, domain_or_brand: str, *, max_domains: int = 3
-                       ) -> tuple[Brand | None, list[str]]:
+    def resolve_target(
+        self, domain_or_brand: str, *, max_domains: int = 3
+    ) -> tuple[Brand | None, list[str]]:
         """Map user input to ``(brand | None, domains to permute)``.
 
         A string containing a dot (or ``://``) is a domain; its owning brand is looked up
@@ -193,9 +239,14 @@ class BrandWatch:
         return brand, domains
 
     # ------------------------------------------------------------------ scoring #
-    def score_permutations(self, perms: Iterable[Permutation], target: str, *,
-                           brand: Brand | None = None, deep_limit: int = _DEFAULT_DEEP
-                           ) -> list[Candidate]:
+    def score_permutations(
+        self,
+        perms: Iterable[Permutation],
+        target: str,
+        *,
+        brand: Brand | None = None,
+        deep_limit: int = _DEFAULT_DEEP,
+    ) -> list[Candidate]:
         """Score ``perms`` (look-alikes of ``target``) and return them ranked, best first.
 
         Candidates that are another brand's official domain are dropped.  ``brand`` is
@@ -216,8 +267,9 @@ class BrandWatch:
         out.sort(key=_rank_key)
         return out
 
-    def _stage1(self, perm: Permutation, target: str, t_sld: str, t_skel: str,
-                brand: Brand | None) -> Candidate | None:
+    def _stage1(
+        self, perm: Permutation, target: str, t_sld: str, t_skel: str, brand: Brand | None
+    ) -> Candidate | None:
         try:
             parsed = parse_url("http://" + perm.domain)
             parts = split_host(parsed)
@@ -226,7 +278,7 @@ class BrandWatch:
             return None
         owner = self._kb.official_brand_for_host(perm.domain)
         if owner is not None:
-            return None                     # a legitimately owned domain, not a look-alike
+            return None  # a legitimately owned domain, not a look-alike
         reasons = [f"{perm.kind}: {perm.note}" if perm.note else perm.kind]
         p = KIND_PRIOR.get(perm.kind, 0.3)
         if perm.kind == "combosquat":
@@ -250,17 +302,23 @@ class BrandWatch:
             p = 0.0
             reasons.append(f"popular site (rank {rank}), unlikely to be impersonation")
         techniques = []
-        if (t := _KIND_TECHNIQUE.get(perm.kind)):
+        if t := _KIND_TECHNIQUE.get(perm.kind):
             techniques.append(t)
         if risk is not None:
             techniques.append("suspicious_tld")
         if perm.domain.startswith("xn--") or ".xn--" in perm.domain:
             techniques.append("punycode")
         return Candidate(
-            domain=perm.domain, display=perm.display, kind=perm.kind, note=perm.note,
-            target=target, brand=brand.id if brand else None,
-            score=int(round(_clamp(p) * 100)), techniques=tuple(dict.fromkeys(techniques)),
-            reasons=tuple(reasons))
+            domain=perm.domain,
+            display=perm.display,
+            kind=perm.kind,
+            note=perm.note,
+            target=target,
+            brand=brand.id if brand else None,
+            score=int(round(_clamp(p) * 100)),
+            techniques=tuple(dict.fromkeys(techniques)),
+            reasons=tuple(reasons),
+        )
 
     def _stage2(self, cand: Candidate, brand: Brand | None) -> Candidate:
         """Refine with the full brand matcher and technique classifier (raise-only)."""
@@ -285,20 +343,36 @@ class BrandWatch:
             if brand is None or best.brand != brand.id:
                 brand_id = best.brand
             technique = best.technique
-            reasons.append(f"brand matcher: {best.name} via {best.technique} "
-                           f"({best.confidence:.2f})")
+            reasons.append(
+                f"brand matcher: {best.name} via {best.technique} ({best.confidence:.2f})"
+            )
         techniques = tuple(dict.fromkeys([*cand.techniques, *tech.techniques]))
         mitre = tuple(dict.fromkeys([*cand.mitre, *tech.mitre]))
         return replace(
-            cand, score=max(cand.score, int(round(_clamp(score) * 100))), brand=brand_id,
-            technique=technique or tech.primary, confidence=conf, techniques=techniques,
-            mitre=mitre, reasons=tuple(reasons), deep=True)
+            cand,
+            score=max(cand.score, int(round(_clamp(score) * 100))),
+            brand=brand_id,
+            technique=technique or tech.primary,
+            confidence=conf,
+            techniques=techniques,
+            mitre=mitre,
+            reasons=tuple(reasons),
+            deep=True,
+        )
 
     # ------------------------------------------------------------------ watch #
-    def watch(self, domain_or_brand: str, *, kinds: Iterable[str] | str | None = None,
-              max_permutations: int = DEFAULT_MAX, deep_limit: int = _DEFAULT_DEEP,
-              min_score: int = 0, limit: int | None = None, max_domains: int = 3,
-              persist: bool = False) -> list[Candidate]:
+    def watch(
+        self,
+        domain_or_brand: str,
+        *,
+        kinds: Iterable[str] | str | None = None,
+        max_permutations: int = DEFAULT_MAX,
+        deep_limit: int = _DEFAULT_DEEP,
+        min_score: int = 0,
+        limit: int | None = None,
+        max_domains: int = 3,
+        persist: bool = False,
+    ) -> list[Candidate]:
         """Rank look-alikes of a domain or brand (offline).
 
         ``domain_or_brand`` is a domain (``paypal.com``) or a KB brand id / name.  Returns
@@ -311,35 +385,50 @@ class BrandWatch:
         per_domain = max(1, int(max_permutations))
         for dom in domains:
             perms = generate_permutations(dom, kinds=kinds, max=per_domain)
-            for cand in self.score_permutations(perms, dom, brand=brand,
-                                                deep_limit=deep_limit):
+            for cand in self.score_permutations(perms, dom, brand=brand, deep_limit=deep_limit):
                 cur = merged.get(cand.domain)
                 if cur is None or cand.score > cur.score:
                     merged[cand.domain] = cand
         # a look-alike of one official domain may be an official domain of the same brand
         official = {d for d in domains}
-        ranked = sorted((c for c in merged.values()
-                         if c.domain not in official and c.score >= min_score), key=_rank_key)
+        ranked = sorted(
+            (c for c in merged.values() if c.domain not in official and c.score >= min_score),
+            key=_rank_key,
+        )
         if limit is not None:
-            ranked = ranked[:max(0, int(limit))]
+            ranked = ranked[: max(0, int(limit))]
         if persist:
             self.persist(ranked)
         return ranked
 
-    def monitor_brand(self, brand_id: str, *, max_domains: int = 3, min_score: int = 40,
-                      limit: int | None = 500, **kwargs: Any) -> list[Candidate]:
+    def monitor_brand(
+        self,
+        brand_id: str,
+        *,
+        max_domains: int = 3,
+        min_score: int = 40,
+        limit: int | None = 500,
+        **kwargs: Any,
+    ) -> list[Candidate]:
         """:meth:`watch` over a KB brand's official domains (``min_score`` default 40)."""
         brand = self._kb.get((brand_id or "").strip().casefold())
         if brand is None:
             raise ValueError(f"unknown brand id {brand_id!r}")
-        return self.watch(brand.id, max_domains=max_domains, min_score=min_score,
-                          limit=limit, **kwargs)
+        return self.watch(
+            brand.id, max_domains=max_domains, min_score=min_score, limit=limit, **kwargs
+        )
 
     # ------------------------------------------------------------------ liveness #
-    async def check_live(self, candidates: Sequence[Candidate | Permutation], *,
-                         max_checks: int = _DEFAULT_LIVE_CHECKS, concurrency: int = 20,
-                         timeout: float | None = 3.0, resolver: Resolver | None = None,
-                         target: str | None = None) -> list[Candidate]:
+    async def check_live(
+        self,
+        candidates: Sequence[Candidate | Permutation],
+        *,
+        max_checks: int = _DEFAULT_LIVE_CHECKS,
+        concurrency: int = 20,
+        timeout: float | None = 3.0,
+        resolver: Resolver | None = None,
+        target: str | None = None,
+    ) -> list[Candidate]:
         """Resolve candidates (best first, at most ``max_checks``) and re-rank.
 
         Only :mod:`uniphish.core.net` is used, so private / reserved answers never count
@@ -358,7 +447,7 @@ class BrandWatch:
         cands.sort(key=_rank_key)
         res = resolver or self.resolver
         sem = asyncio.Semaphore(max(1, int(concurrency)))
-        todo = cands[:max(0, int(max_checks))]
+        todo = cands[: max(0, int(max_checks))]
 
         async def one(c: Candidate) -> Candidate:
             async with sem:
@@ -370,31 +459,48 @@ class BrandWatch:
             public = tuple(ip for ip in ips if is_public_ip(ip))
             if public:
                 score = min(100, c.score + _LIVE_BONUS) if c.score > 0 else 0
-                return replace(c, live=True, ips=public, score=score,
-                               reasons=(*c.reasons, "resolves to a public address"))
-            return replace(c, live=False, score=int(round(c.score * _DEAD_FACTOR)),
-                           reasons=(*c.reasons, "does not resolve"))
+                return replace(
+                    c,
+                    live=True,
+                    ips=public,
+                    score=score,
+                    reasons=(*c.reasons, "resolves to a public address"),
+                )
+            return replace(
+                c,
+                live=False,
+                score=int(round(c.score * _DEAD_FACTOR)),
+                reasons=(*c.reasons, "does not resolve"),
+            )
 
         checked = await asyncio.gather(*(one(c) for c in todo))
-        out = [*checked, *cands[len(todo):]]
+        out = [*checked, *cands[len(todo) :]]
         out.sort(key=_rank_key)
         return out
 
-    async def watch_live(self, domain_or_brand: str, *, max_checks: int = 200,
-                         min_score: int = 0, limit: int | None = None,
-                         persist: bool = False, **kwargs: Any) -> list[Candidate]:
+    async def watch_live(
+        self,
+        domain_or_brand: str,
+        *,
+        max_checks: int = 200,
+        min_score: int = 0,
+        limit: int | None = None,
+        persist: bool = False,
+        **kwargs: Any,
+    ) -> list[Candidate]:
         """:meth:`watch` followed by :meth:`check_live` of the best ``max_checks``."""
         cands = self.watch(domain_or_brand, **kwargs)
         checked = await self.check_live(cands, max_checks=max_checks)
         ranked = [c for c in checked if c.score >= min_score]
         if limit is not None:
-            ranked = ranked[:max(0, int(limit))]
+            ranked = ranked[: max(0, int(limit))]
         if persist:
             self.persist(ranked)
         return ranked
 
-    async def verify(self, candidates: Sequence[Candidate], *, top: int = 10,
-                     live_only: bool = True) -> list[Candidate]:
+    async def verify(
+        self, candidates: Sequence[Candidate], *, top: int = 10, live_only: bool = True
+    ) -> list[Candidate]:
         """Run the engine on the best candidates and merge its verdict into the score.
 
         Needs ``engine``.  The engine is offline unless its settings enable online
@@ -402,8 +508,9 @@ class BrandWatch:
         """
         if self.engine is None:
             raise RuntimeError("BrandWatch.verify needs an engine")
-        chosen = [c for c in sorted(candidates, key=_rank_key)
-                  if not live_only or c.live][:max(0, int(top))]
+        chosen = [c for c in sorted(candidates, key=_rank_key) if not live_only or c.live][
+            : max(0, int(top))
+        ]
         engine = self.engine
 
         async def one(c: Candidate) -> Candidate:
@@ -412,15 +519,17 @@ class BrandWatch:
             except Exception as exc:
                 log.warning("engine verdict failed for %s: %r", c.domain, exc)
                 return c
-            return replace(c, score=max(c.score, int(v.score)), verdict_score=int(v.score),
-                           verdict_id=v.id)
+            return replace(
+                c, score=max(c.score, int(v.score)), verdict_score=int(v.score), verdict_id=v.id
+            )
 
         done = {c.domain: c for c in await asyncio.gather(*(one(c) for c in chosen))}
         return sorted((done.get(c.domain, c) for c in candidates), key=_rank_key)
 
     # ------------------------------------------------------------------ persistence #
-    def persist(self, candidates: Iterable[Candidate], *, min_score: int = 40,
-                only_live: bool = False) -> int:
+    def persist(
+        self, candidates: Iterable[Candidate], *, min_score: int = 40, only_live: bool = False
+    ) -> int:
         """Record candidates as ``hunt_events`` (source ``brandwatch``); returns new rows.
 
         A domain already recorded with an equal or higher score is skipped, so repeated
@@ -445,9 +554,13 @@ class BrandWatch:
             if known.get(key, -1) >= c.score:
                 continue
             store.add_hunt_event(
-                SOURCE, c.domain, score=c.score, brand=c.brand,
+                SOURCE,
+                c.domain,
+                score=c.score,
+                brand=c.brand,
                 techniques=[c.kind, *[t for t in c.techniques if t != c.kind]],
-                stix=None)
+                stix=None,
+            )
             known[key] = c.score
             added += 1
         return added

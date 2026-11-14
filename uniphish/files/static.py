@@ -40,25 +40,123 @@ from uniphish.files._names import (
 
 log = logging.getLogger("uniphish.files")
 
-__all__ = ["INDICATOR_CATALOG", "FileAnalysis", "FileFacts", "FileIndicator", "analyze_file",
-           "sniff"]
+__all__ = [
+    "INDICATOR_CATALOG",
+    "FileAnalysis",
+    "FileFacts",
+    "FileIndicator",
+    "analyze_file",
+    "sniff",
+]
 
 _EXPECTED_EXTS: dict[str, frozenset[str]] = {
-    "pe": frozenset({"exe", "dll", "sys", "scr", "cpl", "ocx", "drv", "efi", "pif", "com",
-                     "mui", "ax", "tsp", "msstyles"}),
+    "pe": frozenset(
+        {
+            "exe",
+            "dll",
+            "sys",
+            "scr",
+            "cpl",
+            "ocx",
+            "drv",
+            "efi",
+            "pif",
+            "com",
+            "mui",
+            "ax",
+            "tsp",
+            "msstyles",
+        }
+    ),
     "dos": frozenset({"exe", "com", "dll", "sys", "scr", "pif"}),
     "elf": frozenset({"so", "elf", "bin", "out", "o", "ko", "axf", "run"}),
     "macho": frozenset({"dylib", "bundle", "o", "bin", "app"}),
     "pdf": frozenset({"pdf", "ai", "fdf"}),
-    "ole": frozenset({"doc", "xls", "ppt", "dot", "xlt", "pot", "pps", "xla", "ppa", "msi",
-                      "msp", "msg", "pub", "vsd", "mpp", "wiz", "db", "hwp", "mdi", "ost",
-                      "pst", "sdw", "xlm", "mpt"}),
-    "ooxml": frozenset({"docx", "docm", "dotx", "dotm", "xlsx", "xlsm", "xlsb", "xltx", "xltm",
-                        "xlam", "pptx", "pptm", "potx", "potm", "ppsx", "ppsm", "ppam", "sldx",
-                        "sldm", "vsdx", "vsdm", "vssx", "thmx"}),
-    "zip": frozenset({"zip", "zipx", "odt", "ods", "odp", "odg", "epub", "xpi", "crx", "nupkg",
-                      "whl", "vsix", "kmz", "xps", "oxps", "3mf", "idml", "sketch", "key",
-                      "pages", "numbers", "aar", "war", "ear", "apk", "jar"}),
+    "ole": frozenset(
+        {
+            "doc",
+            "xls",
+            "ppt",
+            "dot",
+            "xlt",
+            "pot",
+            "pps",
+            "xla",
+            "ppa",
+            "msi",
+            "msp",
+            "msg",
+            "pub",
+            "vsd",
+            "mpp",
+            "wiz",
+            "db",
+            "hwp",
+            "mdi",
+            "ost",
+            "pst",
+            "sdw",
+            "xlm",
+            "mpt",
+        }
+    ),
+    "ooxml": frozenset(
+        {
+            "docx",
+            "docm",
+            "dotx",
+            "dotm",
+            "xlsx",
+            "xlsm",
+            "xlsb",
+            "xltx",
+            "xltm",
+            "xlam",
+            "pptx",
+            "pptm",
+            "potx",
+            "potm",
+            "ppsx",
+            "ppsm",
+            "ppam",
+            "sldx",
+            "sldm",
+            "vsdx",
+            "vsdm",
+            "vssx",
+            "thmx",
+        }
+    ),
+    "zip": frozenset(
+        {
+            "zip",
+            "zipx",
+            "odt",
+            "ods",
+            "odp",
+            "odg",
+            "epub",
+            "xpi",
+            "crx",
+            "nupkg",
+            "whl",
+            "vsix",
+            "kmz",
+            "xps",
+            "oxps",
+            "3mf",
+            "idml",
+            "sketch",
+            "key",
+            "pages",
+            "numbers",
+            "aar",
+            "war",
+            "ear",
+            "apk",
+            "jar",
+        }
+    ),
     "jar": frozenset({"jar", "war", "ear", "zip", "apk", "aar"}),
     "apk": frozenset({"apk", "zip", "aab", "xapk"}),
     "rar": frozenset({"rar", "cbr"}),
@@ -81,30 +179,94 @@ _EXPECTED_EXTS: dict[str, frozenset[str]] = {
     "ico": frozenset({"ico", "cur"}),
     "html": frozenset({"html", "htm", "xhtml", "xht", "shtml", "hta", "html5"}),
     "svg": frozenset({"svg"}),
-    "xml": frozenset({"xml", "xsl", "xslt", "rss", "atom", "xsd", "plist", "config", "manifest",
-                      "svg", "vml", "xaml", "csproj", "resx", "rels", "wsdl", "kml", "gpx"}),
+    "xml": frozenset(
+        {
+            "xml",
+            "xsl",
+            "xslt",
+            "rss",
+            "atom",
+            "xsd",
+            "plist",
+            "config",
+            "manifest",
+            "svg",
+            "vml",
+            "xaml",
+            "csproj",
+            "resx",
+            "rels",
+            "wsdl",
+            "kml",
+            "gpx",
+        }
+    ),
     "script": SCRIPT_EXTS | frozenset({"txt", "sh", "bash", "pl", "rb", "php", "ps1", "psd1"}),
 }
 # Extensions that claim a structured binary format; plain text under one of these is fake.
 _BINARY_CLAIM_EXTS = frozenset(
-    set().union(*(_EXPECTED_EXTS[k] for k in
-                  ("pe", "pdf", "ole", "ooxml", "zip", "rar", "7z", "png", "jpeg", "gif",
-                   "bmp", "webp", "tiff", "ico", "cab", "iso", "gzip", "lnk", "onenote"))))
+    set().union(
+        *(
+            _EXPECTED_EXTS[k]
+            for k in (
+                "pe",
+                "pdf",
+                "ole",
+                "ooxml",
+                "zip",
+                "rar",
+                "7z",
+                "png",
+                "jpeg",
+                "gif",
+                "bmp",
+                "webp",
+                "tiff",
+                "ico",
+                "cab",
+                "iso",
+                "gzip",
+                "lnk",
+                "onenote",
+            )
+        )
+    )
+)
 _TEXT_TYPES = frozenset({"text", "unknown", "empty"})
 _MIME = {
-    "pe": "application/vnd.microsoft.portable-executable", "dos": "application/x-msdownload",
-    "elf": "application/x-elf", "macho": "application/x-mach-binary", "pdf": "application/pdf",
-    "ole": "application/x-ole-storage", "ooxml": "application/vnd.openxmlformats-officedocument",
-    "zip": "application/zip", "jar": "application/java-archive",
+    "pe": "application/vnd.microsoft.portable-executable",
+    "dos": "application/x-msdownload",
+    "elf": "application/x-elf",
+    "macho": "application/x-mach-binary",
+    "pdf": "application/pdf",
+    "ole": "application/x-ole-storage",
+    "ooxml": "application/vnd.openxmlformats-officedocument",
+    "zip": "application/zip",
+    "jar": "application/java-archive",
     "apk": "application/vnd.android.package-archive",
-    "rar": "application/vnd.rar", "7z": "application/x-7z-compressed", "gzip": "application/gzip",
-    "bzip2": "application/x-bzip2", "xz": "application/x-xz", "tar": "application/x-tar",
-    "cab": "application/vnd.ms-cab-compressed", "iso": "application/x-iso9660-image",
-    "lnk": "application/x-ms-shortcut", "rtf": "application/rtf", "onenote": "application/onenote",
-    "png": "image/png", "jpeg": "image/jpeg", "gif": "image/gif", "bmp": "image/bmp",
-    "webp": "image/webp", "tiff": "image/tiff", "ico": "image/vnd.microsoft.icon",
-    "html": "text/html", "svg": "image/svg+xml", "xml": "application/xml",
-    "script": "text/plain", "text": "text/plain",
+    "rar": "application/vnd.rar",
+    "7z": "application/x-7z-compressed",
+    "gzip": "application/gzip",
+    "bzip2": "application/x-bzip2",
+    "xz": "application/x-xz",
+    "tar": "application/x-tar",
+    "cab": "application/vnd.ms-cab-compressed",
+    "iso": "application/x-iso9660-image",
+    "lnk": "application/x-ms-shortcut",
+    "rtf": "application/rtf",
+    "onenote": "application/onenote",
+    "png": "image/png",
+    "jpeg": "image/jpeg",
+    "gif": "image/gif",
+    "bmp": "image/bmp",
+    "webp": "image/webp",
+    "tiff": "image/tiff",
+    "ico": "image/vnd.microsoft.icon",
+    "html": "text/html",
+    "svg": "image/svg+xml",
+    "xml": "application/xml",
+    "script": "text/plain",
+    "text": "text/plain",
 }
 _EXEC_TYPES = frozenset({"pe", "dos", "elf", "macho"})
 _DISGUISE_TYPES = _EXEC_TYPES | {"lnk"}
@@ -151,9 +313,12 @@ class FileAnalysis:
         return [i.as_tuple() for i in self.indicators]
 
     def to_dict(self) -> dict[str, Any]:
-        return {"facts": self.facts.to_dict(),
-                "indicators": [i.to_dict() for i in self.indicators],
-                "child_urls": list(self.child_urls), "notes": list(self.notes)}
+        return {
+            "facts": self.facts.to_dict(),
+            "indicators": [i.to_dict() for i in self.indicators],
+            "child_urls": list(self.child_urls),
+            "notes": list(self.notes),
+        }
 
 
 # --------------------------------------------------------------------------- #
@@ -170,8 +335,23 @@ def _entropy(data: bytes) -> float:
     return float(-(p * np.log2(p)).sum())
 
 
-_HTML_MARKERS = ("<!doctype html", "<html", "<head", "<body", "<script", "<form", "<iframe",
-                 "<meta ", "<title", "<div", "<table", "<a href", "<img ", "<style", "<hta:")
+_HTML_MARKERS = (
+    "<!doctype html",
+    "<html",
+    "<head",
+    "<body",
+    "<script",
+    "<form",
+    "<iframe",
+    "<meta ",
+    "<title",
+    "<div",
+    "<table",
+    "<a href",
+    "<img ",
+    "<style",
+    "<hta:",
+)
 
 
 def _sniff_text_type(data: bytes, ext: str) -> str:
@@ -207,8 +387,10 @@ def _detect(data: bytes, ext: str) -> tuple[str, _archive.ZipListing | None]:
     kind = sniff_magic(head)
     if kind == "zip":
         listing = _archive.list_zip(data)
-        return (_archive.zip_flavor(listing) if listing.ok and not listing.too_many else "zip",
-                listing)
+        return (
+            _archive.zip_flavor(listing) if listing.ok and not listing.too_many else "zip",
+            listing,
+        )
     if kind is not None:
         return kind, None
     return _sniff_text_type(data, ext), None
@@ -222,8 +404,18 @@ def _ext_mismatch(detected: str, ext: str) -> bool:
         return detected in _TEXT_TYPES and detected != "empty" and ext in _BINARY_CLAIM_EXTS
     if detected == "script":
         return ext in _BINARY_CLAIM_EXTS
-    if detected == "html" and ext in {"txt", "xml", "php", "asp", "aspx", "jsp", "eml", "mht",
-                                      "mhtml", "svg"}:
+    if detected == "html" and ext in {
+        "txt",
+        "xml",
+        "php",
+        "asp",
+        "aspx",
+        "jsp",
+        "eml",
+        "mht",
+        "mhtml",
+        "svg",
+    }:
         return False
     return ext not in expected
 
@@ -262,35 +454,52 @@ def sniff(data: bytes, filename: str | None = None) -> FileFacts:
 def _name_indicators(facts: FileFacts, nf_ext: str, f: Findings) -> None:
     name = facts.filename or ""
     if facts.rtlo_in_name:
-        f.add("file.rtlo_filename",
-              f"The filename {name!r} contains a right-to-left override character that "
-              "reverses how its extension is displayed.", filename=name)
+        f.add(
+            "file.rtlo_filename",
+            f"The filename {name!r} contains a right-to-left override character that "
+            "reverses how its extension is displayed.",
+            filename=name,
+        )
     if facts.double_extension:
         nf = inspect_filename(name)
-        f.add("file.double_extension",
-              f"{name!r} ends in '.{nf.declared_ext}' but is dressed up as '.{nf.decoy_ext}'.",
-              decoy=nf.decoy_ext, real=nf.declared_ext)
+        f.add(
+            "file.double_extension",
+            f"{name!r} ends in '.{nf.declared_ext}' but is dressed up as '.{nf.decoy_ext}'.",
+            decoy=nf.decoy_ext,
+            real=nf.declared_ext,
+        )
     if facts.ext_mismatch:
         if facts.detected_type in _DISGUISE_TYPES and nf_ext not in EXECUTABLE_EXTS:
-            f.add("file.disguised_executable",
-                  f"The content is a {facts.detected_type.upper()} program/shortcut but the "
-                  f"name says '.{nf_ext}'.", detected=facts.detected_type, declared=nf_ext)
+            f.add(
+                "file.disguised_executable",
+                f"The content is a {facts.detected_type.upper()} program/shortcut but the "
+                f"name says '.{nf_ext}'.",
+                detected=facts.detected_type,
+                declared=nf_ext,
+            )
         else:
-            f.add("file.ext_mismatch",
-                  f"The content looks like {facts.detected_type.upper()} but the extension is "
-                  f"'.{nf_ext}'.", detected=facts.detected_type, declared=nf_ext)
+            f.add(
+                "file.ext_mismatch",
+                f"The content looks like {facts.detected_type.upper()} but the extension is "
+                f"'.{nf_ext}'.",
+                detected=facts.detected_type,
+                declared=nf_ext,
+            )
 
 
-def _dispatch(data: bytes, facts: FileFacts, listing: _archive.ZipListing | None,
-              f: Findings) -> None:
+def _dispatch(
+    data: bytes, facts: FileFacts, listing: _archive.ZipListing | None, f: Findings
+) -> None:
     t = facts.detected_type
     ext = facts.declared_ext
     if t in _EXEC_TYPES:
         f.add("file.type.executable", f"The file is a {t.upper()} executable.", detected=t)
         if facts.entropy > 7.2 and facts.size > 20_000:
-            f.add("file.executable.packed",
-                  f"Entropy {facts.entropy:.2f} bits/byte suggests packing or encryption.",
-                  entropy=facts.entropy)
+            f.add(
+                "file.executable.packed",
+                f"Entropy {facts.entropy:.2f} bits/byte suggests packing or encryption.",
+                entropy=facts.entropy,
+            )
     elif t == "lnk":
         f.add("file.type.shortcut", "The file is a Windows shortcut (.lnk).")
         _script.analyze_lnk(data, f)
@@ -299,8 +508,11 @@ def _dispatch(data: bytes, facts: FileFacts, listing: _archive.ZipListing | None
     elif t == "onenote":
         f.add("file.type.onenote", "OneNote files can hide launchable embedded objects.")
     elif t == "script" or (t == "html" and ext == "hta"):
-        f.add("file.type.script", f"The file is a script/launcher ('.{ext or 'script'}').",
-              declared=ext)
+        f.add(
+            "file.type.script",
+            f"The file is a script/launcher ('.{ext or 'script'}').",
+            declared=ext,
+        )
         if t == "script":
             _script.analyze_script(data, f)
     if t == "ooxml":

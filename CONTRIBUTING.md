@@ -35,16 +35,14 @@ Run things:
 
 ```bash
 python -m pytest tests/<area> -q          # tests are offline; network is blocked by tests/conftest.py
-ruff check uniphish tests                 # lint (line length 100; rules E,F,W,I,B,UP,SIM,S)
-cd extension && node --test test/         # extension tests
-cd web && npm ci && npm test              # console tests; `npm run build` type-checks and builds
+ruff check . && ruff format --check .     # lint + format (line length 100; rules E,F,W,I,B,UP,SIM,S)
+cd extension && node --test test/*.test.js  # extension tests
+cd web && npm ci && npm run lint && npm test  # console lint (Biome) + tests; `npm run build` type-checks and builds
 python scripts/smoke_platform.py          # end-to-end canonical cases, non-zero exit on failure
 ```
 
-CI configuration is being added; until it lands, please run the relevant tests and `ruff`
-locally before opening a PR. A few legacy tests at the top level of `tests/` import
-TensorFlow and fail to collect without the `train` extra: that is expected, not caused by
-your change.
+CI (`.github/workflows/ci.yml`) runs the same lint, format, test and build steps on every
+pull request; run the relevant ones locally first (`make check`).
 
 ## Coding standards
 

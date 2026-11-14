@@ -3,7 +3,9 @@ import { parseSseFrame } from "./client";
 
 describe("parseSseFrame", () => {
   it("parses the bus envelope", () => {
-    const ev = parseSseFrame('event: verdict\ndata: {"type":"verdict","ts":"2026-01-01T00:00:00Z","data":{"score":91}}');
+    const ev = parseSseFrame(
+      'event: verdict\ndata: {"type":"verdict","ts":"2026-01-01T00:00:00Z","data":{"score":91}}',
+    );
     expect(ev).toEqual({ type: "verdict", ts: "2026-01-01T00:00:00Z", data: { score: 91 } });
   });
   it("uses the event name for bare payloads", () => {

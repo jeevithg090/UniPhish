@@ -5,7 +5,8 @@ export const MAX_UPLOAD_BYTES = 25_000_000;
 
 const URL_RE = /^(?:[a-z][a-z0-9+.-]*:\/\/|www\.)\S+$/i;
 const BARE_HOST_RE = /^(?:[a-z0-9-]+\.)+[a-z]{2,}(?:[/:?#]\S*)?$/i;
-const EMAIL_HEADER_RE = /^(?:received|from|to|subject|date|message-id|return-path|mime-version|delivered-to|x-[a-z-]+|content-type|authentication-results|dkim-signature):/im;
+const EMAIL_HEADER_RE =
+  /^(?:received|from|to|subject|date|message-id|return-path|mime-version|delivered-to|x-[a-z-]+|content-type|authentication-results|dkim-signature):/im;
 
 /** Heuristically classify pasted text. */
 export function detectInputType(raw: string): Exclude<InputType, "auto" | "file"> {
@@ -14,7 +15,10 @@ export function detectInputType(raw: string): Exclude<InputType, "auto" | "file"
   if (!/\s/.test(s) && (URL_RE.test(s) || BARE_HOST_RE.test(s))) return "url";
   if (/^<(?:!doctype html|html|head|body|\?xml|svg)/i.test(s)) return "html";
   const head = s.slice(0, 4000);
-  const headerLines = head.split(/\r?\n/).slice(0, 40).filter((l) => EMAIL_HEADER_RE.test(l));
+  const headerLines = head
+    .split(/\r?\n/)
+    .slice(0, 40)
+    .filter((l) => EMAIL_HEADER_RE.test(l));
   if (headerLines.length >= 2 && /^[A-Za-z][A-Za-z0-9-]*:\s/.test(s)) return "email";
   if (/^<[a-z!][^>]*>/i.test(s) && /<\/[a-z]+>/i.test(s)) return "html";
   return "text";
