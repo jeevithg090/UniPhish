@@ -14,6 +14,7 @@ graft uniphish/server/templates
 
 # Documentation, the labelled synthetic corpus and the test-suite travel with the sdist
 graft docs
+prune docs/screenshots
 graft examples
 graft tests
 
