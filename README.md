@@ -1,5 +1,12 @@
 # UniPhish 2
 
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/API-FastAPI-009688?logo=fastapi&logoColor=white)
+![React 19](https://img.shields.io/badge/console-React%2019-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![Tailwind CSS 4](https://img.shields.io/badge/Tailwind%20CSS-4-06B6D4?logo=tailwindcss&logoColor=white)
+![License: MIT](https://img.shields.io/badge/license-MIT-green)
+
 **An open-source, AI-native anti-phishing platform: explainable, multilingual detection for URLs, web pages, emails, files and QR codes, protecting humans and AI agents.**
 
 One detection engine, five artifact types, six surfaces. Every verdict is a sum of named
@@ -25,14 +32,32 @@ $ uniphish scan "https://pаypal-secure.top/signin?session=1"          # Cyrilli
 
 (Real output from the CLI, trimmed. Reproduce it with the command above.)
 
+![The UniPhish SOC console showing a malicious verdict for a Cyrillic PayPal look-alike: risk gauge at 100, brand impersonation panel, highlighted target and signal waterfall](docs/screenshots/verdict-dark.png)
+
+<sub>The bundled SOC console after scanning the same URL. Every screenshot in this README was
+captured from a local `uniphish serve` with synthetic demo inputs; see
+[Screenshots](#screenshots).</sub>
+
 > **Status: 2.0.0, beta.** The engine, API, CLI, MCP server, extension, bot and console are
-> built and tested offline (about 2,100 Python tests, plus 105 extension and 27 console
+> built and tested offline (about 2,100 Python tests, plus 105 extension and 31 console
 > tests, all run in CI). The detection quality numbers are from small
 > **synthetic** benchmarks; the byte-level CNN is capped so it corroborates rather than
 > decides (see [Evaluation and honesty](#evaluation-and-honesty)). Measure on your own
 > traffic before you rely on it to block anything.
 
 ---
+
+## Contents
+
+- [Why this exists](#why-this-exists) · [Who it is for](#who-it-is-for) · [What it analyses](#what-it-analyses) · [Feature matrix](#feature-matrix)
+- [Screenshots](#screenshots) · [Tech stack](#tech-stack) · [Architecture](#architecture)
+- [Prerequisites](#prerequisites) · [Installation](#installation) · [60-second quickstart](#60-second-quickstart)
+- [Using the SOC console](#using-the-soc-console) · [REST API](#rest-api) · [Example outputs](#example-outputs)
+- [Explainability](#explainability-the-log-odds-fusion) · [MITRE coverage](#mitre-attck-and-atlas-coverage) · [Exports](#detection-as-code-and-threat-intel-exports) · [AgentGuard](#agentguard-protecting-ai-agents)
+- [Evaluation and honesty](#evaluation-and-honesty) · [Install extras](#install-extras) · [Configuration](#configuration)
+- [Commands and scripts](#commands-and-scripts) · [Development](#development) · [Testing](#testing) · [Linting and formatting](#linting-and-formatting) · [Deployment](#deployment)
+- [Project structure](#project-structure) · [Documentation](#documentation) · [Troubleshooting and FAQ](#troubleshooting-and-faq)
+- [Known issues](#known-issues) · [Roadmap](#roadmap) · [Contributing](#contributing) · [Responsible use](#responsible-use) · [Credits and license](#credits-and-license)
 
 ## Why this exists
 
@@ -56,6 +81,16 @@ It also targets the phishing of 2025-2026 rather than 2015: adversary-in-the-mid
 MFA-bypass kits, ClickFix "paste this into Run" pages, Browser-in-the-Browser, HTML and SVG
 smuggling, QR-code phishing ("quishing"), OAuth and device-code consent, callback (TOAD)
 scams, BEC, and hosting on "living-off-trusted-sites" platforms.
+
+## Who it is for
+
+| You are | Use |
+|---|---|
+| A **SOC analyst or incident responder** triaging reported emails, links and attachments | the SOC console or `uniphish scan`, then export IOCs and rules to your SIEM |
+| A **security engineer** wiring detection into mail flow, chat or CI | the REST API, `uniphish batch`, `--fail-on` exit codes, webhook / Splunk / Elastic sinks |
+| An **AI-agent builder** whose agent reads the web, email or tool output | AgentGuard (Python API or MCP server) to check links, content and tool calls before acting |
+| An **end user** who wants a second opinion on a link | the on-device browser extension or the Telegram bot |
+| A **researcher** studying multilingual phishing and homoglyph attacks | the engine, the labelled synthetic corpus and the benchmark / red-team harness |
 
 ## What it analyses
 
@@ -96,6 +131,41 @@ safe page fetch with redirect chain, and a sandboxed headless-browser detonation
 | Mailbox triage (Maildir, mbox, IMAP) and SIEM sinks (webhook, Slack, Splunk HEC, Elastic) | `uniphish.integrations` | built |
 | LLM analyst narrative (Anthropic API, template fallback) | `uniphish.ai` | built; optional |
 | Benchmark and red-team harness | `uniphish.eval` | built |
+
+## Screenshots
+
+All screenshots are real captures of the bundled console (`uniphish serve`, offline mode)
+at 1280 px and 375 px, using the synthetic demo inputs built into the Analyze form plus a
+handful of scans against reserved or obviously fake domains. No personal data.
+
+| | |
+|---|---|
+| ![Analyze view with the input box, input-type selector, scan options and "Try an example" buttons](docs/screenshots/analyze-home.png) | ![Light theme: the same malicious PayPal look-alike verdict](docs/screenshots/verdict-light.png) |
+| **Analyze.** Paste a URL, message, raw email or HTML, or drop a file. Auto-detects the type; one-click demo inputs. | **Light theme.** Follows the OS setting; the sun/moon button in the header overrides it. |
+| ![Signal waterfall with one signal expanded to show its detail, weight, confidence and MITRE ids](docs/screenshots/signal-waterfall.png) | ![Extracted indicators list with defang toggle and copy buttons](docs/screenshots/indicators.png) |
+| **Why this score.** Each bar is one signal's log-odds; click a row for evidence, weight x confidence and ATT&CK ids. | **IOCs.** Defanged by default so they are safe to paste into tickets; copy one or all. |
+| ![Live threat feed streaming verdicts over server-sent events](docs/screenshots/live-feed.png) | ![Verdicts and stats: totals, hourly stacked bar chart, score histogram and recent verdicts table](docs/screenshots/verdicts-and-stats.png) |
+| **Live feed.** Verdicts from every client of this server, and CT-hunt alerts, over SSE. Pause, clear, filter by score. | **Verdicts & stats.** Totals, verdicts per hour (24 h), score distribution, and a filterable history. |
+| ![Detection catalog listing analyzers and every signal id](docs/screenshots/detection-catalog.png) | <img src="docs/screenshots/mobile-verdict.png" alt="Phone-width (375 px) verdict for a smishing SMS impersonating USPS" width="49%"> <img src="docs/screenshots/mobile-stats.png" alt="Phone-width (375 px) Verdicts and stats view in the light theme" width="49%"> |
+| **Catalog.** Every analyzer and all 200 signal ids, searchable. | **Phone.** The whole console works at 375 px: segmented navigation, no sideways scrolling, 40 px touch targets. |
+
+## Tech stack
+
+| Layer | Technology | Notes |
+|---|---|---|
+| Detection engine | Python 3.10+ (asyncio), Pydantic v2 | staged, concurrent, fault-isolated analyzers; additive log-odds fusion |
+| URL / Unicode | `idna`, `tldextract`, Unicode 18.0 confusables and script data (UTS #39) | homoglyph, mixed-script, invisible and bidi tricks |
+| ML | byte-level CNN, **pure NumPy** inference (weights in `uniphish/assets`) | trained with the legacy TensorFlow stack under `legacy/`; TensorFlow is not needed at runtime |
+| Parsing | BeautifulSoup + lxml, `defusedxml`, stdlib `email`, `cryptography`, `mmh3`; optional OpenCV (QR), oletools, pyzipper, yara-python | every parser runs on hostile, size-bounded input |
+| Network (opt-in) | `httpx` through one SSRF-guarded client, `dnspython`, optional Playwright for detonation | off unless `UNIPHISH_ONLINE=1` |
+| Storage | SQLite (WAL) via stdlib `sqlite3` | verdicts, indicators, reputation, hunt events, STIX objects |
+| API | FastAPI + Uvicorn, SSE, TAXII 2.1 | API-key auth, rate limit, body-size cap, strict security headers |
+| CLI | Typer + Rich | `scan`, `batch`, `export`, `catalog`, `serve`, `hunt`, `version` |
+| SOC console | React 19, TypeScript 7, Tailwind CSS 4, Vite 8, Vitest, Biome | static SPA built into `uniphish/server/static`, no Node at runtime |
+| Browser extension | Manifest V3, plain JavaScript, `node --test` | same rules, CNN and fusion ported to JS; runs on-device |
+| Agents | MCP (`mcp` package) | `uniphish-mcp` stdio server with seven tools |
+| Integrations | python-telegram-bot, Anthropic SDK (optional narrative), STIX 2 | all optional extras |
+| Tooling | ruff (lint + format), pytest + Hypothesis + respx, uv, GitHub Actions and GitLab CI | |
 
 ## Architecture
 
@@ -148,10 +218,100 @@ Verdict: score 0-100, level (benign < 0.50 <= suspicious < 0.85 <= malicious), a
    +--> CLI | REST/SSE/TAXII | SOC console | AgentGuard + MCP | Telegram bot | STIX/MISP/Sigma/Suricata/YARA/ECS
 ```
 
+How the pieces talk to each other at runtime:
+
+```mermaid
+flowchart LR
+    subgraph Clients
+        B["Browser<br/>SOC console (React SPA)"]
+        C["CLI<br/>uniphish scan / batch / export"]
+        A["AI agent<br/>MCP client"]
+        X["Browser extension<br/>(on-device engine)"]
+        TG["Telegram bot"]
+    end
+    subgraph Server["uniphish serve (FastAPI)"]
+        R["/v1 REST + SSE<br/>/taxii2"]
+        ST["Static files<br/>uniphish/server/static"]
+        SEC["Auth, rate limit,<br/>size cap, CSP"]
+    end
+    ENG["Engine + analyzers"]
+    DB[("SQLite<br/>~/.uniphish/uniphish.db")]
+    NET["SSRF-guarded gateway<br/>(only when online)"]
+    B -- "GET /" --> ST
+    B -- "fetch /v1/*, EventSource /v1/stream" --> SEC --> R
+    R --> ENG
+    C --> ENG
+    TG --> ENG
+    A -- stdio --> MCP["uniphish-mcp<br/>AgentGuard"] --> ENG
+    ENG --> DB
+    R --> DB
+    ENG -.-> NET
+    X -. "optional: your server" .-> R
+```
+
+The CLI, bot and MCP server embed the engine in-process; only the console (and, if you
+configure it, the extension) go through the HTTP API.
+
 Design rules that hold across the codebase: offline by default, one SSRF-safe network
 gateway, every analyzer fault-isolated and time-boxed, every input treated as hostile and
 size-bounded, data (brands, lures, TLD risk, rules) in YAML assets rather than code. Details
 in [docs/architecture.md](docs/architecture.md).
+
+## Prerequisites
+
+| Need | Version | For |
+|---|---|---|
+| Python | 3.10, 3.11 or 3.12 (the CI matrix) | everything |
+| pip, or [uv](https://docs.astral.sh/uv/) | any recent | installing; `make setup` uses uv when present |
+| Git | any | cloning |
+| Node.js + npm | 22 LTS recommended | **only** to rebuild the SOC console or run the extension tests; the built console is committed |
+| Chromium via Playwright | `playwright install chromium` | **only** for sandboxed detonation (`--detonate`) |
+| Docker | any | **only** for `make docker` |
+
+No API keys, GPU or network access are needed for the default offline mode.
+
+## Installation
+
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/jeevithg090/UniPhish.git
+   cd UniPhish
+   ```
+
+2. **Create a virtual environment and install** (pick one)
+
+   ```bash
+   # a) everything for contributors (all extras + pytest, ruff ...); uses uv if installed
+   make setup && source .venv/bin/activate
+
+   # b) plain pip, all runtime features
+   python3 -m venv .venv && source .venv/bin/activate
+   pip install -e '.[all]'
+
+   # c) smallest useful server install
+   pip install -e '.[server]'
+   ```
+
+   See [Install extras](#install-extras) for what each extra adds. Missing optional
+   dependencies switch off the matching analyzer with a log line; nothing else breaks.
+
+3. **Check the install**
+
+   ```bash
+   uniphish version
+   uniphish scan "https://www.wikipedia.org/"      # should print a benign verdict
+   ```
+
+4. **(Optional) configure** by exporting environment variables, see
+   [Configuration](#configuration). The defaults are offline, unauthenticated and store
+   data in `~/.uniphish`.
+
+5. **(Optional) rebuild the console** after changing anything in `web/`:
+
+   ```bash
+   make web          # npm ci + npm run build -> uniphish/server/static
+   ```
 
 ## 60-second quickstart
 
@@ -202,6 +362,114 @@ python -m uniphish.agent.mcp_server  # stdio MCP server: scan_url, check_content
 > that first call only and later calls take milliseconds (about 1 s, then under 10 ms, on an
 > idle machine).
 > Longer walk-through: [docs/quickstart.md](docs/quickstart.md).
+
+## Using the SOC console
+
+Start the server and open <http://127.0.0.1:8080>:
+
+```bash
+uniphish serve                      # or: make serve   (HOST / PORT variables)
+```
+
+1. **Analyze.** Paste a URL, an SMS or chat message, a raw email (headers and body) or an
+   HTML page, or drop a file (attachments, images with QR codes, `.eml`). The input type is
+   auto-detected and shown as "looks like: ..."; override it with the type buttons. New
+   here? Click **Try an example**. Press **Analyze** or Ctrl/Cmd + Enter.
+2. **Options.** *Online enrichment*, *Fetch page* and *Detonate* only take effect if the
+   server was started with `UNIPHISH_ONLINE=1`. *Explain* adds CNN saliency; *AI narrative*
+   asks the configured LLM for an analyst summary (template fallback without a key).
+3. **Read the verdict.** The gauge shows risk 0-100, level and recommended action; the
+   headline names the brand being impersonated; the **target** view highlights the exact
+   characters that triggered signals; the **waterfall** shows how each signal moved the
+   log-odds (click a row for detail).
+4. **Act on it.** Copy defanged IOCs, open MITRE technique pages, export STIX 2.1, MISP,
+   Sigma, Suricata, YARA or Elastic ECS, or walk into child artifacts (links, attachments,
+   QR payloads) through the **Artifact tree**.
+5. **Monitor.** **Live feed** streams every verdict any client produces on this server;
+   **Verdicts & stats** shows totals, an hourly chart, the score histogram and a
+   filterable history (click a target to reopen the full verdict); **Catalog** lists every
+   analyzer and signal.
+6. **Settings.** If the server enforces `UNIPHISH_API_KEYS`, paste a key here. It is kept
+   in this tab's `sessionStorage` only and sent as `X-API-Key`.
+
+Keyboard and accessibility: a skip link, visible focus rings, labelled controls, ARIA
+live regions for status and errors, `prefers-reduced-motion` support, and a light/dark
+theme toggle that remembers your choice.
+
+## REST API
+
+Interactive OpenAPI docs are served at `/docs`. Full reference: [docs/api.md](docs/api.md).
+"Key" means the route requires `X-API-Key: <key>` (or `Authorization: Bearer <key>`)
+**when `UNIPHISH_API_KEYS` is set**; with no keys configured every route is open and
+responses carry `X-UniPhish-Auth: disabled`.
+
+| Method | Path | Auth | Description |
+|---|---|---|---|
+| `POST` | `/v1/scan` | key | Scan any artifact (polymorphic body: `url`, `text`, `email`, `html`, `file`+`filename`) |
+| `POST` | `/v1/scan/url` | key | Scan a URL: `{"url", "options"}` |
+| `POST` | `/v1/scan/text` | key | Scan an SMS, chat message or LLM context: `{"text", "options"}` |
+| `POST` | `/v1/scan/email` | key | Scan an email: `{"email": <base64>}` or `{"raw": <text>}` |
+| `POST` | `/v1/scan/page` | key | Scan HTML: `{"html", "url"?, "options"}` |
+| `POST` | `/v1/scan/file` | key | Multipart file upload (`file`, optional `options` JSON field) |
+| `POST` | `/v1/scan/batch` | key | Scan several artifacts concurrently |
+| `POST` | `/v1/explain` | key | Scan with saliency and the analyst narrative |
+| `GET` | `/v1/verdicts` | key | Recent verdict rows; query `limit` (1-500), `min_score`, `kind`, `level` |
+| `GET` | `/v1/verdicts/{id}` | key | One full stored verdict (404 if unknown) |
+| `GET` | `/v1/stats` | key | Counts by level and kind, score histogram, store sizes, 24 h hourly timeline |
+| `GET` | `/v1/indicators` | key | Look up an IOC (`type` + `value`) or list recent ones |
+| `POST` | `/v1/export/{fmt}` | key | Scan, then return `stix`, `misp`, `sigma`, `suricata`, `yara` or `ecs` |
+| `GET` | `/v1/stream` | key | Server-sent events: `verdict` and hunt alerts |
+| `GET` | `/v1/health` | public | Liveness plus config snapshot (`online`, `auth`, analyzers) |
+| `GET` | `/v1/meta/version` | public | Package, engine and schema versions |
+| `GET` | `/v1/meta/analyzers` | public | Detection catalog: analyzers and every signal |
+| `GET` | `/taxii2/...` | key | Read-only TAXII 2.1 server (collection `phishing-iocs`) |
+| `GET` | `/` | public | The SOC console (static files) |
+
+**Example request**
+
+```bash
+curl -s http://127.0.0.1:8080/v1/scan \
+  -H 'content-type: application/json' \
+  -d '{"url": "http://paypal-login.verify-account.xyz/signin"}'
+```
+
+**Example response** (real output, trimmed to the main fields; the full object also has
+`logit`, `children`, `analyzers`, `meta`, `duration_ms` and every signal):
+
+```json
+{
+  "id": "34dfbef687714af1885e2d81d7e7323a",
+  "kind": "url",
+  "target": "http://paypal-login.verify-account.xyz/signin",
+  "score": 98,
+  "risk": 0.9846,
+  "level": "malicious",
+  "action": "block",
+  "confidence": 0.912,
+  "summary": "Malicious (98/100) — impersonates PayPal: Brand name placed in a sub-domain of an unrelated site (PayPal); Host contains sign-in / security lure words; Byte-level ML model flags this URL as likely phishing.",
+  "techniques": ["subdomain_stuffing", "suspicious_tld", "credential_path"],
+  "brand": {
+    "name": "PayPal",
+    "technique": "subdomain",
+    "confidence": 0.89,
+    "evidence": "'paypal' appears as a sub-domain label of verify-account.xyz, which is not a PayPal domain"
+  },
+  "signals": [
+    {"id": "brand.subdomain", "title": "Brand name placed in a sub-domain of an unrelated site (PayPal)",
+     "weight": 2.5, "confidence": 0.89, "contribution": 2.225, "category": "brand"},
+    {"id": "url.credential_lure_host", "title": "Host contains sign-in / security lure words",
+     "weight": 1.7, "confidence": 1.0, "contribution": 1.7, "category": "url"}
+  ],
+  "mitre": [{"id": "T1036", "name": "Masquerading"}, {"id": "T1566.002", "name": "Phishing: Spearphishing Link"}],
+  "indicators": [
+    {"type": "url", "value": "http://paypal-login.verify-account.xyz/signin", "role": "landing"},
+    {"type": "domain", "value": "verify-account.xyz", "role": "host"}
+  ]
+}
+```
+
+Errors: `401` missing or wrong key, `413` body or artifact too large, `422` invalid body
+(unknown fields are rejected), `429` rate limited (`Retry-After: 1`).
 
 ## Example outputs
 
@@ -427,34 +695,140 @@ cp .env.example .env            # then edit; .env is git-ignored
 set -a; . ./.env; set +a
 ```
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `UNIPHISH_DATA_DIR` / `UNIPHISH_DB` | `~/.uniphish` / `<data dir>/uniphish.db` | SQLite verdict store, caches |
-| `UNIPHISH_ONLINE` | `0` | allow online enrichment (DNS, RDAP, TLS, ASN, feeds) |
-| `UNIPHISH_API_KEYS` | *(empty: no auth)* | comma-separated API keys for `uniphish serve` |
-| `UNIPHISH_CORS_ORIGINS` | *(none)* | browser origins allowed to call the API |
-| `UNIPHISH_RATE_LIMIT` | `120` | requests per minute per valid key or client IP (`0` = off) |
-| `UNIPHISH_SUSPICIOUS_THRESHOLD` / `UNIPHISH_MALICIOUS_THRESHOLD` | `0.50` / `0.85` | verdict cut-offs |
-| `ANTHROPIC_API_KEY`, `UNIPHISH_AI_MODEL` | unset | optional LLM analyst narrative |
-| `VT_API_KEY`, `URLSCAN_API_KEY`, `GSB_API_KEY` | unset | optional reputation lookups (online only) |
-| `TELEGRAM_BOT_TOKEN`, `UNIPHISH_BOT_*` | unset | Telegram bot, see [bot/README.md](bot/README.md) |
+None of them is required: every variable has a working default, and the integrations they
+switch on are optional. "Secret" marks values you must never commit.
+
+**Core and API**
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `UNIPHISH_DATA_DIR` | no | `~/.uniphish` | Directory for the SQLite store, feed caches and models |
+| `UNIPHISH_DB` | no | `<data dir>/uniphish.db` | SQLite file path |
+| `UNIPHISH_ONLINE` | no | `0` | `1` allows online enrichment (DNS, RDAP, TLS, ASN, feeds, fetch, detonation). Requests cannot turn it on by themselves |
+| `UNIPHISH_SUSPICIOUS_THRESHOLD` | no | `0.50` | Risk (0-1) at which a verdict becomes *suspicious* |
+| `UNIPHISH_MALICIOUS_THRESHOLD` | no | `0.85` | Risk (0-1) at which a verdict becomes *malicious* |
+| `UNIPHISH_API_KEYS` | **yes for any non-local deployment** (secret) | empty = auth off | Comma-separated API keys accepted by `uniphish serve` |
+| `UNIPHISH_CORS_ORIGINS` | no | none | Comma-separated browser origins allowed to call the API |
+| `UNIPHISH_RATE_LIMIT` | no | `120` | Requests per minute per valid key, else per client IP; `0` disables |
+| `UNIPHISH_HTTP_TIMEOUT` | no | `8` | Outbound HTTP timeout in seconds (online only) |
+| `UNIPHISH_HTTP_CONCURRENCY` | no | `32` | Global cap on concurrent outbound requests |
+| `UNIPHISH_HTTP_PER_HOST` | no | `4` | Concurrent outbound requests per host |
+| `UNIPHISH_USER_AGENT` | no | `UniPhish/2.0 (+https://github.com/jeevithg090/UniPhish)` | User-Agent for outbound requests |
+| `UNIPHISH_DETONATE_NO_SANDBOX` | no | unset | `1` runs Playwright detonation without the Chromium sandbox (disposable containers only) |
+
+**Optional integrations**
+
+| Variable | Required | Default | Description |
+|---|---|---|---|
+| `ANTHROPIC_API_KEY` | no (secret) | unset | Enables the LLM analyst narrative; a template is used without it |
+| `UNIPHISH_AI_MODEL` | no | `claude-sonnet-5-5` | Model id for the narrative |
+| `VT_API_KEY`, `URLSCAN_API_KEY`, `GSB_API_KEY` | no (secret) | unset | VirusTotal, urlscan.io and Google Safe Browsing lookups (online only) |
+| `URLHAUS_AUTH_KEY`, `PHISHTANK_APP_KEY` | no (secret) | unset | Credentials for the URLhaus and PhishTank open feeds |
+| `UNIPHISH_MCP_ONLINE` | no | unset | `1` lets MCP tool calls request online enrichment |
+| `TELEGRAM_BOT_TOKEN` | only for the bot (secret) | unset | Telegram bot token |
+| `UNIPHISH_BOT_ALLOWED_CHATS` | no | empty = everyone | Comma-separated chat ids allowed to use the bot |
+| `UNIPHISH_BOT_ONLINE`, `UNIPHISH_BOT_FETCH`, `UNIPHISH_BOT_AI` | no | `0` | Bot enrichment, page fetching and AI note |
+| `UNIPHISH_BOT_RATE` / `UNIPHISH_BOT_RATE_WINDOW` | no | `10` / `60` | Scans allowed per chat per window (seconds) |
+| `UNIPHISH_BOT_MAX_FILE_BYTES` | no | `5000000` | Largest file the bot accepts |
+| `UNIPHISH_BOT_CONCURRENCY` | no | `4` | Concurrent bot scans |
+| `UNIPHISH_RESULTS_DIR`, `UNIPHISH_CORPUS_DIR` | no | `results/`, `examples/corpus/` | Where the evaluation harness writes results and reads the corpus |
+
+## Commands and scripts
+
+**CLI** (`uniphish --help`, and `--help` on every command)
+
+| Command | What it does |
+|---|---|
+| `uniphish scan <input> [--type url\|text\|email\|page\|file] [--json] [--fail-on suspicious\|malicious] [--explain] [--ai]` | One explainable verdict; `--fail-on` sets a non-zero exit code for pipelines |
+| `uniphish batch <file>` | Scan one input per line concurrently and print a summary table |
+| `uniphish export <input> --format stix\|misp\|sigma\|suricata\|yara\|ecs [-o out]` | Scan, then emit detection-as-code / CTI |
+| `uniphish catalog [-s <search>]` | List every signal the engine can emit |
+| `uniphish serve [--host] [--port]` | Run the API and SOC console |
+| `uniphish hunt --source sample` | Replay the bundled certificate-transparency sample through the hunter |
+| `uniphish version` | Package and engine versions |
+| `uniphish-mcp` | AgentGuard MCP server over stdio |
+
+**Make targets** (`make help` lists them all)
+
+| Target | What it does |
+|---|---|
+| `make setup` | Create `.venv` and install `.[dev]` (uses uv when available) |
+| `make test` / `make test-all` | Offline test suite / including slow tests |
+| `make test-integration`, `make test-smoke`, `make test-cov` | End-to-end tests, core-only smoke test, coverage report |
+| `make lint` / `make fix` / `make fmt` | ruff check + format check / auto-fix / format |
+| `make check` | lint + test |
+| `make serve` | API + console on `$(HOST):$(PORT)` (default `127.0.0.1:8080`) |
+| `make scan INPUT=... TYPE=...`, `make batch INPUT=...`, `make export INPUT=... FORMAT=...` | CLI shortcuts |
+| `make catalog`, `make hunt` | Detection catalog, offline CT replay |
+| `make eval`, `make redteam N=100` | Reproduce the benchmark and the adversarial run |
+| `make web-install`, `make web`, `make web-test`, `make web-lint` | Console: install, build into the package, type-check + unit tests, Biome |
+| `make extension-test` | Browser-extension engine tests |
+| `make build`, `make verify-dist`, `make docker` | sdist + wheel, check the wheel's data files, container image |
+| `make clean`, `make distclean` | Remove build output / also `.venv` and `node_modules` |
+
+**Console npm scripts** (run in `web/`)
+
+| Script | What it does |
+|---|---|
+| `npm run dev` | Vite dev server on <http://localhost:5173>, proxying `/v1` to `127.0.0.1:8080` |
+| `npm run build` | `tsc --noEmit`, then build into `../uniphish/server/static` |
+| `npm run typecheck` | TypeScript only |
+| `npm test` | Vitest unit tests |
+| `npm run lint` / `npm run format` | Biome check / Biome auto-fix |
 
 ## Development
 
+Run the API and the console side by side with hot reload:
+
 ```bash
-make setup          # .venv with '.[dev]' (uses uv when available)
-make check          # ruff lint + format check, then the offline pytest suite
-make fix            # ruff --fix + ruff format
-make web            # npm ci + build the console into uniphish/server/static
-make web-lint web-test extension-test
-make build verify-dist   # sdist + wheel, then check the wheel ships its data files
-make help           # every target
+make setup && source .venv/bin/activate
+uniphish serve                         # terminal 1: API on :8080
+cd web && npm ci && npm run dev        # terminal 2: console on :5173, /v1 proxied to :8080
 ```
 
-Tests never touch the network (`tests/conftest.py` blocks it) and need no API keys. CI
-([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs ruff, pytest on Python
-3.10-3.12, the package build plus a clean-venv install check, the console (Biome, `tsc`,
-Vite, Vitest) and the extension tests. More in [docs/dev/testing.md](docs/dev/testing.md).
+The console in `web/src` is plain React with no router library: the four views
+(`#/analyze`, `#/feed`, `#/history`, `#/catalog`) are selected by the URL hash, unknown
+hashes show a not-found view, and the secondary views are lazy-loaded. Colours come from
+CSS variables in `web/src/index.css`, so the light and dark themes stay in one place.
+Commit the rebuilt `uniphish/server/static` with any console change, because the Python
+package serves those files as-is.
+
+Day-to-day:
+
+```bash
+make check          # ruff lint + format check, then the offline pytest suite
+make fix            # ruff --fix + ruff format
+make web-lint web-test extension-test
+make build verify-dist
+```
+
+## Testing
+
+| Suite | Command | Size | Covers |
+|---|---|---|---|
+| Python | `make test` (`pytest -m "not network and not slow"`) | about 2,100 tests in `tests/<area>/` | every analyzer, fusion maths, Unicode and IDN rules, brand matching, parsers (email, HTML, files, QR), exporters, store, API (auth, rate limit, size caps, SSE), CLI, AgentGuard and MCP, bot, hunting, property-based tests (Hypothesis) |
+| Python, slow | `make test-all` | adds the `slow` marker | heavier corpus and performance checks |
+| Integration | `make test-integration` | `tests/integration`, `tests/test_smoke.py` | end-to-end scans with the full analyzer set; core-only import |
+| Console | `cd web && npm test` | Vitest | input detection and scan-body building, risk maths, defanging, SSE parsing, hash routing |
+| Extension | `make extension-test` | `node --test` | the JS engine, fusion parity with Python, data freshness, manifest, i18n |
+
+Tests never touch the network (`tests/conftest.py` blocks sockets) and need no API keys.
+Tests that need the network are marked `network` and excluded by default. CI
+([`.github/workflows/ci.yml`](.github/workflows/ci.yml), mirrored in `.gitlab-ci.yml`) runs
+lint, pytest on Python 3.10-3.12, the package build plus a clean-venv install check, the
+console (Biome, `tsc`, Vite, Vitest) and the extension tests. More in
+[docs/dev/testing.md](docs/dev/testing.md).
+
+## Linting and formatting
+
+| Code | Tool | Check | Fix |
+|---|---|---|---|
+| Python | [ruff](https://docs.astral.sh/ruff/) (lint rules and formatter, config in `pyproject.toml`) | `make lint` | `make fix` |
+| Console (TS/TSX) | [Biome](https://biomejs.dev/) 2.6 (config in `web/biome.json`) | `cd web && npm run lint` | `npm run format` |
+| Console types | TypeScript (`tsc --noEmit`) | `npm run typecheck` | |
+
+The formatting-only commit is listed in `.git-blame-ignore-revs`; run
+`git config blame.ignoreRevsFile .git-blame-ignore-revs` to skip it in `git blame`.
 
 ## Deployment
 
@@ -477,21 +851,54 @@ uniphish serve --host 0.0.0.0 --port 8080
   through the SSRF-guarded client. See [docs/api.md](docs/api.md) and
   [docs/threat-model.md](docs/threat-model.md).
 
-## Repository map
+**Production checklist**
+
+- [ ] `UNIPHISH_API_KEYS` set to long random values, shared only with clients that need them
+- [ ] TLS terminated at a reverse proxy (nginx, Caddy, Traefik ...); the app itself speaks HTTP
+- [ ] SSE allowed through the proxy for the live feed (disable response buffering for `/v1/stream`)
+- [ ] `UNIPHISH_DATA_DIR` on a persistent volume and included in backups (it holds the verdict store)
+- [ ] `UNIPHISH_CORS_ORIGINS` left empty unless another origin really needs the API
+- [ ] Rate limits at the proxy if you run more than one worker
+- [ ] `UNIPHISH_ONLINE` only on a host whose egress you are happy to use for lookups; detonation only in a disposable, egress-restricted container
+
+## Project structure
 
 ```text
-uniphish/core/         Artifact / Signal / Verdict types, engine, fusion, MITRE catalog, SSRF-safe net
-uniphish/url/          parse, confusables, scripts, IDN policy, brand KB, lexical, techniques, CNN + saliency
-uniphish/analyzers/    url ml page kits injection text email file reputation infra fetch
-uniphish/{page,mail,files,nlp,intel}/   parsers and enrichment used by the analyzers
-uniphish/{agent,hunt,export,integrations,ai,store,eval}/   AgentGuard+MCP, CT hunt, exporters, sinks, LLM analyst, SQLite, benchmarks
-uniphish/server/ cli/  FastAPI app, Typer CLI
-uniphish/assets/       brands, TLD risk, lures, kit signatures, Unicode tables, model weights (YAML/JSON/bin)
-web/  extension/  bot/   SOC console, MV3 extension, Telegram bot
-docs/  tests/  scripts/  documentation, tests per area, generators and smoke scripts
-examples/corpus/       labelled synthetic corpus (URLs, texts, emails, pages, files)
-results/  reports/      benchmark outputs and generated figures
-legacy/                v1 paper-reproduction stack (TensorFlow), needs the [train] extra
+UniPhish/
+├── uniphish/                    Python package (what `pip install` ships)
+│   ├── core/                    Artifact / Signal / Verdict types, engine, fusion, config, MITRE catalog, SSRF-safe net client
+│   ├── url/                     URL parsing, Unicode confusables and scripts, IDN policy, brand KB, lexical features, CNN + saliency
+│   ├── analyzers/               url, ml, page, kits, injection, text, email, file, reputation, infra, fetch, detonate
+│   ├── page/ mail/ files/ nlp/  parsers used by the analyzers (HTML, email, files and QR, multilingual lures)
+│   ├── intel/                   online enrichment: DNS, RDAP, TLS, ASN, feeds, safe fetch, Playwright detonation
+│   ├── agent/                   AgentGuard policy layer and the MCP server
+│   ├── hunt/                    certificate-transparency hunter, brand-permutation watch
+│   ├── export/                  STIX 2.1, MISP, Sigma, Suricata, YARA, Elastic ECS
+│   ├── integrations/            mailbox triage (Maildir, mbox, IMAP) and SIEM sinks
+│   ├── ai/                      LLM analyst narrative with template fallback
+│   ├── store/                   SQLite verdict / indicator / reputation store
+│   ├── eval/                    benchmark and red-team harness
+│   ├── server/                  FastAPI app, routes, security middleware, report templates
+│   │   └── static/              the built SOC console (generated by `npm run build`, committed)
+│   ├── cli/                     Typer CLI (`uniphish`)
+│   └── assets/                  brands, TLD risk, lure lexicons, kit signatures, Unicode tables, model weights
+├── web/                         SOC console source (React + TypeScript + Tailwind, Vite)
+│   ├── src/App.tsx              shell: header, navigation, routing, settings
+│   ├── src/views/               Live feed, Verdicts & stats, Catalog (lazy-loaded)
+│   ├── src/components/          verdict panels: gauge, waterfall, target highlight, IOCs, MITRE, exports ...
+│   ├── src/lib/                 input detection, risk maths, defanging, routing (+ unit tests)
+│   └── public/                  favicon and the pre-paint theme script
+├── extension/                   Manifest V3 browser extension with the on-device JS engine and its tests
+├── bot/                         Telegram bot
+├── tests/                       pytest suite, one folder per package area, plus integration tests
+├── docs/                        architecture, API, detections catalog, evaluation, threat model, screenshots
+├── examples/corpus/             labelled synthetic corpus (URLs, texts, emails, pages, files)
+├── scripts/                     generators and smoke scripts
+├── results/ reports/            benchmark outputs and generated figures
+├── legacy/                      v1 paper-reproduction stack (TensorFlow), needs the [train] extra
+├── .env.example                 every environment variable, commented
+├── Makefile                     developer entry points (`make help`)
+└── pyproject.toml               package metadata, extras, ruff and pytest config
 ```
 
 ## Documentation
@@ -510,6 +917,86 @@ legacy/                v1 paper-reproduction stack (TensorFlow), needs the [trai
 | [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), [docs/dev/README.md](docs/dev/README.md) | contributing, vulnerability reporting, build specs |
 | [extension/README.md](extension/README.md), [bot/README.md](bot/README.md), [web/README.md](web/README.md) | surface-specific guides |
 
+## Troubleshooting and FAQ
+
+<details>
+<summary><b><code>uniphish serve</code> says the server extra is missing</b></summary>
+
+Install it: `pip install -e '.[server]'` (or `.[all]`). The core package is CLI and library
+only.
+</details>
+
+<details>
+<summary><b>The console shows "API unreachable" or every panel errors</b></summary>
+
+Open `/v1/health` in the same browser. If it fails, the server is not running on that
+host and port. If it returns JSON but panels show *401*, the server has
+`UNIPHISH_API_KEYS` set: open **Settings** in the console and paste a key. When using
+`npm run dev`, the API must be on `127.0.0.1:8080` (see `web/vite.config.ts`).
+</details>
+
+<details>
+<summary><b>The console at <code>/</code> returns JSON instead of a page</b></summary>
+
+`uniphish/server/static` is missing (for example in a stripped checkout). Rebuild it with
+`make web`, or reinstall the package from a wheel built by `make build`.
+</details>
+
+<details>
+<summary><b>The first scan reports the <code>url</code> analyzer as <code>timeout</code></b></summary>
+
+A fresh process loads the brand data on first use and, on a slow or busy machine, that
+can exceed the per-analyzer budget once. Later scans take milliseconds. See the
+first-scan note in the quickstart.
+</details>
+
+<details>
+<summary><b>"Online enrichment", "Fetch page" or "Detonate" seem to do nothing</b></summary>
+
+They only take effect when the operator started the server with `UNIPHISH_ONLINE=1`;
+requests cannot switch the server online. Detonation also needs the `sandbox` extra and
+`playwright install chromium`.
+</details>
+
+<details>
+<summary><b>The live feed stays on "Connecting…" behind a proxy</b></summary>
+
+Server-sent events need an unbuffered, long-lived response. Disable buffering for
+`/v1/stream` (nginx: `proxy_buffering off;`) and raise the read timeout. With several
+worker processes, each client only sees events from the worker it is connected to.
+</details>
+
+<details>
+<summary><b>429 Too Many Requests</b></summary>
+
+The built-in limiter allows `UNIPHISH_RATE_LIMIT` requests per minute per key (or IP).
+Raise it, set it to `0` for local batch jobs, or use `POST /v1/scan/batch`.
+</details>
+
+<details>
+<summary><b>A legitimate URL scored higher than expected</b></summary>
+
+The byte-level CNN is the usual cause (see [Known issues](#known-issues)). Open the
+waterfall to see which signal contributed, and scan with `options.disable=["ml"]` for
+rules-only precision. Report reproducible false positives with the verdict JSON.
+</details>
+
+<details>
+<summary><b>Does anything I scan leave my machine?</b></summary>
+
+Not by default. Offline mode makes no outbound requests. Enabling `UNIPHISH_ONLINE`,
+reputation keys or `ANTHROPIC_API_KEY` sends specific data to those services, as listed
+in the [threat model](docs/threat-model.md). The browser extension scores links
+on-device.
+</details>
+
+<details>
+<summary><b>Where is my data stored and how do I reset it?</b></summary>
+
+In SQLite at `UNIPHISH_DB` (default `~/.uniphish/uniphish.db`). Stop the server and
+delete the file to start fresh, or point `UNIPHISH_DATA_DIR` somewhere else.
+</details>
+
 ## Known issues
 
 These are real, current, and tracked here rather than hidden.
@@ -527,6 +1014,39 @@ These are real, current, and tracked here rather than hidden.
 * The v1 paper-reproduction pipeline (TensorFlow training, the Keras model, the original
   heuristics) now lives under [`legacy/`](legacy/) and needs the `[train]` extra; it is not
   part of the v2 test or lint gate.
+
+## Roadmap
+
+Ideas that follow from the known issues and the evaluation; none of them is promised.
+
+- Recalibrate the CNN (and the fusion weights) on real, consented traffic; publish
+  calibration curves next to the synthetic ones.
+- Native-speaker review of the lure lexicons for lower-resource languages, and larger
+  per-language test sets.
+- Normalise percent-encoding and leet-speak before matching, the two strongest evasions
+  found by the red-team run.
+- DNS lookups of SPF / DKIM / DMARC records instead of trusting `Authentication-Results`.
+- A shared rate-limit and event-bus backend so several API workers behave as one.
+- Signed detection assets, pinned dependencies and an SBOM.
+- Firefox packaging for the extension.
+- Console: saved filters and CSV export for the verdict history.
+
+## Contributing
+
+Contributions are welcome. The short version:
+
+1. Fork, then create a branch from `main`.
+2. `make setup`, make your change, and add or update tests next to the code you touched.
+3. Run `make check` (and `make web-lint web-test` / `make extension-test` if you changed
+   the console or extension). Rebuild and commit `uniphish/server/static` for console changes.
+4. Use [Conventional Commits](https://www.conventionalcommits.org/) (`fix(server): ...`,
+   `feat(web): ...`) and open a pull request describing what changed and how you verified it.
+
+New detections are data first: brands, lures, TLD weights and kit signatures live in YAML
+under `uniphish/assets`; every new signal needs a test and appears in the generated
+catalog. Bundled samples must stay synthetic and inert (reserved domains only). The full
+guide, including how to add an analyzer, is in [CONTRIBUTING.md](CONTRIBUTING.md); report
+vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
 
 ## Responsible use
 
