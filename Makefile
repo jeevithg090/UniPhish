@@ -13,8 +13,6 @@ PYTEST   = $(PY) -m pytest
 HOST    ?= 127.0.0.1
 PORT    ?= 8080
 IMAGE   ?= uniphish:2
-# The v1 baselines test imports TensorFlow at collection time (the 'train' extra).
-DESELECT_LEGACY = --ignore=tests/test_baselines.py
 
 .DEFAULT_GOAL := help
 .PHONY: help setup test test-all test-integration test-smoke test-cov lint fix check \
@@ -38,11 +36,11 @@ setup: ## Create .venv and install '.[dev]' (all extras + test/lint tools); uses
 	@echo "Optional: $(PY) -m playwright install chromium   (sandbox detonation)"
 
 # ------------------------------------------------------------------------------ tests
-test: ## Fast offline test-suite (no network, no slow tests, no TensorFlow)
-	$(PYTEST) -m "not network and not slow" $(DESELECT_LEGACY)
+test: ## Fast offline test-suite (no network, no slow tests)
+	$(PYTEST) -m "not network and not slow"
 
 test-all: ## Everything including slow tests (still offline)
-	$(PYTEST) -m "not network" $(DESELECT_LEGACY)
+	$(PYTEST) -m "not network"
 
 test-integration: ## End-to-end + registry + smoke tests with the full analyzer set
 	$(PYTEST) tests/integration tests/test_smoke.py
@@ -51,7 +49,7 @@ test-smoke: ## Core-dependencies-only import + scan check
 	$(PYTEST) tests/test_smoke.py
 
 test-cov: ## Test-suite with a coverage report (needs: pip install pytest-cov)
-	$(PYTEST) -m "not network and not slow" $(DESELECT_LEGACY) --cov=uniphish --cov-report=term-missing:skip-covered
+	$(PYTEST) -m "not network and not slow" --cov=uniphish --cov-report=term-missing:skip-covered
 
 # ------------------------------------------------------------------------------- lint
 lint: ## ruff lint + format check (see [tool.ruff] in pyproject.toml)

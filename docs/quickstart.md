@@ -221,12 +221,12 @@ entry point); `scripts/ct_hunter.py` is the older standalone script.
 ```bash
 pip install -e '.[dev]'
 python -m pytest tests/core tests/url tests/analyzers -q     # pick an area
-python -m pytest tests -q --ignore=tests/test_baselines.py   # most of it; see note
-cd extension && node --test test/                            # extension: 105 tests
+python -m pytest -m "not network and not slow"               # the fast offline suite (== make test)
+cd extension && node --test test/*.test.js                   # extension: 105 tests
 ```
 
-Network is blocked in tests by `tests/conftest.py`. A handful of legacy tests at the top of
-`tests/` import TensorFlow and fail to collect unless you install the `train` extra.
+Network is blocked in tests by `tests/conftest.py`; no test needs TensorFlow (the v1
+training stack and its tests live under `legacy/`).
 
 ## Reproduce the evaluation
 

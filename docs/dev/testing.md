@@ -32,7 +32,6 @@ Run a single area: `./.venv/bin/python -m pytest tests/url -q`.
 | `tests/integration/test_end_to_end.py` | The public API (`uniphish.scan_*`, `core.engine.default_engine`) with the **full** analyzer set: detection quality, false-positive guards, child verdicts, IOCs, MITRE, AgentGuard, and the fusion identities. |
 | `tests/integration/test_registry.py` | Analyzer contract: unique names, valid kinds/stage, every signal id declared, namespaced, titled and unique; tolerant loading of built-ins. |
 | `tests/test_smoke.py` | `import uniphish` is light, and every scan kind works when **every optional extra is un-importable** (subprocess with a poisoned import hook). |
-| `tests/test_*.py` (top level) | v1 research modules (encoding, homoglyphs, enrichment, ...). `test_baselines.py` needs TensorFlow and is ignored by `make test` and CI. |
 | `extension/test/` | `node --test` suite for the on-device extension engine. |
 | `web/src/**/*.test.*` | `vitest` suite for the SOC console. |
 
@@ -77,7 +76,7 @@ Run a single area: `./.venv/bin/python -m pytest tests/url -q`.
 | Job | Runs |
 | --- | --- |
 | `lint` | `ruff check .` and `ruff format --check .` with a pinned ruff (same as `make lint`). |
-| `test` | Matrix Python 3.10 / 3.11 / 3.12 on Ubuntu: `pip install -e '.[dev]'` (pip cache on), optional Playwright Chromium on 3.12 (allowed to fail), then `pytest -m "not network and not slow" --ignore=tests/test_baselines.py`. |
+| `test` | Matrix Python 3.10 / 3.11 / 3.12 on Ubuntu: `pip install -e '.[dev]'` (pip cache on), optional Playwright Chromium on 3.12 (allowed to fail), then `pytest -m "not network and not slow"`. |
 | `package` | After lint + test: `python -m build`, `twine check`, assert the wheel contains the assets/model/templates, install the wheel into a **clean venv with core deps only** and scan a homoglyph URL, upload `dist/`. |
 | `web` | If `web/package-lock.json` exists: `npm ci`, `npm run lint` (Biome), `npm run build` (tsc + vite), `npm test`, upload the built dashboard artifact. |
 | `extension` | `node --test` for the extension. |
@@ -100,8 +99,8 @@ Concurrent runs on the same ref cancel each other.
 ## Lint scope
 
 `make lint` and CI lint and format-check the whole Python tree. `legacy/`, `web/`,
-`extension/` and the built dashboard are excluded in `[tool.ruff]`; `scripts/` and
-`uniphish/ml/` relax the security (`S`) rules. The web console uses Biome
+`extension/` and the built dashboard are excluded in `[tool.ruff]`; `scripts/` relaxes the
+security (`S`) rules. The web console uses Biome
 (`web/biome.json`).
 
 ## Known gaps (as of this writing)
