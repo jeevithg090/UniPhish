@@ -62,10 +62,9 @@ jobs:
         continue-on-error: true
         run: python -m playwright install --with-deps chromium
       - name: Pytest (offline; no network, no slow tests)
-        # tests/test_baselines.py imports TensorFlow (the 'train' extra) at collection time.
         run: >-
           python -m pytest -m "not network and not slow"
-          --ignore=tests/test_baselines.py -ra --durations=15
+          -ra --durations=15
 
   package:
     name: Build sdist + wheel
