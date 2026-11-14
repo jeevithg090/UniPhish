@@ -62,7 +62,7 @@ train = [
 all = ["uniphish[server,mcp,ai,vision,sandbox,yara,office,intel,bot]"]
 dev = [
     "uniphish[all]", "pytest>=8", "pytest-asyncio>=0.23", "hypothesis>=6.100", "respx>=0.21",
-    "ruff>=0.5",
+    "ruff>=0.17,<0.18",
 ]
 
 [project.scripts]
