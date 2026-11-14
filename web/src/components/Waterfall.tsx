@@ -47,8 +47,8 @@ export function Waterfall({ verdict }: { verdict: Verdict }) {
   return (
     <div>
       <p className="mb-3 text-xs text-mute">
-        Each bar is one signal&apos;s effective log-odds after damping of correlated evidence. Red pushes toward phishing, green toward legitimate.
-        The dashed line is log-odds 0 (50% risk).
+        Each bar is one signal&apos;s effective log-odds after damping of correlated evidence. Red
+        pushes toward phishing, green toward legitimate. The dashed line is log-odds 0 (50% risk).
       </p>
       <ol className="space-y-1.5" aria-label="Signal contributions waterfall">
         {steps.map((s) => {
@@ -69,17 +69,54 @@ export function Waterfall({ verdict }: { verdict: Verdict }) {
                 className={`group grid w-full grid-cols-1 items-center gap-x-3 gap-y-1 rounded-lg px-2 py-1.5 text-left sm:grid-cols-[minmax(0,15rem)_1fr_6.5rem] ${expandable ? "hover:bg-panel2" : "cursor-default"} ${s.kind === "total" ? "border-t border-line pt-2" : ""}`}
               >
                 <span className="flex items-center gap-2 truncate text-sm">
-                  {expandable && <span aria-hidden="true" className="text-mute transition-transform group-aria-expanded:rotate-90">▸</span>}
-                  <span className={`truncate ${s.kind === "total" ? "font-semibold" : ""}`} title={s.label}>{s.label}</span>
+                  {expandable && (
+                    <span
+                      aria-hidden="true"
+                      className="text-mute transition-transform group-aria-expanded:rotate-90"
+                    >
+                      ▸
+                    </span>
+                  )}
+                  <span
+                    className={`truncate ${s.kind === "total" ? "font-semibold" : ""}`}
+                    title={s.label}
+                  >
+                    {s.label}
+                  </span>
                 </span>
                 <span className="relative h-4 rounded bg-panel2">
-                  <span className="absolute inset-y-0 border-l border-dashed border-mute/50" style={{ left: `${zero}%` }} aria-hidden="true" />
-                  <span className="absolute inset-y-0.5 rounded-sm" style={{ left: `${left}%`, width: `${width}%`, background: barColor(s), transition: "all .4s ease" }} aria-hidden="true" />
+                  <span
+                    className="absolute inset-y-0 border-l border-dashed border-mute/50"
+                    style={{ left: `${zero}%` }}
+                    aria-hidden="true"
+                  />
+                  <span
+                    className="absolute inset-y-0.5 rounded-sm"
+                    style={{
+                      left: `${left}%`,
+                      width: `${width}%`,
+                      background: barColor(s),
+                      transition: "all .4s ease",
+                    }}
+                    aria-hidden="true"
+                  />
                 </span>
                 <span className="text-right font-mono text-xs tabular-nums">
-                  {s.kind === "prior" && <span className="text-mute">{formatLogOdds(s.to)} · {Math.round(sigmoid(s.to) * 100)}%</span>}
-                  {s.kind === "total" && <b className="text-accent">{formatLogOdds(s.to)} · {Math.round(sigmoid(s.to) * 100)}%</b>}
-                  {(s.kind === "signal" || s.kind === "children") && <span className={s.delta >= 0 ? "text-bad" : "text-ok"}>{formatLogOdds(s.delta)}</span>}
+                  {s.kind === "prior" && (
+                    <span className="text-mute">
+                      {formatLogOdds(s.to)} · {Math.round(sigmoid(s.to) * 100)}%
+                    </span>
+                  )}
+                  {s.kind === "total" && (
+                    <b className="text-accent">
+                      {formatLogOdds(s.to)} · {Math.round(sigmoid(s.to) * 100)}%
+                    </b>
+                  )}
+                  {(s.kind === "signal" || s.kind === "children") && (
+                    <span className={s.delta >= 0 ? "text-bad" : "text-ok"}>
+                      {formatLogOdds(s.delta)}
+                    </span>
+                  )}
                 </span>
               </button>
               {isOpen && s.signal && <SignalDetail step={s} />}
@@ -100,17 +137,27 @@ function SignalDetail({ step }: { step: WaterfallStep }) {
       <div className="flex flex-wrap items-center gap-1.5 text-xs">
         <Chip className={SEV[sig.severity ?? "info"] ?? SEV.info}>{sig.severity ?? "info"}</Chip>
         <Chip className="border-line bg-panel2 text-mute">{sig.category}</Chip>
-        {sig.analyzer && <Chip className="border-line bg-panel2 text-mute">analyzer: {sig.analyzer}</Chip>}
-        <Chip className="border-line bg-panel2 text-mute">weight {formatLogOdds(sig.weight)} × conf {sig.confidence.toFixed(2)}</Chip>
+        {sig.analyzer && (
+          <Chip className="border-line bg-panel2 text-mute">analyzer: {sig.analyzer}</Chip>
+        )}
+        <Chip className="border-line bg-panel2 text-mute">
+          weight {formatLogOdds(sig.weight)} × conf {sig.confidence.toFixed(2)}
+        </Chip>
         <code className="rounded bg-panel2 px-1.5 py-0.5 text-mute">{sig.id}</code>
-        {sig.mitre.map((m) => <Chip key={m} className="border-info/30 bg-info/10 text-info">{m}</Chip>)}
+        {sig.mitre.map((m) => (
+          <Chip key={m} className="border-info/30 bg-info/10 text-info">
+            {m}
+          </Chip>
+        ))}
       </div>
       {ev.length > 0 && (
         <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 font-mono text-xs">
           {ev.slice(0, 12).map(([k, v]) => (
             <div key={k} className="contents">
               <dt className="text-mute">{k}</dt>
-              <dd className="break-all text-ink/90">{typeof v === "string" ? v : JSON.stringify(v)}</dd>
+              <dd className="break-all text-ink/90">
+                {typeof v === "string" ? v : JSON.stringify(v)}
+              </dd>
             </div>
           ))}
         </dl>

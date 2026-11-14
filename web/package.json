@@ -8,6 +8,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
+    "lint": "biome ci .",
+    "format": "biome check --write .",
     "test": "vitest run"
   },
   "dependencies": {
@@ -15,6 +17,7 @@
     "react-dom": "19.3.1"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.6.4",
     "@tailwindcss/vite": "4.3.5",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
