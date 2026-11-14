@@ -27,6 +27,16 @@ def _env_float(name: str, default: float) -> float:
         return default
 
 
+def _env_str(name: str, default: str | None = None) -> str | None:
+    """The variable's value, treating unset *and* empty/blank as "use the default".
+
+    ``VAR=`` lines in an env file export an empty string; that must not silently turn
+    a path into the current directory or blank out the User-Agent.
+    """
+    v = os.environ.get(name)
+    return v.strip() if v is not None and v.strip() else default
+
+
 def _env_list(name: str) -> list[str]:
     return [x.strip() for x in os.environ.get(name, "").split(",") if x.strip()]
 
@@ -61,25 +71,24 @@ class Settings(BaseModel):
 
     @classmethod
     def from_env(cls) -> Settings:
-        data_dir = Path(os.environ.get("UNIPHISH_DATA_DIR", Path.home() / ".uniphish")).expanduser()
+        data_dir = Path(_env_str("UNIPHISH_DATA_DIR") or Path.home() / ".uniphish").expanduser()
         return cls(
             data_dir=data_dir,
-            db_path=Path(os.environ.get("UNIPHISH_DB", data_dir / "uniphish.db")).expanduser(),
+            db_path=Path(_env_str("UNIPHISH_DB") or data_dir / "uniphish.db").expanduser(),
             online=_env_bool("UNIPHISH_ONLINE", False),
-            user_agent=os.environ.get("UNIPHISH_USER_AGENT",
-                                      cls.model_fields["user_agent"].default),
+            user_agent=_env_str("UNIPHISH_USER_AGENT", cls.model_fields["user_agent"].default),
             http_timeout_s=_env_float("UNIPHISH_HTTP_TIMEOUT", 8.0),
             suspicious_threshold=_env_float("UNIPHISH_SUSPICIOUS_THRESHOLD", 0.50),
             malicious_threshold=_env_float("UNIPHISH_MALICIOUS_THRESHOLD", 0.85),
             api_keys=_env_list("UNIPHISH_API_KEYS"),
             cors_origins=_env_list("UNIPHISH_CORS_ORIGINS"),
             rate_limit_per_minute=int(_env_float("UNIPHISH_RATE_LIMIT", 120)),
-            anthropic_api_key=os.environ.get("ANTHROPIC_API_KEY") or None,
-            ai_model=os.environ.get("UNIPHISH_AI_MODEL", "claude-sonnet-5-5"),
-            virustotal_api_key=os.environ.get("VT_API_KEY") or None,
-            urlscan_api_key=os.environ.get("URLSCAN_API_KEY") or None,
-            safebrowsing_api_key=os.environ.get("GSB_API_KEY") or None,
-            telegram_bot_token=os.environ.get("TELEGRAM_BOT_TOKEN") or None,
+            anthropic_api_key=_env_str("ANTHROPIC_API_KEY"),
+            ai_model=_env_str("UNIPHISH_AI_MODEL", cls.model_fields["ai_model"].default),
+            virustotal_api_key=_env_str("VT_API_KEY"),
+            urlscan_api_key=_env_str("URLSCAN_API_KEY"),
+            safebrowsing_api_key=_env_str("GSB_API_KEY"),
+            telegram_bot_token=_env_str("TELEGRAM_BOT_TOKEN"),
         )
 
     def ensure_dirs(self) -> None:
