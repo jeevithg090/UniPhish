@@ -138,8 +138,9 @@ async def _dnspython_rr(host: str, rdtype: str, timeout: float) -> RRSet:
     return RRSet(values=values, ttl=int(rrset.ttl))
 
 
-async def query_rr(host: str, rdtype: str, *, timeout: float = DEFAULT_TIMEOUT,
-                   resolver: RRResolver | None = None) -> RRSet:
+async def query_rr(
+    host: str, rdtype: str, *, timeout: float = DEFAULT_TIMEOUT, resolver: RRResolver | None = None
+) -> RRSet:
     """Resolve ``rdtype`` for ``host`` through the (injectable) record resolver.
 
     Raises ``dns.exception.DNSException`` (or the resolver's own error) when the query
@@ -244,11 +245,19 @@ class DNSResult:
     def to_dict(self) -> dict[str, Any]:
         """JSON-safe summary for ``Verdict.meta``."""
         return {
-            "host": self.host, "domain": self.domain,
-            "a": self.a[:16], "aaaa": self.aaaa[:16], "cname": self.cname[:8],
-            "mx": self.mx[:8], "ns": self.ns[:8], "a_ttl": self.a_ttl,
-            "a_count": len(self.a), "distinct_networks": self.distinct_networks,
-            "no_mx": self.no_mx, "fast_flux": self.fast_flux, "parked": self.parked,
+            "host": self.host,
+            "domain": self.domain,
+            "a": self.a[:16],
+            "aaaa": self.aaaa[:16],
+            "cname": self.cname[:8],
+            "mx": self.mx[:8],
+            "ns": self.ns[:8],
+            "a_ttl": self.a_ttl,
+            "a_count": len(self.a),
+            "distinct_networks": self.distinct_networks,
+            "no_mx": self.no_mx,
+            "fast_flux": self.fast_flux,
+            "parked": self.parked,
             "errors": dict(self.errors),
         }
 
@@ -270,8 +279,9 @@ def _err_code(exc: BaseException) -> str:
     return type(exc).__name__
 
 
-async def _safe_rr(host: str, rdtype: str, timeout: float,
-                   resolver: RRResolver | None) -> tuple[RRSet | None, str | None]:
+async def _safe_rr(
+    host: str, rdtype: str, timeout: float, resolver: RRResolver | None
+) -> tuple[RRSet | None, str | None]:
     try:
         return await query_rr(host, rdtype, timeout=timeout, resolver=resolver), None
     except asyncio.CancelledError:
@@ -281,8 +291,9 @@ async def _safe_rr(host: str, rdtype: str, timeout: float,
         return None, _err_code(exc)
 
 
-async def _safe_addrs(host: str, rdtype: str, timeout: float,
-                      resolver: net.Resolver | None) -> tuple[list[str], str | None]:
+async def _safe_addrs(
+    host: str, rdtype: str, timeout: float, resolver: net.Resolver | None
+) -> tuple[list[str], str | None]:
     try:
         addrs = await net.resolve(host, rdtype, timeout=timeout, resolver=resolver)
     except asyncio.CancelledError:
@@ -293,10 +304,14 @@ async def _safe_addrs(host: str, rdtype: str, timeout: float,
     return list(dict.fromkeys(addrs))[:MAX_RECORDS], None
 
 
-async def lookup_dns(host: str, *, domain: str | None = None,
-                     timeout: float = DEFAULT_TIMEOUT,
-                     resolver: net.Resolver | None = None,
-                     rr_resolver: RRResolver | None = None) -> DNSResult:
+async def lookup_dns(
+    host: str,
+    *,
+    domain: str | None = None,
+    timeout: float = DEFAULT_TIMEOUT,
+    resolver: net.Resolver | None = None,
+    rr_resolver: RRResolver | None = None,
+) -> DNSResult:
     """Collect the DNS footprint of ``host``.
 
     ``host`` is queried for A/AAAA/CNAME (where the page is served from);
@@ -345,8 +360,13 @@ async def lookup_dns(host: str, *, domain: str | None = None,
         result.errors["A"] = a_err
     if aaaa_err:
         result.errors["AAAA"] = aaaa_err
-    for rdtype, (_rs, err) in (("CNAME", cname), ("A-ttl", ttl_a), ("MX", mx),
-                              ("NS", ns), ("TXT", txt)):
+    for rdtype, (_rs, err) in (
+        ("CNAME", cname),
+        ("A-ttl", ttl_a),
+        ("MX", mx),
+        ("NS", ns),
+        ("TXT", txt),
+    ):
         if err:
             result.errors[rdtype] = err
     if cname[0]:

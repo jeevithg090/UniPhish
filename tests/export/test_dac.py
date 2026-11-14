@@ -41,47 +41,88 @@ URL = "https://login.paypa1-secure.test/signin/verify?id=7&x=a;b"
 KIT = "evilginx-style-marker-0001"
 
 
-def make(target=URL, kind=ArtifactKind.URL, level=Level.MALICIOUS, score=97, indicators=None,
-         signals=None, brand=True, children=None, **kw) -> Verdict:
+def make(
+    target=URL,
+    kind=ArtifactKind.URL,
+    level=Level.MALICIOUS,
+    score=97,
+    indicators=None,
+    signals=None,
+    brand=True,
+    children=None,
+    **kw,
+) -> Verdict:
     return Verdict(
-        kind=kind, target=target, artifact_id="a" * 24, risk=score / 100, score=score,
-        logit=3.0, level=level, action=Action.BLOCK if level is Level.MALICIOUS else Action.WARN,
+        kind=kind,
+        target=target,
+        artifact_id="a" * 24,
+        risk=score / 100,
+        score=score,
+        logit=3.0,
+        level=level,
+        action=Action.BLOCK if level is Level.MALICIOUS else Action.WARN,
         confidence=0.9,
-        brand=BrandMatch(brand="paypal", name="PayPal", technique="homoglyph", confidence=0.9,
-                         legit_domains=["paypal.com"]) if brand else None,
-        indicators=indicators if indicators is not None else [
-            Indicator(type=IndicatorType.DOMAIN, value="login.paypa1-secure.test",
-                      role="landing", malicious=True),
+        brand=BrandMatch(
+            brand="paypal",
+            name="PayPal",
+            technique="homoglyph",
+            confidence=0.9,
+            legit_domains=["paypal.com"],
+        )
+        if brand
+        else None,
+        indicators=indicators
+        if indicators is not None
+        else [
+            Indicator(
+                type=IndicatorType.DOMAIN,
+                value="login.paypa1-secure.test",
+                role="landing",
+                malicious=True,
+            ),
             Indicator(type=IndicatorType.IPV4, value="198.51.100.7", malicious=True),
             Indicator(type=IndicatorType.IPV4, value="10.0.0.5", malicious=True),
-            Indicator(type=IndicatorType.EMAIL, value="Billing@Paypa1-Secure.test",
-                      role="sender"),
+            Indicator(type=IndicatorType.EMAIL, value="Billing@Paypa1-Secure.test", role="sender"),
             Indicator(type=IndicatorType.DOMAIN, value="paypal.com", malicious=True),
             Indicator(type=IndicatorType.SHA256, value="ab" * 32, malicious=True),
         ],
-        signals=signals if signals is not None else [
-            Signal(id="url.brand.homoglyph", title="t", weight=4, category="url",
-                   mitre=["T1566.002", "T1656"]),
-            Signal(id="kit.aitm.fingerprint", title="k", weight=7, category="kit",
-                   mitre=["T1557"], evidence={"fingerprints": [KIT, "x"]}),
+        signals=signals
+        if signals is not None
+        else [
+            Signal(
+                id="url.brand.homoglyph",
+                title="t",
+                weight=4,
+                category="url",
+                mitre=["T1566.002", "T1656"],
+            ),
+            Signal(
+                id="kit.aitm.fingerprint",
+                title="k",
+                weight=7,
+                category="kit",
+                mitre=["T1557"],
+                evidence={"fingerprints": [KIT, "x"]},
+            ),
         ],
         children=children or [],
-        **{"summary": "Homoglyph PayPal login on a lookalike domain.", **kw})
+        **{"summary": "Homoglyph PayPal login on a lookalike domain.", **kw},
+    )
 
 
 def _split_opts(rule: str) -> str:
-    return rule[rule.index("(") + 1:]
+    return rule[rule.index("(") + 1 :]
 
 
 # ------------------------------------------------------------------ IOC selection
 def test_collect_iocs_filters_unsafe():
     i = collect_iocs(make())
     assert "login.paypa1-secure.test" in i.domains
-    assert "paypal.com" not in i.domains          # brand legit domain dropped
-    assert i.ips == ["198.51.100.7"]              # RFC1918 dropped
+    assert "paypal.com" not in i.domains  # brand legit domain dropped
+    assert i.ips == ["198.51.100.7"]  # RFC1918 dropped
     assert i.emails == ["billing@paypa1-secure.test"]
     assert i.sha256 == ["ab" * 32]
-    assert i.kit_strings == [KIT]                 # too-short string dropped
+    assert i.kit_strings == [KIT]  # too-short string dropped
     assert i.urls and i.urls[0].host == "login.paypa1-secure.test"
 
 
@@ -98,8 +139,14 @@ def test_benign_verdict_yields_nothing():
 
 
 def test_benign_child_not_blocked():
-    benign_child = make(target="https://good.example/", level=Level.BENIGN, score=2,
-                        indicators=[], signals=[], brand=False)
+    benign_child = make(
+        target="https://good.example/",
+        level=Level.BENIGN,
+        score=2,
+        indicators=[],
+        signals=[],
+        brand=False,
+    )
     v = make(children=[benign_child])
     assert "good.example" not in collect_iocs(v).domains
 
@@ -110,8 +157,10 @@ def test_shared_host_never_domain_level():
     assert i.domains == [] and i.shared_hosts == ["evil1.pages.dev"]
     sig = to_sigma(v)
     assert "selection_host_exact" not in sig["detection"]
-    assert sig["detection"]["selection_url_1"] == {"cs-host": "evil1.pages.dev",
-                                                   "c-uri|startswith": "/login"}
+    assert sig["detection"]["selection_url_1"] == {
+        "cs-host": "evil1.pages.dev",
+        "c-uri|startswith": "/login",
+    }
     assert not any("tls.sni" in r for r in to_suricata_rules(v))
     assert any("http.uri" in r for r in to_suricata_rules(v))
     assert to_ecs(v)["threat"]["indicator"]["type"] == "url"
@@ -134,8 +183,10 @@ def test_sigma_proxy_rule_structure():
     uuid.UUID(rule["id"])
     assert rule["logsource"] == {"category": "proxy"}
     assert "login.paypa1-secure.test" in rule["detection"]["selection_host_exact"]["cs-host"]
-    assert ".login.paypa1-secure.test" in \
-        rule["detection"]["selection_host_subdomain"]["cs-host|endswith"]
+    assert (
+        ".login.paypa1-secure.test"
+        in rule["detection"]["selection_host_subdomain"]["cs-host|endswith"]
+    )
     assert rule["detection"]["selection_ip"] == {"dst_ip": ["198.51.100.7"]}
     assert rule["level"] == "critical"
     assert rule["falsepositives"]
@@ -165,8 +216,12 @@ def test_sigma_deterministic_ids():
 
 
 def test_sigma_email_only():
-    v = make(target="spam", kind=ArtifactKind.EMAIL, signals=[],
-             indicators=[Indicator(type=IndicatorType.EMAIL, value="a@bad.test", role="sender")])
+    v = make(
+        target="spam",
+        kind=ArtifactKind.EMAIL,
+        signals=[],
+        indicators=[Indicator(type=IndicatorType.EMAIL, value="a@bad.test", role="sender")],
+    )
     r = to_sigma(v)
     assert r["logsource"] == {"category": "email"}
     assert r["detection"]["selection"] == {"sender_address": ["a@bad.test"]}
@@ -190,7 +245,7 @@ def test_suricata_rules_valid_and_complete():
     for r in rules:
         assert validate_suricata_rule(r) == [], r
         joined = "\n".join(rules)
-    assert "tls.sni; dotprefix; content:\".login.paypa1-secure.test\"" in joined
+    assert 'tls.sni; dotprefix; content:".login.paypa1-secure.test"' in joined
     assert "http.host; dotprefix;" in joined
     assert "dns.query; dotprefix;" in joined
     assert "alert ip $HOME_NET any -> 198.51.100.7 any" in joined
@@ -203,7 +258,7 @@ def test_suricata_rules_valid_and_complete():
 def test_suricata_uri_rule_escapes_semicolon():
     rules = to_suricata_rules(make())
     uri = next(r for r in rules if "http.uri" in r)
-    assert "|3B|" in uri                      # the ';' in the query is hex escaped
+    assert "|3B|" in uri  # the ';' in the query is hex escaped
     assert 'content:"/signin/verify?id=7&x=a|3B|b"; startswith' in uri
     assert validate_suricata_rule(uri) == []
 
@@ -233,7 +288,7 @@ def test_suricata_msg_injection_safe():
 def test_validate_suricata_rejects_bad():
     assert validate_suricata_rule("garbage") == ["bad header"]
     good = to_suricata_rules(make())[0]
-    assert validate_suricata_rule(good[:-1]) != []                     # missing ')'
+    assert validate_suricata_rule(good[:-1]) != []  # missing ')'
     assert validate_suricata_rule(good.replace("sid:", "xsid:")) != []
     bad = 'alert http any any -> any any (msg:"x"; content:"a;b"; sid:1; rev:1; classtype:x;)'
     assert any("unescaped" in p or "malformed" in p for p in validate_suricata_rule(bad))
@@ -266,8 +321,19 @@ def test_yara_name_and_escape():
 
 
 def test_yara_hostile_strings_still_compile():
-    v = make(signals=[Signal(id="kit.x", title="t", weight=7, category="kit", evidence={
-        "strings": ['"; } rule pwn { condition: true', "line\nbreak\\x", "‮\u0000nul!"]})])
+    v = make(
+        signals=[
+            Signal(
+                id="kit.x",
+                title="t",
+                weight=7,
+                category="kit",
+                evidence={
+                    "strings": ['"; } rule pwn { condition: true', "line\nbreak\\x", "‮\u0000nul!"]
+                },
+            )
+        ]
+    )
     src = to_yara(v)
     yara_lib.compile(source=src)
     assert "\nrule pwn" not in src
@@ -302,13 +368,21 @@ def test_ecs_document():
 
 
 def test_ecs_ip_and_hash_primary():
-    v = make(target="x", kind=ArtifactKind.FILE, signals=[], indicators=[
-        Indicator(type=IndicatorType.SHA256, value="cd" * 32, malicious=True)])
+    v = make(
+        target="x",
+        kind=ArtifactKind.FILE,
+        signals=[],
+        indicators=[Indicator(type=IndicatorType.SHA256, value="cd" * 32, malicious=True)],
+    )
     d = to_ecs(v)
     assert d["threat"]["indicator"]["type"] == "file"
     assert d["threat"]["indicator"]["file"]["hash"]["sha256"] == "cd" * 32
-    v2 = make(target="x", kind=ArtifactKind.TEXT, signals=[], indicators=[
-        Indicator(type=IndicatorType.IPV6, value="2001:db8::1", malicious=True)])
+    v2 = make(
+        target="x",
+        kind=ArtifactKind.TEXT,
+        signals=[],
+        indicators=[Indicator(type=IndicatorType.IPV6, value="2001:db8::1", malicious=True)],
+    )
     assert to_ecs(v2)["threat"]["indicator"]["type"] == "ipv6-addr"
 
 

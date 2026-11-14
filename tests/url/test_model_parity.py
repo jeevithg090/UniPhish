@@ -31,7 +31,8 @@ def _run_node_oracle() -> list[dict]:
     if not _RUNNER.is_file():  # pragma: no cover - defensive
         pytest.skip(f"parity runner missing: {_RUNNER}")
     proc = subprocess.run(
-        [node, str(_RUNNER)], capture_output=True, text=True, timeout=120, check=False)
+        [node, str(_RUNNER)], capture_output=True, text=True, timeout=120, check=False
+    )
     if proc.returncode != 0:
         raise AssertionError(f"parity_runner.js failed (exit {proc.returncode}):\n{proc.stderr}")
     data = json.loads(proc.stdout)
@@ -51,7 +52,8 @@ def test_numpy_matches_js_within_tolerance() -> None:
     worst = int(diff.argmax())
     assert diff.max() < _TOL, (
         f"max |NumPy - JS| = {diff.max():.2e} exceeds {_TOL:g} at "
-        f"{urls[worst]!r} (js={js[worst]:.6f}, numpy={got[worst]:.6f})")
+        f"{urls[worst]!r} (js={js[worst]:.6f}, numpy={got[worst]:.6f})"
+    )
 
 
 def test_parity_covers_diverse_scripts_and_lengths() -> None:

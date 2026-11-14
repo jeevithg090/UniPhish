@@ -65,6 +65,9 @@ async def stream(request: Request) -> StreamingResponse:
     return StreamingResponse(
         _event_source(request),
         media_type="text/event-stream",
-        headers={"cache-control": "no-cache", "x-accel-buffering": "no",
-                 "connection": "keep-alive"},
+        headers={
+            "cache-control": "no-cache",
+            "x-accel-buffering": "no",
+            "connection": "keep-alive",
+        },
     )

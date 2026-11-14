@@ -51,8 +51,8 @@ MAX_HEADER_CHARS = 10_000
 MAX_PARTS = 500
 MAX_MULTIPART_DEPTH = 20
 MAX_ATTACHMENTS = 200
-MAX_ATTACHMENT_DATA = 10_000_000       # retained bytes per attachment
-MAX_TOTAL_DATA = 40_000_000            # retained bytes over the whole parse
+MAX_ATTACHMENT_DATA = 10_000_000  # retained bytes per attachment
+MAX_TOTAL_DATA = 40_000_000  # retained bytes over the whole parse
 MAX_BODY_CHARS = 1_000_000
 MAX_LINKS = 1_000
 MAX_ANCHOR_CHARS = 300
@@ -118,7 +118,7 @@ class EmbeddedImage:
 
     data: bytes = field(repr=False)
     content_type: str
-    source: str                       # "attachment" | "inline" | "data_uri"
+    source: str  # "attachment" | "inline" | "data_uri"
     content_id: str = ""
     filename: str = ""
 
@@ -184,13 +184,20 @@ class ParsedEmail:
     def summary(self) -> dict[str, Any]:
         """JSON-safe digest (no raw bytes), for ``meta`` in analyzer results."""
         return {
-            "message_id": self.message_id, "subject": self.subject,
-            "from": self.from_.addr, "from_display_name": self.from_.display_name,
-            "reply_to": [a.addr for a in self.reply_to], "return_path": self.return_path,
-            "to": [a.addr for a in self.to], "date": self.date.isoformat() if self.date else None,
-            "hops": len(self.received), "attachments": [a.filename for a in self.attachments],
-            "links": len(self.links), "attached_messages": len(self.attached_messages),
-            "anomalies": list(self.anomalies), "raw_size": self.raw_size,
+            "message_id": self.message_id,
+            "subject": self.subject,
+            "from": self.from_.addr,
+            "from_display_name": self.from_.display_name,
+            "reply_to": [a.addr for a in self.reply_to],
+            "return_path": self.return_path,
+            "to": [a.addr for a in self.to],
+            "date": self.date.isoformat() if self.date else None,
+            "hops": len(self.received),
+            "attachments": [a.filename for a in self.attachments],
+            "links": len(self.links),
+            "attached_messages": len(self.attached_messages),
+            "anomalies": list(self.anomalies),
+            "raw_size": self.raw_size,
         }
 
 
@@ -283,9 +290,11 @@ def _parse_received(raw: str) -> ReceivedHop:
         head, tail = raw, ""
     by_m = _RECV_BY_RE.search(head)
     from_m = _RECV_FROM_RE.search(head)
-    from_clause = head[from_m.start(): by_m.start()] if (from_m and by_m
-                                                         and by_m.start() > from_m.start()) \
-        else (head[from_m.start():] if from_m else "")
+    from_clause = (
+        head[from_m.start() : by_m.start()]
+        if (from_m and by_m and by_m.start() > from_m.start())
+        else (head[from_m.start() :] if from_m else "")
+    )
     ip = ""
     for rx in (_IP_BRACKET_RE, _IP_PAREN_RE):
         for m in rx.finditer(from_clause):
@@ -363,7 +372,8 @@ def _payload_bytes(part: Message, anomalies: list[str]) -> bytes:
 # --------------------------------------------------------------------------- #
 _HIDDEN_STYLE_RE = re.compile(
     r"(?i)display\s*:\s*none|visibility\s*:\s*hidden|font-size\s*:\s*0(?![\d.])"
-    r"|opacity\s*:\s*0(?![\d.])|max-height\s*:\s*0(?![\d.])|mso-hide\s*:\s*all")
+    r"|opacity\s*:\s*0(?![\d.])|max-height\s*:\s*0(?![\d.])|mso-hide\s*:\s*all"
+)
 _META_REFRESH_RE = re.compile(r"(?i)url\s*=\s*['\"]?([^'\";\s]{1,8192})")
 _SKIP_SCHEMES = ("cid:", "data:")
 
@@ -372,8 +382,9 @@ def _clean_url(u: str) -> str:
     return _CTRL_RE.sub("", u.replace("\t", "").replace("\n", "").replace("\r", "")).strip()
 
 
-def _analyze_html(html: str, anomalies: list[str]) -> tuple[str, list[EmailLink],
-                                                            list[tuple[str, bytes]]]:
+def _analyze_html(
+    html: str, anomalies: list[str]
+) -> tuple[str, list[EmailLink], list[tuple[str, bytes]]]:
     """Return (visible_text, links, [(content_type, bytes) for data: images])."""
     from bs4 import BeautifulSoup  # lazy: heavy import
 
@@ -422,9 +433,11 @@ def _analyze_html(html: str, anomalies: list[str]) -> tuple[str, list[EmailLink]
                     _flag(anomalies, "bad_data_uri")
             elif not src.lower().startswith(_SKIP_SCHEMES):
                 add(src, str(img.get("alt", ""))[:MAX_ANCHOR_CHARS], "html_img")
-        hidden = [t for t in soup.find_all(True)
-                  if t.has_attr("hidden")
-                  or _HIDDEN_STYLE_RE.search(str(t.get("style", ""))[:2000])]
+        hidden = [
+            t
+            for t in soup.find_all(True)
+            if t.has_attr("hidden") or _HIDDEN_STYLE_RE.search(str(t.get("style", ""))[:2000])
+        ]
         for t in hidden:
             if t.get_text(strip=True):
                 _flag(anomalies, "html_hidden_text")
@@ -448,8 +461,7 @@ class _Budget:
         self.data_left = MAX_TOTAL_DATA
 
 
-def _build(msg: Message, depth: int, max_depth: int, raw_size: int,
-           budget: _Budget) -> ParsedEmail:
+def _build(msg: Message, depth: int, max_depth: int, raw_size: int, budget: _Budget) -> ParsedEmail:
     pe = ParsedEmail(raw_size=raw_size)
     an = pe.anomalies
 
@@ -568,8 +580,12 @@ def _build(msg: Message, depth: int, max_depth: int, raw_size: int,
             if body.strip():
                 texts.append(body)
             continue
-        if maintype == "text" and ctype in ("text/plain", "text/html") \
-                and disp != "attachment" and not fname:
+        if (
+            maintype == "text"
+            and ctype in ("text/plain", "text/html")
+            and disp != "attachment"
+            and not fname
+        ):
             body = _decode_text(payload, part.get_content_charset(), an)
             (htmls if ctype == "text/html" else texts).append(body)
             continue
@@ -580,8 +596,11 @@ def _build(msg: Message, depth: int, max_depth: int, raw_size: int,
 
     if pe.html_body:  # a part referenced as cid: from the HTML is inline whatever its header says
         low_html = pe.html_body.lower()
-        referenced = {a.content_id for a in pe.attachments
-                      if a.content_id and f"cid:{a.content_id.lower()}" in low_html}
+        referenced = {
+            a.content_id
+            for a in pe.attachments
+            if a.content_id and f"cid:{a.content_id.lower()}" in low_html
+        }
         for a in pe.attachments:
             if a.content_id in referenced:
                 a.is_inline = True
@@ -599,8 +618,7 @@ def _build(msg: Message, depth: int, max_depth: int, raw_size: int,
         _text_links(pe)
     if len(pe.links) > MAX_LINKS:
         pe.links = pe.links[:MAX_LINKS]
-    if not pe.text_body and not pe.html_body and not pe.attachments \
-            and not pe.attached_messages:
+    if not pe.text_body and not pe.html_body and not pe.attachments and not pe.attached_messages:
         _flag(an, "empty_body")
     return pe
 
@@ -623,31 +641,48 @@ def _text_links(pe: ParsedEmail) -> None:
             pe.links.append(EmailLink(u.url, "", "text", False))
 
 
-def _add_attachment(pe: ParsedEmail, payload: bytes, ctype: str, fname: str,
-                    disp: str | None, cid: str, budget: _Budget) -> None:
+def _add_attachment(
+    pe: ParsedEmail,
+    payload: bytes,
+    ctype: str,
+    fname: str,
+    disp: str | None,
+    cid: str,
+    budget: _Budget,
+) -> None:
     if len(pe.attachments) >= MAX_ATTACHMENTS:
         _flag(pe.anomalies, "too_many_attachments")
         return
-    keep = payload[:min(MAX_ATTACHMENT_DATA, budget.data_left)]
+    keep = payload[: min(MAX_ATTACHMENT_DATA, budget.data_left)]
     truncated = len(keep) < len(payload)
     budget.data_left -= len(keep)
     if truncated:
         _flag(pe.anomalies, "attachment_data_truncated")
     is_inline = disp == "inline" or (disp is None and bool(cid))
-    pe.attachments.append(Attachment(
-        filename=fname, content_type=ctype, size=len(payload),
-        sha256=hashlib.sha256(payload).hexdigest(),
-        sha1=hashlib.sha1(payload, usedforsecurity=False).hexdigest(),
-        md5=hashlib.md5(payload, usedforsecurity=False).hexdigest(),
-        data=keep, disposition=disp, content_id=cid, is_inline=is_inline,
-        truncated=truncated))
+    pe.attachments.append(
+        Attachment(
+            filename=fname,
+            content_type=ctype,
+            size=len(payload),
+            sha256=hashlib.sha256(payload).hexdigest(),
+            sha1=hashlib.sha1(payload, usedforsecurity=False).hexdigest(),
+            md5=hashlib.md5(payload, usedforsecurity=False).hexdigest(),
+            data=keep,
+            disposition=disp,
+            content_id=cid,
+            is_inline=is_inline,
+            truncated=truncated,
+        )
+    )
     if ctype.startswith("image/") and keep:
-        pe.images.append(EmbeddedImage(keep, ctype, "inline" if is_inline else "attachment",
-                                       cid, fname))
+        pe.images.append(
+            EmbeddedImage(keep, ctype, "inline" if is_inline else "attachment", cid, fname)
+        )
 
 
-def _handle_attached(part: Message, pe: ParsedEmail, depth: int, max_depth: int,
-                     budget: _Budget) -> None:
+def _handle_attached(
+    part: Message, pe: ParsedEmail, depth: int, max_depth: int, budget: _Budget
+) -> None:
     try:
         fname = _clean_filename(part.get_filename(), pe.anomalies)
         disp = part.get_content_disposition()
@@ -683,7 +718,7 @@ def _strip_leading_garbage(raw: bytes) -> tuple[bytes, bool]:
     pos, dropped, junk = 0, 0, False
     while dropped < 20:
         end = raw.find(b"\n", pos)
-        line = raw[pos:end if end != -1 else len(raw)].rstrip(b"\r")
+        line = raw[pos : end if end != -1 else len(raw)].rstrip(b"\r")
         if not line or line[:1] in b" \t" or _HEADER_LINE_RE.match(line) or end == -1:
             break
         if not line.startswith(b"From "):

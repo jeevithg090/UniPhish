@@ -68,8 +68,10 @@ class FileAnalyzer(Analyzer):
     stage = 0
     requires_online = False
     blocking = True
-    description = ("Attachments: disguised executables, macros, encrypted archives, HTML/SVG "
-                   "smuggling, PDF actions, QR codes; extracts embedded URLs as children")
+    description = (
+        "Attachments: disguised executables, macros, encrypted archives, HTML/SVG "
+        "smuggling, PDF actions, QR codes; extracts embedded URLs as children"
+    )
     signals = _SIGNALS
 
     def applies(self, artifact: Artifact, ctx: AnalysisContext) -> bool:
@@ -91,10 +93,17 @@ class FileAnalyzer(Analyzer):
         notes.extend(fa.notes)
 
         for ind in fa.indicators:
-            res.signals.append(Signal(
-                id=ind.code, title=ind.title[:_MAX_TITLE], detail=ind.detail,
-                weight=ind.weight, category="file", mitre=list(ind.mitre),
-                evidence=dict(ind.evidence)))
+            res.signals.append(
+                Signal(
+                    id=ind.code,
+                    title=ind.title[:_MAX_TITLE],
+                    detail=ind.detail,
+                    weight=ind.weight,
+                    category="file",
+                    mitre=list(ind.mitre),
+                    evidence=dict(ind.evidence),
+                )
+            )
 
         # ---- children: URLs found inside the file ------------------------------ #
         seen: set[str] = set()
@@ -118,33 +127,44 @@ class FileAnalyzer(Analyzer):
                 except Exception as e:  # pragma: no cover - decode_qr never raises
                     notes.append(f"QR decoding failed ({type(e).__name__})")
         if qr_urls:
-            in_email = (ctx.parent is not None and ctx.parent.kind is ArtifactKind.EMAIL) or \
-                (artifact.origin or "").startswith("email")
-            res.signals.append(Signal(
-                id=QR_SIGNAL, title=_SIGNALS[QR_SIGNAL],
-                detail=("The image contains a QR code that opens "
+            in_email = (ctx.parent is not None and ctx.parent.kind is ArtifactKind.EMAIL) or (
+                artifact.origin or ""
+            ).startswith("email")
+            res.signals.append(
+                Signal(
+                    id=QR_SIGNAL,
+                    title=_SIGNALS[QR_SIGNAL],
+                    detail=(
+                        "The image contains a QR code that opens "
                         + ", ".join(qr_urls[:3])
                         + (" ..." if len(qr_urls) > 3 else "")
                         + ". QR codes in messages are a common way to hide a phishing link "
-                          "from URL scanners (quishing)."),
-                weight=1.0 if in_email else 0.4, category="file", mitre=["T1566.002"],
-                evidence={"urls": qr_urls, "email_context": in_email}))
+                        "from URL scanners (quishing)."
+                    ),
+                    weight=1.0 if in_email else 0.4,
+                    category="file",
+                    mitre=["T1566.002"],
+                    evidence={"urls": qr_urls, "email_context": in_email},
+                )
+            )
             for u in qr_urls:
                 try:
-                    res.children.append(
-                        Artifact.from_url(u, origin="qr", parent_id=artifact.id))
+                    res.children.append(Artifact.from_url(u, origin="qr", parent_id=artifact.id))
                 except ValueError:
                     continue
 
         # ---- indicators --------------------------------------------------------- #
-        res.indicators.extend([
-            Indicator(type=IndicatorType.SHA256, value=facts.sha256, role="payload"),
-            Indicator(type=IndicatorType.SHA1, value=facts.sha1, role="payload"),
-            Indicator(type=IndicatorType.MD5, value=facts.md5, role="payload"),
-        ])
+        res.indicators.extend(
+            [
+                Indicator(type=IndicatorType.SHA256, value=facts.sha256, role="payload"),
+                Indicator(type=IndicatorType.SHA1, value=facts.sha1, role="payload"),
+                Indicator(type=IndicatorType.MD5, value=facts.md5, role="payload"),
+            ]
+        )
         if facts.filename:
-            res.indicators.append(Indicator(type=IndicatorType.FILENAME, value=facts.filename,
-                                            role="payload"))
+            res.indicators.append(
+                Indicator(type=IndicatorType.FILENAME, value=facts.filename, role="payload")
+            )
         domains: set[str] = set()
         for u in list(fa.child_urls) + qr_urls:
             role = "qr" if u in qr_urls and u not in fa.child_urls else "embedded"
@@ -156,24 +176,27 @@ class FileAnalyzer(Analyzer):
                 res.indicators.append(h)
 
         if facts.detected_type in _MOTW_TYPES:
-            notes.append("container format: contents extracted from it may lose "
-                         "mark-of-the-web protection")
+            notes.append(
+                "container format: contents extracted from it may lose mark-of-the-web protection"
+            )
 
-        res.meta.update({
-            "detected_type": facts.detected_type,
-            "declared_ext": facts.declared_ext,
-            "ext_mismatch": facts.ext_mismatch,
-            "double_extension": facts.double_extension,
-            "mime": facts.mime,
-            "sha256": facts.sha256,
-            "sha1": facts.sha1,
-            "md5": facts.md5,
-            "size": facts.size,
-            "entropy": round(facts.entropy, 3),
-            "file_notes": notes,
-            "embedded_url_count": len(fa.child_urls),
-            "qr_urls": qr_urls,
-        })
+        res.meta.update(
+            {
+                "detected_type": facts.detected_type,
+                "declared_ext": facts.declared_ext,
+                "ext_mismatch": facts.ext_mismatch,
+                "double_extension": facts.double_extension,
+                "mime": facts.mime,
+                "sha256": facts.sha256,
+                "sha1": facts.sha1,
+                "md5": facts.md5,
+                "size": facts.size,
+                "entropy": round(facts.entropy, 3),
+                "file_notes": notes,
+                "embedded_url_count": len(fa.child_urls),
+                "qr_urls": qr_urls,
+            }
+        )
         if facts.filename:
             res.meta["filename"] = facts.filename
         return res

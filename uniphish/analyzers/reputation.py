@@ -72,8 +72,19 @@ NOVELTY_WEIGHT = 0.3
 #: Earlier-stage evidence at or above this weight suppresses the top-site credit.
 STRONG_EVIDENCE_WEIGHT = 4.0
 
-_RESERVED_SUFFIXES = (".test", ".example", ".invalid", ".localhost", ".local", ".internal",
-                      ".lan", ".home.arpa", ".onion", ".corp", ".intranet")
+_RESERVED_SUFFIXES = (
+    ".test",
+    ".example",
+    ".invalid",
+    ".localhost",
+    ".local",
+    ".internal",
+    ".lan",
+    ".home.arpa",
+    ".onion",
+    ".corp",
+    ".intranet",
+)
 _HOST_SAFE_RE = re.compile(r"^[a-z0-9](?:[a-z0-9.-]{0,251}[a-z0-9])?$")
 _UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
@@ -114,11 +125,22 @@ def _json_body(res: Any) -> Any:
         raise FeedError("bad json") from exc
 
 
-async def _get_json(url: str, headers: dict[str, str], timeout: float,
-                    transport: httpx.AsyncBaseTransport | None,
-                    *, allow_404: bool = False) -> Any | None:
-    res = await safe_fetch(url, headers=headers, max_bytes=_FEED_MAX_BYTES, timeout=timeout,
-                           follow_redirects=False, transport=transport)
+async def _get_json(
+    url: str,
+    headers: dict[str, str],
+    timeout: float,
+    transport: httpx.AsyncBaseTransport | None,
+    *,
+    allow_404: bool = False,
+) -> Any | None:
+    res = await safe_fetch(
+        url,
+        headers=headers,
+        max_bytes=_FEED_MAX_BYTES,
+        timeout=timeout,
+        follow_redirects=False,
+        transport=transport,
+    )
     if allow_404 and res.status == 404 and not res.blocked_reason:
         return None
     if not res.ok or res.truncated:
@@ -127,17 +149,24 @@ async def _get_json(url: str, headers: dict[str, str], timeout: float,
 
 
 _GSB_WEIGHTS = {
-    "SOCIAL_ENGINEERING": 6.0, "MALWARE": 6.0, "THREAT_TYPE_UNSPECIFIED": 4.0,
-    "UNWANTED_SOFTWARE": 3.0, "POTENTIALLY_HARMFUL_APPLICATION": 4.0,
+    "SOCIAL_ENGINEERING": 6.0,
+    "MALWARE": 6.0,
+    "THREAT_TYPE_UNSPECIFIED": 4.0,
+    "UNWANTED_SOFTWARE": 3.0,
+    "POTENTIALLY_HARMFUL_APPLICATION": 4.0,
 }
 
 
 @async_cached(ttl=_FEED_TTL, maxsize=2048, key=lambda url, *_: url)
-async def _safebrowsing(url: str, api_key: str, timeout: float,
-                        transport: httpx.AsyncBaseTransport | None) -> FeedHit | None:
+async def _safebrowsing(
+    url: str, api_key: str, timeout: float, transport: httpx.AsyncBaseTransport | None
+) -> FeedHit | None:
     data = await _get_json(
         "https://safebrowsing.googleapis.com/v5/urls:search?urls=" + quote(url, safe=""),
-        {"x-goog-api-key": api_key, "accept": "application/json"}, timeout, transport)
+        {"x-goog-api-key": api_key, "accept": "application/json"},
+        timeout,
+        transport,
+    )
     threats = data.get("threats") if isinstance(data, dict) else None
     if not isinstance(threats, list) or not threats:
         return None
@@ -151,9 +180,12 @@ async def _safebrowsing(url: str, api_key: str, timeout: float,
         return None
     weight = max(_GSB_WEIGHTS.get(t, 4.0) for t in types)
     uniq = sorted(set(types))
-    return FeedHit("safebrowsing", weight,
-                   "Google Safe Browsing lists this URL as " + ", ".join(uniq).lower() + ".",
-                   {"threat_types": uniq})
+    return FeedHit(
+        "safebrowsing",
+        weight,
+        "Google Safe Browsing lists this URL as " + ", ".join(uniq).lower() + ".",
+        {"threat_types": uniq},
+    )
 
 
 def _vt_weight(malicious: int, suspicious: int) -> float:
@@ -167,12 +199,17 @@ def _vt_weight(malicious: int, suspicious: int) -> float:
 
 
 @async_cached(ttl=_FEED_TTL, maxsize=2048, key=lambda kind, value, *_: (kind, value))
-async def _virustotal(kind: str, value: str, api_key: str, timeout: float,
-                      transport: httpx.AsyncBaseTransport | None) -> FeedHit | None:
+async def _virustotal(
+    kind: str, value: str, api_key: str, timeout: float, transport: httpx.AsyncBaseTransport | None
+) -> FeedHit | None:
     path = "ip_addresses" if kind == "ip" else "domains"
-    data = await _get_json(f"https://www.virustotal.com/api/v3/{path}/{quote(value, safe='')}",
-                           {"x-apikey": api_key, "accept": "application/json"}, timeout,
-                           transport, allow_404=True)
+    data = await _get_json(
+        f"https://www.virustotal.com/api/v3/{path}/{quote(value, safe='')}",
+        {"x-apikey": api_key, "accept": "application/json"},
+        timeout,
+        transport,
+        allow_404=True,
+    )
     try:
         stats = data["data"]["attributes"]["last_analysis_stats"]
         mal, sus = int(stats.get("malicious", 0)), int(stats.get("suspicious", 0))
@@ -181,26 +218,32 @@ async def _virustotal(kind: str, value: str, api_key: str, timeout: float,
     weight = _vt_weight(mal, sus)
     if weight <= 0:
         return None
-    return FeedHit("virustotal", weight,
-                   f"{mal} VirusTotal engine(s) flag {value} as malicious and {sus} as suspicious.",
-                   {"malicious": mal, "suspicious": sus})
+    return FeedHit(
+        "virustotal",
+        weight,
+        f"{mal} VirusTotal engine(s) flag {value} as malicious and {sus} as suspicious.",
+        {"malicious": mal, "suspicious": sus},
+    )
 
 
 @async_cached(ttl=_FEED_TTL, maxsize=2048, key=lambda host, *_: host)
-async def _urlscan(host: str, api_key: str, timeout: float,
-                   transport: httpx.AsyncBaseTransport | None) -> FeedHit | None:
+async def _urlscan(
+    host: str, api_key: str, timeout: float, transport: httpx.AsyncBaseTransport | None
+) -> FeedHit | None:
     headers = {"API-Key": api_key, "accept": "application/json"}
     q = quote(f'page.domain:"{host}"', safe="")
-    found = await _get_json(f"https://urlscan.io/api/v1/search/?size=1&q={q}", headers,
-                            timeout, transport)
+    found = await _get_json(
+        f"https://urlscan.io/api/v1/search/?size=1&q={q}", headers, timeout, transport
+    )
     results = found.get("results") if isinstance(found, dict) else None
     if not isinstance(results, list) or not results or not isinstance(results[0], dict):
         return None
     scan_id = str(results[0].get("_id") or "")
     if not _UUID_RE.match(scan_id):
         return None
-    detail = await _get_json(f"https://urlscan.io/api/v1/result/{scan_id}/", headers, timeout,
-                             transport)
+    detail = await _get_json(
+        f"https://urlscan.io/api/v1/result/{scan_id}/", headers, timeout, transport
+    )
     try:
         overall = detail["verdicts"]["overall"]
         malicious, score = bool(overall.get("malicious")), int(overall.get("score") or 0)
@@ -209,10 +252,13 @@ async def _urlscan(host: str, api_key: str, timeout: float,
     weight = 5.0 if malicious else (2.5 if score >= 50 else 0.0)
     if weight <= 0:
         return None
-    return FeedHit("urlscan", weight,
-                   f"urlscan.io's most recent scan of {host} was judged "
-                   f"{'malicious' if malicious else 'suspicious'} (score {score}).",
-                   {"scan_id": scan_id, "score": score, "malicious": malicious})
+    return FeedHit(
+        "urlscan",
+        weight,
+        f"urlscan.io's most recent scan of {host} was judged "
+        f"{'malicious' if malicious else 'suspicious'} (score {score}).",
+        {"scan_id": scan_id, "score": score, "malicious": malicious},
+    )
 
 
 _FEED_META = {
@@ -246,8 +292,11 @@ def _publicly_checkable(p: ParsedURL) -> bool:
         return False
     if p.is_ip:
         return p.ip is not None and is_public_ip(p.ip)
-    return bool(_registrable(p)) and not _is_reserved(p.host_ascii) \
+    return (
+        bool(_registrable(p))
+        and not _is_reserved(p.host_ascii)
         and _HOST_SAFE_RE.match(p.host_ascii) is not None
+    )
 
 
 def _ancestors(p: ParsedURL) -> list[str]:
@@ -276,8 +325,11 @@ def _impersonation_seen(ctx: AnalysisContext) -> bool:
         for s in res.signals:
             if s.weight <= 0:
                 continue
-            if s.category in ("brand", "unicode") or s.id.startswith(("brand.", "unicode.")) \
-                    or ".brand." in s.id:
+            if (
+                s.category in ("brand", "unicode")
+                or s.id.startswith(("brand.", "unicode."))
+                or ".brand." in s.id
+            ):
                 return True
             if s.weight >= STRONG_EVIDENCE_WEIGHT:
                 return True
@@ -294,10 +346,12 @@ class ReputationAnalyzer(Analyzer):
     name = "reputation"
     kinds = frozenset({ArtifactKind.URL, ArtifactKind.EMAIL})
     stage = 10
-    requires_online = False   # offline core always runs; feeds are gated on ctx.online + keys
+    requires_online = False  # offline core always runs; feeds are gated on ctx.online + keys
     blocking = True
-    description = ("Local IOC allow/deny DB, Tranco top-site legitimacy (never for LOTS hosts), "
-                   "domain novelty, and optional Safe Browsing / VirusTotal / urlscan.io lookups")
+    description = (
+        "Local IOC allow/deny DB, Tranco top-site legitimacy (never for LOTS hosts), "
+        "domain novelty, and optional Safe Browsing / VirusTotal / urlscan.io lookups"
+    )
     signals = {
         "rep.local_denylist": "Observable is on the local deny list",
         "rep.local_allowlist": "Observable is on the local allow list",
@@ -318,12 +372,13 @@ class ReputationAnalyzer(Analyzer):
     @staticmethod
     def _store() -> Any:
         from uniphish.store import get_store
+
         return get_store()
 
     def _lookup(self, type_: str, value: str) -> dict[str, Any] | None:
         try:
             return self._store().lookup_reputation(type_, value)
-        except Exception:   # a broken DB must never break analysis
+        except Exception:  # a broken DB must never break analysis
             log.warning("reputation lookup failed", exc_info=True)
             return None
 
@@ -333,31 +388,55 @@ class ReputationAnalyzer(Analyzer):
         raw = abs(float(row.get("weight") or 0.0))
         reason = str(row.get("reason") or "").strip()
         source = str(row.get("source") or "manual")
-        evidence = {"type": type_, "value": value, "source": source, "reason": reason,
-                    "expires_at": row.get("expires_at")}
+        evidence = {
+            "type": type_,
+            "value": value,
+            "source": source,
+            "reason": reason,
+            "expires_at": row.get("expires_at"),
+        }
         suffix = f" Reason: {reason}." if reason else ""
         if row.get("verdict") == "deny":
             w = _clamp(raw or DEFAULT_DENY_WEIGHT, 0.5, MAX_DENY_WEIGHT)
             return Signal(
-                id="rep.local_denylist", category=CATEGORY, weight=w, evidence=evidence,
+                id="rep.local_denylist",
+                category=CATEGORY,
+                weight=w,
+                evidence=evidence,
                 title=f"{type_.capitalize()} is on the local deny list",
                 detail=f"{value} is on this installation's deny list (source: {source}).{suffix}",
-                mitre=["T1566.002"] if type_ in ("url", "domain") else [], tags=[role])
+                mitre=["T1566.002"] if type_ in ("url", "domain") else [],
+                tags=[role],
+            )
         w = -_clamp(raw or -DEFAULT_ALLOW_WEIGHT, MIN_ALLOW_MAGNITUDE, MAX_ALLOW_MAGNITUDE)
         return Signal(
-            id="rep.local_allowlist", category=CATEGORY, weight=w, evidence=evidence,
+            id="rep.local_allowlist",
+            category=CATEGORY,
+            weight=w,
+            evidence=evidence,
             title=f"{type_.capitalize()} is on the local allow list",
             detail=f"{value} is on this installation's allow list (source: {source}).{suffix}",
-            tags=[role])
+            tags=[role],
+        )
 
     @staticmethod
     def _indicator_type(type_: str) -> IndicatorType:
-        return {"url": IndicatorType.URL, "domain": IndicatorType.DOMAIN,
-                "email": IndicatorType.EMAIL, "ipv4": IndicatorType.IPV4,
-                "ipv6": IndicatorType.IPV6}[type_]
+        return {
+            "url": IndicatorType.URL,
+            "domain": IndicatorType.DOMAIN,
+            "email": IndicatorType.EMAIL,
+            "ipv4": IndicatorType.IPV4,
+            "ipv6": IndicatorType.IPV6,
+        }[type_]
 
-    def _apply_rows(self, rows: list[tuple[str, str, dict[str, Any]]], role: str,
-                    result: AnalyzerResult, *, allow_ok: bool = True) -> tuple[bool, bool]:
+    def _apply_rows(
+        self,
+        rows: list[tuple[str, str, dict[str, Any]]],
+        role: str,
+        result: AnalyzerResult,
+        *,
+        allow_ok: bool = True,
+    ) -> tuple[bool, bool]:
         """Turn matched rows into at most one deny and one allow signal; deny wins."""
         deny = [r for r in rows if r[2].get("verdict") == "deny"]
         allow = [r for r in rows if r[2].get("verdict") == "allow"]
@@ -366,9 +445,15 @@ class ReputationAnalyzer(Analyzer):
             t, v, row = max(deny, key=lambda r: abs(float(r[2].get("weight") or 0.0)))
             result.signals.append(self._local_signal(row, t, v, role))
             for t, v, row in deny:
-                result.indicators.append(Indicator(
-                    type=self._indicator_type(t), value=v, role=role, malicious=True,
-                    context=str(row.get("reason") or "local deny list") or None))
+                result.indicators.append(
+                    Indicator(
+                        type=self._indicator_type(t),
+                        value=v,
+                        role=role,
+                        malicious=True,
+                        context=str(row.get("reason") or "local deny list") or None,
+                    )
+                )
             return True, False
         if allow and allow_ok:
             t, v, row = allow[0]
@@ -388,8 +473,9 @@ class ReputationAnalyzer(Analyzer):
             log.warning("reputation analysis failed", exc_info=True)
         return result
 
-    def _analyze_url(self, artifact: Artifact, ctx: AnalysisContext,
-                     result: AnalyzerResult) -> None:
+    def _analyze_url(
+        self, artifact: Artifact, ctx: AnalysisContext, result: AnalyzerResult
+    ) -> None:
         p = parse_url(artifact.url or "")
         if not p.valid or not p.host:
             return
@@ -411,8 +497,9 @@ class ReputationAnalyzer(Analyzer):
         if not denied and not allowed and not top:
             self._novelty(p, result)
         if _registrable(p) and not p.is_ip:
-            result.indicators.append(Indicator(type=IndicatorType.DOMAIN, value=_registrable(p),
-                                               role="landing"))
+            result.indicators.append(
+                Indicator(type=IndicatorType.DOMAIN, value=_registrable(p), role="landing")
+            )
 
     def _top_site(self, p: ParsedURL, ctx: AnalysisContext, result: AnalyzerResult) -> bool:
         from uniphish.assets.lists import (
@@ -431,21 +518,33 @@ class ReputationAnalyzer(Analyzer):
         if rank is None:
             return False
         host = p.host_ascii
-        if (lots_match(host, p.path) or lots_match(reg, p.path)
-                or get_kb().is_user_content_host(host) is not None
-                or is_shortener(host) or is_dyndns(host)
-                or open_redirect_match(host, p.path, p.query) is not None):
+        if (
+            lots_match(host, p.path)
+            or lots_match(reg, p.path)
+            or get_kb().is_user_content_host(host) is not None
+            or is_shortener(host)
+            or is_dyndns(host)
+            or open_redirect_match(host, p.path, p.query) is not None
+        ):
             return False
         if _impersonation_seen(ctx):
             return False
         weight = top_site_weight(rank)
-        result.signals.append(Signal(
-            id="rep.top_site", category=CATEGORY, weight=weight,
-            title=f"{reg} is a top-ranked, long-established site",
-            detail=(f"{reg} ranks #{rank:,} among the most visited sites and is not a "
+        result.signals.append(
+            Signal(
+                id="rep.top_site",
+                category=CATEGORY,
+                weight=weight,
+                title=f"{reg} is a top-ranked, long-established site",
+                detail=(
+                    f"{reg} ranks #{rank:,} among the most visited sites and is not a "
                     "free-hosting platform, so a lookalike attack is unlikely on this exact "
-                    "domain."),
-            evidence={"registrable": reg, "rank": rank}, confidence=0.9))
+                    "domain."
+                ),
+                evidence={"registrable": reg, "rank": rank},
+                confidence=0.9,
+            )
+        )
         return True
 
     def _novelty(self, p: ParsedURL, result: AnalyzerResult) -> None:
@@ -462,15 +561,22 @@ class ReputationAnalyzer(Analyzer):
         except Exception:
             log.warning("novelty lookup failed", exc_info=True)
             return
-        result.signals.append(Signal(
-            id="rep.never_seen", category=CATEGORY, weight=NOVELTY_WEIGHT,
-            title="Domain never seen before by this installation",
-            detail=f"{reg} has not appeared in any earlier analysis on this system. This is "
-                   "only weak context: most new domains are harmless.",
-            evidence={"registrable": reg}, confidence=0.6))
+        result.signals.append(
+            Signal(
+                id="rep.never_seen",
+                category=CATEGORY,
+                weight=NOVELTY_WEIGHT,
+                title="Domain never seen before by this installation",
+                detail=f"{reg} has not appeared in any earlier analysis on this system. This is "
+                "only weak context: most new domains are harmless.",
+                evidence={"registrable": reg},
+                confidence=0.6,
+            )
+        )
 
-    def _analyze_email(self, artifact: Artifact, ctx: AnalysisContext,
-                       result: AnalyzerResult) -> None:
+    def _analyze_email(
+        self, artifact: Artifact, ctx: AnalysisContext, result: AnalyzerResult
+    ) -> None:
         from uniphish.mail import MEMO_KEY, analyze_auth, parse_email
 
         parsed = ctx.memo(MEMO_KEY, lambda: parse_email(artifact.content or b""))
@@ -510,19 +616,20 @@ class ReputationAnalyzer(Analyzer):
         if artifact.kind is ArtifactKind.URL and ctx.online:
             try:
                 await self._feeds(artifact, ctx, result)
-            except Exception:   # feeds are best-effort by contract
+            except Exception:  # feeds are best-effort by contract
                 log.warning("reputation feeds failed", exc_info=True)
         return result
 
-    async def _feeds(self, artifact: Artifact, ctx: AnalysisContext,
-                     result: AnalyzerResult) -> None:
+    async def _feeds(
+        self, artifact: Artifact, ctx: AnalysisContext, result: AnalyzerResult
+    ) -> None:
         s = ctx.settings
         if not (s.safebrowsing_api_key or s.virustotal_api_key or s.urlscan_api_key):
             return
         p = parse_url(artifact.url or "")
         if not _publicly_checkable(p):
             return
-        clean = p.url   # normalised: no userinfo, no fragment -> nothing private leaves
+        clean = p.url  # normalised: no userinfo, no fragment -> nothing private leaves
         t, tr = s.http_timeout_s, self._transport
         jobs: list[Any] = []
         if s.safebrowsing_api_key:
@@ -539,13 +646,29 @@ class ReputationAnalyzer(Analyzer):
             if out is None:
                 continue
             sid, title = _FEED_META[out.feed]
-            result.signals.append(Signal(
-                id=sid, title=title, detail=out.detail, weight=out.weight, category=CATEGORY,
-                evidence={"feed": out.feed, **out.evidence}, mitre=["T1566.002"],
-                confidence=0.9))
+            result.signals.append(
+                Signal(
+                    id=sid,
+                    title=title,
+                    detail=out.detail,
+                    weight=out.weight,
+                    category=CATEGORY,
+                    evidence={"feed": out.feed, **out.evidence},
+                    mitre=["T1566.002"],
+                    confidence=0.9,
+                )
+            )
             if out.weight >= 3.0:
-                result.indicators.append(Indicator(
-                    type=IndicatorType.IPV6 if (p.is_ip and p.ip and p.ip.version == 6)
-                    else IndicatorType.IPV4 if p.is_ip else IndicatorType.DOMAIN,
-                    value=str(p.ip) if p.is_ip else _registrable(p), role="landing",
-                    malicious=True, context=f"flagged by {out.feed}"))
+                result.indicators.append(
+                    Indicator(
+                        type=IndicatorType.IPV6
+                        if (p.is_ip and p.ip and p.ip.version == 6)
+                        else IndicatorType.IPV4
+                        if p.is_ip
+                        else IndicatorType.DOMAIN,
+                        value=str(p.ip) if p.is_ip else _registrable(p),
+                        role="landing",
+                        malicious=True,
+                        context=f"flagged by {out.feed}",
+                    )
+                )

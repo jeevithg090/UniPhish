@@ -9,9 +9,14 @@ from importlib import import_module
 from typing import Any
 
 _LAZY = {
-    "to_stix_bundle": "stix", "bundle_many": "stix", "stix_pattern": "stix",
-    "taxii_envelope": "stix", "validate_bundle": "stix",
-    "to_misp_event": "misp", "to_misp_feed": "misp", "misp_feed_files": "misp",
+    "to_stix_bundle": "stix",
+    "bundle_many": "stix",
+    "stix_pattern": "stix",
+    "taxii_envelope": "stix",
+    "validate_bundle": "stix",
+    "to_misp_event": "misp",
+    "to_misp_feed": "misp",
+    "misp_feed_files": "misp",
 }
 __all__ = sorted(_LAZY)
 

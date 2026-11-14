@@ -62,6 +62,7 @@ def test_no_explain_no_spans():
 def test_missing_model_skips(monkeypatch):
     def boom():
         raise ModelUnavailable("weights.bin missing")
+
     monkeypatch.setattr(mlmod, "get_model", boom)
     r = run(PHISH)
     assert r.signals == []
@@ -98,6 +99,7 @@ def test_long_url_capped_and_lower_confidence(monkeypatch):
 
         def info(self):
             return {}
+
     monkeypatch.setattr(mlmod, "get_model", lambda: Fake())
     r = run("https://example.com/" + "a" * 300)
     assert r.signals[0].weight == mlmod.LONG_URL_MAX_WEIGHT

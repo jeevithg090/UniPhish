@@ -24,21 +24,34 @@ T0 = datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc)
 
 def verdict(**kw) -> Verdict:
     base = dict(
-        created_at=T0, kind=ArtifactKind.EMAIL, target="Urgent: verify account",
-        artifact_id="c" * 24, risk=0.95, score=95, logit=3.0, level=Level.MALICIOUS,
-        action=Action.BLOCK, confidence=0.9, summary="Credential phishing impersonating PayPal.",
+        created_at=T0,
+        kind=ArtifactKind.EMAIL,
+        target="Urgent: verify account",
+        artifact_id="c" * 24,
+        risk=0.95,
+        score=95,
+        logit=3.0,
+        level=Level.MALICIOUS,
+        action=Action.BLOCK,
+        confidence=0.9,
+        summary="Credential phishing impersonating PayPal.",
         brand=BrandMatch(brand="paypal", name="PayPal", technique="sender", confidence=0.9),
         signals=[Signal(id="x", title="t", weight=3.0, category="email")],
         indicators=[
-            Indicator(type=IndicatorType.URL, value="https://login.paypa1.example/a?b=1",
-                      malicious=True, role="landing"),
+            Indicator(
+                type=IndicatorType.URL,
+                value="https://login.paypa1.example/a?b=1",
+                malicious=True,
+                role="landing",
+            ),
             Indicator(type=IndicatorType.DOMAIN, value="login.paypa1.example", malicious=True),
             Indicator(type=IndicatorType.IPV4, value="192.0.2.9", malicious=True),
             Indicator(type=IndicatorType.SHA256, value="cd" * 32, malicious=True),
             Indicator(type=IndicatorType.EMAIL, value="Support@Paypa1.example", malicious=True),
             Indicator(type=IndicatorType.DOMAIN, value="paypal.com", malicious=False),
         ],
-        mitre=[mitre.resolve("T1566.002"), mitre.resolve("AML.T0051.001")])
+        mitre=[mitre.resolve("T1566.002"), mitre.resolve("AML.T0051.001")],
+    )
     base.update(kw)
     return Verdict(**base)
 
@@ -69,8 +82,10 @@ def test_event_fields_and_secure_defaults():
     tags = {t["name"] for t in e["Tag"]}
     assert "tlp:amber" in tags and 'uniphish:brand="paypal"' in tags
     assert 'misp-galaxy:mitre-attack-pattern="Spearphishing Link - T1566.002"' in tags
-    assert any(t.startswith("misp-galaxy:mitre-atlas-attack-pattern=") and "AML.T0051.001" in t
-               for t in tags)
+    assert any(
+        t.startswith("misp-galaxy:mitre-atlas-attack-pattern=") and "AML.T0051.001" in t
+        for t in tags
+    )
     assert {g["namespace"] for g in e["Galaxy"]} == {"mitre-attack", "mitre-atlas"}
 
 

@@ -92,12 +92,15 @@ class TriageItem:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            "source": defang(self.source, 300), "verdict_id": self.verdict_id,
-            "level": self.level, "score": self.score, "action": self.action,
-            "brand": self.brand, "subject": defang(self.subject or "", 200) or None,
+            "source": defang(self.source, 300),
+            "verdict_id": self.verdict_id,
+            "level": self.level,
+            "score": self.score,
+            "action": self.action,
+            "brand": self.brand,
+            "subject": defang(self.subject or "", 200) or None,
             "error": self.error,
-            "sinks": [{"sink": r.sink, "status": r.status, "error": r.error}
-                      for r in self.sinks],
+            "sinks": [{"sink": r.sink, "status": r.status, "error": r.error} for r in self.sinks],
         }
 
 
@@ -127,11 +130,15 @@ class TriageSummary:
     def to_dict(self, *, include_items: bool = True) -> dict[str, Any]:
         """JSON-safe form. Free text and IOCs are defanged; verdict objects are omitted."""
         out: dict[str, Any] = {
-            "total": self.total, "processed": self.processed, "errors": self.errors,
-            "by_level": dict(self.by_level), "by_action": dict(self.by_action),
+            "total": self.total,
+            "processed": self.processed,
+            "errors": self.errors,
+            "by_level": dict(self.by_level),
+            "by_action": dict(self.by_action),
             "top_brands": [[b, n] for b, n in self.top_brands],
-            "top_iocs": [[t, defang(v, 300) if t in _TEXTUAL_IOCS else v, n]
-                         for t, v, n in self.top_iocs],
+            "top_iocs": [
+                [t, defang(v, 300) if t in _TEXTUAL_IOCS else v, n] for t, v, n in self.top_iocs
+            ],
         }
         if include_items:
             out["items"] = [i.to_dict() for i in self.items]
@@ -139,21 +146,26 @@ class TriageSummary:
 
     def render(self, *, limit: int = 10) -> str:
         """Plain-text triage report (defanged), worst first."""
-        lines = [f"UniPhish triage: {self.processed}/{self.total} messages scanned"
-                 + (f", {self.errors} failed" if self.errors else "")]
+        lines = [
+            f"UniPhish triage: {self.processed}/{self.total} messages scanned"
+            + (f", {self.errors} failed" if self.errors else "")
+        ]
         order = [lv.value for lv in (Level.MALICIOUS, Level.SUSPICIOUS, Level.BENIGN)]
         lines.append("levels: " + ", ".join(f"{lv}={self.by_level.get(lv, 0)}" for lv in order))
         if self.top_brands:
             lines.append("brands: " + ", ".join(f"{b} ({n})" for b, n in self.top_brands))
         if self.top_iocs:
             lines.append("top IOCs:")
-            lines += [f"  {t:<7} {defang(v, 200) if t in _TEXTUAL_IOCS else v}  x{n}"
-                      for t, v, n in self.top_iocs]
+            lines += [
+                f"  {t:<7} {defang(v, 200) if t in _TEXTUAL_IOCS else v}  x{n}"
+                for t, v, n in self.top_iocs
+            ]
         worst = self.worst[:limit]
         if worst:
             lines.append("worst first:")
-            lines += [f"  {i.score:>3} {i.level:<10} {defang(i.subject or i.source, 80)}"
-                      for i in worst]
+            lines += [
+                f"  {i.score:>3} {i.level:<10} {defang(i.subject or i.source, 80)}" for i in worst
+            ]
         return "\n".join(lines)
 
 
@@ -161,8 +173,9 @@ _TEXTUAL_IOCS = frozenset({"url", "domain", "email", "filename"})
 _IOC_TYPES_SKIPPED = frozenset({"user_agent", "asn", "cert_sha256"})
 
 
-def build_summary(items: Sequence[TriageItem], verdicts: Sequence[Verdict], *,
-                  top_n: int = 10) -> TriageSummary:
+def build_summary(
+    items: Sequence[TriageItem], verdicts: Sequence[Verdict], *, top_n: int = 10
+) -> TriageSummary:
     """Aggregate ``verdicts`` into a :class:`TriageSummary`."""
     by_level = Counter(v.level.value for v in verdicts)
     by_action = Counter(v.action.value for v in verdicts)
@@ -179,12 +192,17 @@ def build_summary(items: Sequence[TriageItem], verdicts: Sequence[Verdict], *,
             if ind.malicious is True or v.level is Level.MALICIOUS:
                 iocs[(ind.type.value, ind.value)] += 1
     return TriageSummary(
-        total=len(items), errors=sum(1 for i in items if i.error),
-        by_level=dict(by_level), by_action=dict(by_action),
+        total=len(items),
+        errors=sum(1 for i in items if i.error),
+        by_level=dict(by_level),
+        by_action=dict(by_action),
         top_brands=brands.most_common(top_n),
-        top_iocs=[(t, val, n) for (t, val), n in
-                  sorted(iocs.items(), key=lambda kv: (-kv[1], kv[0]))[:top_n]],
-        items=list(items), verdicts=list(verdicts),
+        top_iocs=[
+            (t, val, n)
+            for (t, val), n in sorted(iocs.items(), key=lambda kv: (-kv[1], kv[0]))[:top_n]
+        ],
+        items=list(items),
+        verdicts=list(verdicts),
     )
 
 
@@ -278,15 +296,17 @@ class MailboxProcessor:
             try:
                 await asyncio.to_thread(self.store.save_verdict, verdict, source="mailbox")
             except Exception:
-                log.exception("could not persist verdict %s from %s", verdict.id,
-                              defang(source, 120))
+                log.exception(
+                    "could not persist verdict %s from %s", verdict.id, defang(source, 120)
+                )
         if not self.sinks:
             return []
         return await fan_out(verdict, self.sinks)
 
     # ---- batches --------------------------------------------------------- #
-    async def _process_many(self, messages: Iterable[tuple[str, bytes | Exception]]
-                            ) -> TriageSummary:
+    async def _process_many(
+        self, messages: Iterable[tuple[str, bytes | Exception]]
+    ) -> TriageSummary:
         sem = asyncio.Semaphore(self._sem_size)
 
         async def one(source: str, raw: bytes | Exception) -> tuple[TriageItem, Verdict | None]:
@@ -303,16 +323,18 @@ class MailboxProcessor:
             return _item_for(source, verdict, results), verdict
 
         pairs = await asyncio.gather(*(one(s, r) for s, r in messages))
-        summary = build_summary([p[0] for p in pairs],
-                                [p[1] for p in pairs if p[1] is not None])
-        events.publish("mailbox.triage", {"total": summary.total, "errors": summary.errors,
-                                          "by_level": summary.by_level})
+        summary = build_summary([p[0] for p in pairs], [p[1] for p in pairs if p[1] is not None])
+        events.publish(
+            "mailbox.triage",
+            {"total": summary.total, "errors": summary.errors, "by_level": summary.by_level},
+        )
         return summary
 
     async def aprocess_maildir(self, path: str | Path) -> TriageSummary:
         """Triage a Maildir (``new/`` + ``cur/``) or a flat folder of message files."""
         messages = await asyncio.to_thread(
-            lambda: list(_read_folder(Path(path), self.max_messages)))
+            lambda: list(_read_folder(Path(path), self.max_messages))
+        )
         return await self._process_many(messages)
 
     def process_maildir(self, path: str | Path) -> TriageSummary:
@@ -321,8 +343,7 @@ class MailboxProcessor:
 
     async def aprocess_mbox(self, path: str | Path) -> TriageSummary:
         """Triage every message in an mbox file."""
-        messages = await asyncio.to_thread(
-            lambda: list(_read_mbox(Path(path), self.max_messages)))
+        messages = await asyncio.to_thread(lambda: list(_read_mbox(Path(path), self.max_messages)))
         return await self._process_many(messages)
 
     def process_mbox(self, path: str | Path) -> TriageSummary:
@@ -362,17 +383,30 @@ class MailboxProcessor:
         if not enabled:
             raise MailboxNetworkDisabled(
                 "IMAP polling needs network access: pass allow_network=True or set "
-                "UNIPHISH_ONLINE=1")
+                "UNIPHISH_ONLINE=1"
+            )
         limit = min(self.max_messages, max_messages or self.max_messages)
-        session = _ImapSession(host, user, password, folder, port=port, use_ssl=ssl,
-                               timeout=timeout, factory=imap_factory)
+        session = _ImapSession(
+            host,
+            user,
+            password,
+            folder,
+            port=port,
+            use_ssl=ssl,
+            timeout=timeout,
+            factory=imap_factory,
+        )
         try:
             await asyncio.to_thread(session.open)
             fetched = await asyncio.to_thread(session.fetch_unseen, since, limit)
             summary = await self._process_many(
-                (f"imap:{folder}/{uid}", raw) for uid, raw in fetched)
-            done = [uid for (uid, _), item in zip(fetched, summary.items, strict=True)
-                    if item.error is None]
+                (f"imap:{folder}/{uid}", raw) for uid, raw in fetched
+            )
+            done = [
+                uid
+                for (uid, _), item in zip(fetched, summary.items, strict=True)
+                if item.error is None
+            ]
             await asyncio.to_thread(session.finalize, done, move_to, mark_seen)
             return summary
         finally:
@@ -387,9 +421,15 @@ def _item_for(source: str, verdict: Verdict, results: list[SinkResult]) -> Triag
     brand = verdict.brand.name if verdict.brand and not verdict.brand.official else None
     subject = verdict.meta.get("subject") if isinstance(verdict.meta, dict) else None
     return TriageItem(
-        source=source, verdict_id=verdict.id, level=verdict.level.value, score=verdict.score,
-        action=verdict.action.value, brand=brand,
-        subject=str(subject) if subject else verdict.target, sinks=list(results))
+        source=source,
+        verdict_id=verdict.id,
+        level=verdict.level.value,
+        score=verdict.score,
+        action=verdict.action.value,
+        brand=brand,
+        subject=str(subject) if subject else verdict.target,
+        sinks=list(results),
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -418,12 +458,15 @@ def _read_folder(root: Path, limit: int) -> Iterable[tuple[str, bytes | Exceptio
     files: list[Path] = []
     if subdirs:  # Maildir layout (tmp/ is in-flight delivery and ignored)
         for sub in subdirs:
-            files += sorted(p for p in sub.iterdir()
-                            if not p.name.startswith(".") and _is_candidate(p))
+            files += sorted(
+                p for p in sub.iterdir() if not p.name.startswith(".") and _is_candidate(p)
+            )
     else:
-        files = sorted(p for p in root.iterdir()
-                       if not p.name.startswith(".") and p.suffix.lower() in _EML_SUFFIXES
-                       and _is_candidate(p))
+        files = sorted(
+            p
+            for p in root.iterdir()
+            if not p.name.startswith(".") and p.suffix.lower() in _EML_SUFFIXES and _is_candidate(p)
+        )
     if len(files) > limit:
         log.warning("%s holds %d messages; processing the first %d", root.name, len(files), limit)
     for path in files[:limit]:
@@ -445,8 +488,10 @@ def _read_mbox(path: Path, limit: int) -> Iterable[tuple[str, bytes | Exception]
                 yield f"{path.name}#{key}", exc
                 continue
             if len(raw) > MAX_EMAIL_BYTES:
-                yield f"{path.name}#{key}", ValueError(
-                    f"message larger than {MAX_EMAIL_BYTES} bytes")
+                yield (
+                    f"{path.name}#{key}",
+                    ValueError(f"message larger than {MAX_EMAIL_BYTES} bytes"),
+                )
             else:
                 yield f"{path.name}#{key}", raw
     finally:
@@ -464,9 +509,18 @@ def _imap_date(value: date | datetime) -> str:
 class _ImapSession:
     """One IMAP login. Methods are blocking and run via ``asyncio.to_thread``."""
 
-    def __init__(self, host: str, user: str, password: str, folder: str, *, port: int | None,
-                 use_ssl: bool, timeout: float,
-                 factory: Callable[[str, int, float], imaplib.IMAP4] | None) -> None:
+    def __init__(
+        self,
+        host: str,
+        user: str,
+        password: str,
+        folder: str,
+        *,
+        port: int | None,
+        use_ssl: bool,
+        timeout: float,
+        factory: Callable[[str, int, float], imaplib.IMAP4] | None,
+    ) -> None:
         self._host, self._user, self._password, self._folder = host, user, password, folder
         self._ssl = use_ssl
         self._port = port or (993 if use_ssl else 143)
@@ -486,8 +540,12 @@ class _ImapSession:
         if self._factory is not None:
             return self._factory(self._host, self._port, self._timeout)
         if self._ssl:
-            return imaplib.IMAP4_SSL(self._host, self._port, timeout=self._timeout,
-                                     ssl_context=_ssl.create_default_context())
+            return imaplib.IMAP4_SSL(
+                self._host,
+                self._port,
+                timeout=self._timeout,
+                ssl_context=_ssl.create_default_context(),
+            )
         return imaplib.IMAP4(self._host, self._port, timeout=self._timeout)
 
     def open(self) -> None:
@@ -506,15 +564,18 @@ class _ImapSession:
                 raise MailboxError(f"cannot select folder {defang(self._folder, 80)!r}")
             with contextlib.suppress(Exception):
                 self._can_move = b"MOVE" in b" ".join(
-                    x if isinstance(x, bytes) else str(x).encode() for x in conn.capabilities)
+                    x if isinstance(x, bytes) else str(x).encode() for x in conn.capabilities
+                )
         except MailboxError:
             raise
         except (imaplib.IMAP4.error, OSError, _ssl.SSLError) as exc:
-            raise MailboxError(f"IMAP {stage} failed: {type(exc).__name__}: "
-                               f"{self._scrub(exc)}") from None
+            raise MailboxError(
+                f"IMAP {stage} failed: {type(exc).__name__}: {self._scrub(exc)}"
+            ) from None
 
-    def fetch_unseen(self, since: date | datetime | None, limit: int
-                     ) -> list[tuple[str, bytes | Exception]]:
+    def fetch_unseen(
+        self, since: date | datetime | None, limit: int
+    ) -> list[tuple[str, bytes | Exception]]:
         conn = self._need()
         criteria = ["UNSEEN"] + (["SINCE", _imap_date(since)] if since else [])
         status, data = conn.uid("SEARCH", None, *criteria)
@@ -552,8 +613,9 @@ class _ImapSession:
             if move_to and not self._can_move and uids:
                 conn.expunge()
         except (imaplib.IMAP4.error, OSError) as exc:
-            raise MailboxError(f"IMAP post-processing failed: {type(exc).__name__}: "
-                               f"{self._scrub(exc)}") from None
+            raise MailboxError(
+                f"IMAP post-processing failed: {type(exc).__name__}: {self._scrub(exc)}"
+            ) from None
 
     def close(self) -> None:
         conn, self._conn = self._conn, None

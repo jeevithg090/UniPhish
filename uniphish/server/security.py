@@ -131,8 +131,9 @@ class RateLimiter:
     bounded amount of memory.
     """
 
-    def __init__(self, per_minute: int, *, max_identities: int = 10_000,
-                 clock=time.monotonic) -> None:
+    def __init__(
+        self, per_minute: int, *, max_identities: int = 10_000, clock=time.monotonic
+    ) -> None:
         self.per_minute = int(per_minute)
         self.capacity = float(max(1, per_minute))
         self.refill_per_s = self.capacity / 60.0
@@ -229,8 +230,7 @@ class ServerMiddleware:
         #    time so tests can tighten MAX_REQUEST_BYTES.
         cl = headers.get("content-length")
         if cl and cl.isdigit() and int(cl) > MAX_REQUEST_BYTES:
-            await self._send_json(send, 413,
-                                  {"detail": "Request body too large."})
+            await self._send_json(send, 413, {"detail": "Request body too large."})
             return
 
         # 2) Rate limiting (skip static/docs assets).
@@ -238,9 +238,11 @@ class ServerMiddleware:
             request = Request(scope, receive)
             if not self.limiter.allow(_identity(request, list(self.settings.api_keys or []))):
                 await self._send_json(
-                    send, status.HTTP_429_TOO_MANY_REQUESTS,
+                    send,
+                    status.HTTP_429_TOO_MANY_REQUESTS,
                     {"detail": "Rate limit exceeded."},
-                    extra={"retry-after": "1"})
+                    extra={"retry-after": "1"},
+                )
                 return
 
         auth_disabled = not self.settings.api_keys
@@ -278,11 +280,11 @@ class ServerMiddleware:
                 raise
             await self._send_json(send, 413, {"detail": "Request body too large."})
 
-    async def _send_json(self, send: Send, code: int, payload: dict[str, str],
-                         extra: dict[str, str] | None = None) -> None:
+    async def _send_json(
+        self, send: Send, code: int, payload: dict[str, str], extra: dict[str, str] | None = None
+    ) -> None:
         body = json.dumps(payload).encode()
-        raw = [(b"content-type", b"application/json"),
-               (b"content-length", str(len(body)).encode())]
+        raw = [(b"content-type", b"application/json"), (b"content-length", str(len(body)).encode())]
         for name, value in SECURITY_HEADERS.items():
             raw.append((name.encode(), value.encode()))
         if not self.settings.api_keys:

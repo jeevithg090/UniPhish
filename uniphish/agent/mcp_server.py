@@ -65,8 +65,15 @@ INSTRUCTIONS = (
 )
 
 #: Tools exposed by the server, in registration order.
-TOOL_NAMES = ("scan_url", "scan_text", "scan_email", "scan_file", "check_content",
-              "check_tool_call", "export_stix")
+TOOL_NAMES = (
+    "scan_url",
+    "scan_text",
+    "scan_email",
+    "scan_file",
+    "check_content",
+    "check_tool_call",
+    "export_stix",
+)
 
 _guard: AgentGuard | None = None
 
@@ -106,22 +113,39 @@ def _defang_target(verdict: Verdict) -> str:
 
 def verdict_payload(verdict: Verdict, *, max_reasons: int = 8) -> dict[str, Any]:
     """Compact, JSON-safe, defanged summary of a verdict (the shape every tool returns)."""
-    reasons = [{
-        "id": s.id, "title": _defang_text(s.title), "detail": _defang_text(s.detail),
-        "weight": s.weight, "contribution": s.contribution, "category": s.category,
-        "severity": s.severity.value if s.severity else None,
-    } for s in verdict.top_signals(max_reasons)]
+    reasons = [
+        {
+            "id": s.id,
+            "title": _defang_text(s.title),
+            "detail": _defang_text(s.detail),
+            "weight": s.weight,
+            "contribution": s.contribution,
+            "category": s.category,
+            "severity": s.severity.value if s.severity else None,
+        }
+        for s in verdict.top_signals(max_reasons)
+    ]
     brand = None
     if verdict.brand is not None:
-        brand = {"id": verdict.brand.brand, "name": verdict.brand.name,
-                 "technique": verdict.brand.technique,
-                 "confidence": round(verdict.brand.confidence, 3),
-                 "official": verdict.brand.official}
-    children = [{
-        "kind": c.kind.value, "level": c.level.value, "score": c.score,
-        "action": c.action.value, "origin": c.origin,
-        "target": _defang_target(c), "summary": _defang_text(c.summary),
-    } for c in verdict.children]
+        brand = {
+            "id": verdict.brand.brand,
+            "name": verdict.brand.name,
+            "technique": verdict.brand.technique,
+            "confidence": round(verdict.brand.confidence, 3),
+            "official": verdict.brand.official,
+        }
+    children = [
+        {
+            "kind": c.kind.value,
+            "level": c.level.value,
+            "score": c.score,
+            "action": c.action.value,
+            "origin": c.origin,
+            "target": _defang_target(c),
+            "summary": _defang_text(c.summary),
+        }
+        for c in verdict.children
+    ]
     return {
         "target": _defang_target(verdict),
         "kind": verdict.kind.value,
@@ -133,13 +157,16 @@ def verdict_payload(verdict: Verdict, *, max_reasons: int = 8) -> dict[str, Any]
         "summary": _defang_text(verdict.summary),
         "brand": brand,
         "techniques": list(verdict.techniques),
-        "mitre": [{"id": m.id, "name": m.name, "tactic": m.tactic,
-                   "framework": m.framework} for m in verdict.mitre],
+        "mitre": [
+            {"id": m.id, "name": m.name, "tactic": m.tactic, "framework": m.framework}
+            for m in verdict.mitre
+        ],
         "reasons": reasons,
         "indicators": [_defang_indicator(i) for i in verdict.all_indicators()],
         "children": children,
-        "analyzers": [{"name": a.name, "status": a.status, "signals": a.signals}
-                      for a in verdict.analyzers],
+        "analyzers": [
+            {"name": a.name, "status": a.status, "signals": a.signals} for a in verdict.analyzers
+        ],
         "engine_version": verdict.engine_version,
     }
 
@@ -169,8 +196,9 @@ def _decode_base64(value: Any, field: str, limit: int) -> bytes:
     return data
 
 
-async def _scan(kind: str, target: Any, *, online: bool = False,
-                filename: str | None = None) -> Verdict:
+async def _scan(
+    kind: str, target: Any, *, online: bool = False, filename: str | None = None
+) -> Verdict:
     """Run the engine over one artifact described by ``kind`` + ``target`` (offline)."""
     engine = get_guard().engine
     opts = _options(online)
@@ -237,8 +265,9 @@ async def scan_file(filename: str, content_base64: str, online: bool = False) ->
     return verdict_payload(verdict)
 
 
-async def check_content(content: str, kind: str = "text",
-                        source: str | None = None) -> dict[str, Any]:
+async def check_content(
+    content: str, kind: str = "text", source: str | None = None
+) -> dict[str, Any]:
     """Guard tool output / fetched web content before the agent consumes it.
 
     Detects prompt injection (including hidden/indirect and obfuscated payloads) plus
@@ -279,8 +308,9 @@ async def check_tool_call(name: str, arguments: dict[str, Any]) -> dict[str, Any
     return decision.to_dict()
 
 
-async def export_stix(kind: str, target: str, online: bool = False,
-                      validate: bool = False) -> dict[str, Any]:
+async def export_stix(
+    kind: str, target: str, online: bool = False, validate: bool = False
+) -> dict[str, Any]:
     """Scan ``target`` and export the verdict as a STIX 2.1 bundle (shareable CTI).
 
     Args:
@@ -302,8 +332,15 @@ async def export_stix(kind: str, target: str, online: bool = False,
 # --------------------------------------------------------------------------- #
 # Server assembly
 # --------------------------------------------------------------------------- #
-_HANDLERS = (scan_url, scan_text, scan_email, scan_file, check_content,
-             check_tool_call, export_stix)
+_HANDLERS = (
+    scan_url,
+    scan_text,
+    scan_email,
+    scan_file,
+    check_content,
+    check_tool_call,
+    export_stix,
+)
 
 
 def build_server() -> Any:

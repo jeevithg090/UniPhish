@@ -13,17 +13,17 @@ import logging
 log = logging.getLogger("uniphish.analyzers")
 
 BUILTIN_MODULES: tuple[str, ...] = (
-    "uniphish.analyzers.url",          # lexical, unicode, brand impersonation, techniques
-    "uniphish.analyzers.ml",           # byte-level CNN (TF-free numpy runtime)
-    "uniphish.analyzers.page",         # HTML structure: forms, brand/title mismatch, obfuscation
-    "uniphish.analyzers.kits",         # phishing-kit / AiTM / ClickFix signature rules
-    "uniphish.analyzers.injection",    # prompt injection aimed at AI agents
-    "uniphish.analyzers.text",         # smishing / chat / social-engineering language
-    "uniphish.analyzers.email",        # headers, auth, sender spoofing, BEC
-    "uniphish.analyzers.file",         # attachments: HTML smuggling, SVG, archives, macros, QR
-    "uniphish.analyzers.reputation",   # local IOC DB, feeds, top-sites, optional VT/urlscan
-    "uniphish.analyzers.infra",        # DNS, RDAP age, TLS certificate, ASN (online)
-    "uniphish.analyzers.fetch",        # SSRF-safe fetch + redirect chain; sandbox detonation
+    "uniphish.analyzers.url",  # lexical, unicode, brand impersonation, techniques
+    "uniphish.analyzers.ml",  # byte-level CNN (TF-free numpy runtime)
+    "uniphish.analyzers.page",  # HTML structure: forms, brand/title mismatch, obfuscation
+    "uniphish.analyzers.kits",  # phishing-kit / AiTM / ClickFix signature rules
+    "uniphish.analyzers.injection",  # prompt injection aimed at AI agents
+    "uniphish.analyzers.text",  # smishing / chat / social-engineering language
+    "uniphish.analyzers.email",  # headers, auth, sender spoofing, BEC
+    "uniphish.analyzers.file",  # attachments: HTML smuggling, SVG, archives, macros, QR
+    "uniphish.analyzers.reputation",  # local IOC DB, feeds, top-sites, optional VT/urlscan
+    "uniphish.analyzers.infra",  # DNS, RDAP age, TLS certificate, ASN (online)
+    "uniphish.analyzers.fetch",  # SSRF-safe fetch + redirect chain; sandbox detonation
 )
 
 _loaded = False

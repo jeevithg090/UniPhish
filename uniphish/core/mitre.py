@@ -46,8 +46,11 @@ CATALOG: dict[str, tuple[str, str, str]] = {
     "T1036.007": ("Masquerading: Double File Extension", "defense-evasion", "attack"),
     "T1027": ("Obfuscated Files or Information", "defense-evasion", "attack"),
     "T1027.006": ("Obfuscated Files or Information: HTML Smuggling", "defense-evasion", "attack"),
-    "T1027.009": ("Obfuscated Files or Information: Embedded Payloads", "defense-evasion",
-                  "attack"),
+    "T1027.009": (
+        "Obfuscated Files or Information: Embedded Payloads",
+        "defense-evasion",
+        "attack",
+    ),
     "T1497": ("Virtualization/Sandbox Evasion", "defense-evasion", "attack"),
     "T1553.005": ("Subvert Trust Controls: Mark-of-the-Web Bypass", "defense-evasion", "attack"),
     "T1564.001": ("Hide Artifacts: Hidden Files and Directories", "defense-evasion", "attack"),
@@ -63,8 +66,11 @@ CATALOG: dict[str, tuple[str, str, str]] = {
     "T1102": ("Web Service", "command-and-control", "attack"),
     "T1071.001": ("Application Layer Protocol: Web Protocols", "command-and-control", "attack"),
     "T1567": ("Exfiltration Over Web Service", "exfiltration", "attack"),
-    "T1567.002": ("Exfiltration Over Web Service: Exfiltration to Cloud Storage", "exfiltration",
-                  "attack"),
+    "T1567.002": (
+        "Exfiltration Over Web Service: Exfiltration to Cloud Storage",
+        "exfiltration",
+        "attack",
+    ),
     # Impact / fraud
     "T1657": ("Financial Theft", "impact", "attack"),
     "T1534": ("Internal Spearphishing", "lateral-movement", "attack"),

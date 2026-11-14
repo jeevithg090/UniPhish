@@ -341,8 +341,9 @@ class DiskCache:
             log.warning("DiskCache[%s].set unserialisable value: %r", self.path.name, exc)
             return False
         if len(encoded.encode("utf-8")) > self.max_value_bytes:
-            log.warning("DiskCache[%s].set value exceeds %d bytes",
-                        self.path.name, self.max_value_bytes)
+            log.warning(
+                "DiskCache[%s].set value exceeds %d bytes", self.path.name, self.max_value_bytes
+            )
             return False
         expires_at = (time.time() + self.ttl) if self.ttl > 0 else float("inf")
 

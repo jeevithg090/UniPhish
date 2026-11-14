@@ -140,19 +140,19 @@ files unless your task says so.
 from uniphish.core.analyzer import Analyzer, AnalyzerResult, AnalysisContext, register
 from uniphish.core.types import Artifact, ArtifactKind, Signal, Indicator, IndicatorType
 
+
 @register
 class PageAnalyzer(Analyzer):
-    name = "page"                                  # unique, short
+    name = "page"  # unique, short
     kinds = frozenset({ArtifactKind.PAGE})
-    stage = 0                                      # 0 static, 10 uses earlier results,
-                                                   # 20 network enrichment, 30 active fetch
+    stage = 0  # 0 static, 10 uses earlier results,
+    # 20 network enrichment, 30 active fetch
     requires_online = False
-    blocking = True                                # CPU-bound -> implement analyze_sync
+    blocking = True  # CPU-bound -> implement analyze_sync
     description = "HTML structure: credential forms, brand/title mismatch, obfuscation"
     signals = {"page.form.password_cross_origin": "Password form posts to another site"}
 
-    def analyze_sync(self, artifact: Artifact, ctx: AnalysisContext) -> AnalyzerResult:
-        ...
+    def analyze_sync(self, artifact: Artifact, ctx: AnalysisContext) -> AnalyzerResult: ...
 ```
 
 * Return `AnalyzerResult(signals=[...], indicators=[...], children=[...], brand=...,

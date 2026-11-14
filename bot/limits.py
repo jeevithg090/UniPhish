@@ -47,14 +47,14 @@ class BotConfig:
     """
 
     token: str | None = field(default=None, repr=False)
-    online: bool = False                 # UNIPHISH_BOT_ONLINE: DNS/RDAP/TLS enrichment
-    fetch_pages: bool = False            # UNIPHISH_BOT_FETCH: fetch linked pages (needs online)
-    ai_note: bool = False                # UNIPHISH_BOT_AI: add an AI analyst note if available
-    rate_limit: int = 10                 # UNIPHISH_BOT_RATE: scans per window per chat
-    rate_window_s: float = 60.0          # UNIPHISH_BOT_RATE_WINDOW
-    max_file_bytes: int = 5_000_000      # UNIPHISH_BOT_MAX_FILE_BYTES
-    max_concurrent_scans: int = 4        # UNIPHISH_BOT_CONCURRENCY
-    allowed_chats: frozenset[int] = frozenset()   # UNIPHISH_BOT_ALLOWED_CHATS (empty = all)
+    online: bool = False  # UNIPHISH_BOT_ONLINE: DNS/RDAP/TLS enrichment
+    fetch_pages: bool = False  # UNIPHISH_BOT_FETCH: fetch linked pages (needs online)
+    ai_note: bool = False  # UNIPHISH_BOT_AI: add an AI analyst note if available
+    rate_limit: int = 10  # UNIPHISH_BOT_RATE: scans per window per chat
+    rate_window_s: float = 60.0  # UNIPHISH_BOT_RATE_WINDOW
+    max_file_bytes: int = 5_000_000  # UNIPHISH_BOT_MAX_FILE_BYTES
+    max_concurrent_scans: int = 4  # UNIPHISH_BOT_CONCURRENCY
+    allowed_chats: frozenset[int] = frozenset()  # UNIPHISH_BOT_ALLOWED_CHATS (empty = all)
 
     @classmethod
     def from_env(cls) -> BotConfig:
@@ -81,7 +81,7 @@ class RateDecision:
 
     allowed: bool
     retry_after: float = 0.0
-    notify: bool = False   # True only for the first denial in a window (avoid reply spam)
+    notify: bool = False  # True only for the first denial in a window (avoid reply spam)
 
 
 class RateLimiter:
@@ -91,9 +91,14 @@ class RateLimiter:
     (least-recently-seen eviction) so an attacker rotating chat ids cannot grow memory.
     """
 
-    def __init__(self, max_events: int = 10, window_s: float = 60.0, *,
-                 max_chats: int = 10_000,
-                 clock: Callable[[], float] = time.monotonic) -> None:
+    def __init__(
+        self,
+        max_events: int = 10,
+        window_s: float = 60.0,
+        *,
+        max_chats: int = 10_000,
+        clock: Callable[[], float] = time.monotonic,
+    ) -> None:
         self.max_events = max_events
         self.window_s = window_s
         self.max_chats = max(1, max_chats)

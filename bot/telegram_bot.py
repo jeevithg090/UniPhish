@@ -57,26 +57,32 @@ if TYPE_CHECKING:  # pragma: no cover
 
 log = logging.getLogger("uniphish.bot")
 
-INSTALL_HINT = ('python-telegram-bot is not installed. Install the bot extra: '
-                'pip install "uniphish[bot]"  (or pip install "python-telegram-bot>=21")')
+INSTALL_HINT = (
+    "python-telegram-bot is not installed. Install the bot extra: "
+    'pip install "uniphish[bot]"  (or pip install "python-telegram-bot>=21")'
+)
 SERVICE_KEY = "uniphish.service"
 MIN_INLINE_CHARS = 8
 
 _WELCOME = {
-    "en": ("UniPhish checks links, messages and emails for phishing.\n\n"
-           "Send or forward me a suspicious link or message, or upload an .eml / .html "
-           "file or a screenshot with a QR code. I reply with a risk verdict, the brand "
-           "being impersonated, why, and what to do. Links in my replies are always "
-           "defanged, so they are never clickable.\n\n"
-           "In groups, reply to a message with /check. I do not store what you send."),
+    "en": (
+        "UniPhish checks links, messages and emails for phishing.\n\n"
+        "Send or forward me a suspicious link or message, or upload an .eml / .html "
+        "file or a screenshot with a QR code. I reply with a risk verdict, the brand "
+        "being impersonated, why, and what to do. Links in my replies are always "
+        "defanged, so they are never clickable.\n\n"
+        "In groups, reply to a message with /check. I do not store what you send."
+    ),
 }
-_HELP = ("<b>UniPhish</b>\n"
-         "• Send / forward text or a link: I scan the whole message.\n"
-         "• Upload .eml, .html, any file, or a photo with a QR code.\n"
-         "• In groups: /check (as a reply, or /check &lt;text&gt;).\n"
-         "• Inline: type @botname &lt;link&gt; in any chat.\n\n"
-         "Verdicts: \U0001f534 likely phishing, \U0001f7e0 suspicious, \U0001f7e2 no threat "
-         "found (not a guarantee). Never share passwords or one-time codes.")
+_HELP = (
+    "<b>UniPhish</b>\n"
+    "• Send / forward text or a link: I scan the whole message.\n"
+    "• Upload .eml, .html, any file, or a photo with a QR code.\n"
+    "• In groups: /check (as a reply, or /check &lt;text&gt;).\n"
+    "• Inline: type @botname &lt;link&gt; in any chat.\n\n"
+    "Verdicts: \U0001f534 likely phishing, \U0001f7e0 suspicious, \U0001f7e2 no threat "
+    "found (not a guarantee). Never share passwords or one-time codes."
+)
 _RATE_MSG = "Too many requests, please wait {n} s and try again."
 _TOO_BIG_MSG = "That file is too large to scan (limit {mb:.1f} MB)."
 _DOWNLOAD_FAIL_MSG = "I could not download that file. Please try again."
@@ -101,28 +107,43 @@ class BotService:
             self._sem = asyncio.Semaphore(self.config.max_concurrent_scans)
         return self._sem
 
-    async def scan_text(self, text: str, *, lang: str | None,
-                        extra_urls: tuple[str, ...] = ()) -> ReplyCard:
+    async def scan_text(
+        self, text: str, *, lang: str | None, extra_urls: tuple[str, ...] = ()
+    ) -> ReplyCard:
         """Run the (blocking) engine in a worker thread, bounded by the semaphore."""
         cfg = self.config
         async with self.sem:
             card, verdict = await asyncio.to_thread(
-                build_reply_with_verdict, text, lang=lang, extra_urls=extra_urls,
-                online=cfg.online, fetch_pages=cfg.fetch_pages)
+                build_reply_with_verdict,
+                text,
+                lang=lang,
+                extra_urls=extra_urls,
+                online=cfg.online,
+                fetch_pages=cfg.fetch_pages,
+            )
         return await self._annotate(card, verdict)
 
-    async def scan_file(self, data: bytes, filename: str | None, *,
-                        lang: str | None) -> ReplyCard:
+    async def scan_file(self, data: bytes, filename: str | None, *, lang: str | None) -> ReplyCard:
         cfg = self.config
         async with self.sem:
             return await asyncio.to_thread(
-                build_file_reply, data, filename, lang=lang, online=cfg.online,
-                fetch_pages=cfg.fetch_pages)
+                build_file_reply,
+                data,
+                filename,
+                lang=lang,
+                online=cfg.online,
+                fetch_pages=cfg.fetch_pages,
+            )
 
     async def _annotate(self, card: ReplyCard, verdict: Any) -> ReplyCard:
         """Optionally add a defanged AI analyst note; failures never affect the verdict."""
-        if not (self.config.ai_note and verdict is not None and card.is_threat
-                and self.analyst is not None and getattr(self.analyst, "available", False)):
+        if not (
+            self.config.ai_note
+            and verdict is not None
+            and card.is_threat
+            and self.analyst is not None
+            and getattr(self.analyst, "available", False)
+        ):
             return card
         try:
             note = await self.analyst.narrative(verdict)
@@ -157,8 +178,10 @@ def _lang_of(update: Update) -> str | None:
 
 async def _reply_card(message: Message, card: ReplyCard) -> None:
     await message.reply_text(
-        card.to_html(), parse_mode=ParseMode.HTML,
-        link_preview_options=LinkPreviewOptions(is_disabled=True))
+        card.to_html(),
+        parse_mode=ParseMode.HTML,
+        link_preview_options=LinkPreviewOptions(is_disabled=True),
+    )
 
 
 async def _gate(update: Update, svc: BotService) -> bool:
@@ -188,8 +211,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_message:
         await update.effective_message.reply_text(
-            _HELP, parse_mode=ParseMode.HTML,
-            link_preview_options=LinkPreviewOptions(is_disabled=True))
+            _HELP,
+            parse_mode=ParseMode.HTML,
+            link_preview_options=LinkPreviewOptions(is_disabled=True),
+        )
 
 
 async def on_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -230,8 +255,14 @@ async def _download(file_obj: Any, svc: BotService) -> bytes | None:
     return data if len(data) <= svc.config.max_file_bytes else b""
 
 
-async def _scan_upload(update: Update, context: ContextTypes.DEFAULT_TYPE, *,
-                       tg_file: Any, size: int | None, filename: str | None) -> None:
+async def _scan_upload(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    *,
+    tg_file: Any,
+    size: int | None,
+    filename: str | None,
+) -> None:
     svc = _service(context)
     message = update.effective_message
     if message is None or not await _gate(update, svc):
@@ -254,8 +285,7 @@ async def _scan_upload(update: Update, context: ContextTypes.DEFAULT_TYPE, *,
 async def on_document(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     doc = update.effective_message.document if update.effective_message else None
     if doc is not None:
-        await _scan_upload(update, context, tg_file=doc, size=doc.file_size,
-                           filename=doc.file_name)
+        await _scan_upload(update, context, tg_file=doc, size=doc.file_size, filename=doc.file_name)
 
 
 async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -264,8 +294,7 @@ async def on_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if message is None or not message.photo:
         return
     best = message.photo[-1]
-    await _scan_upload(update, context, tg_file=best, size=best.file_size,
-                       filename="photo.jpg")
+    await _scan_upload(update, context, tg_file=best, size=best.file_size, filename="photo.jpg")
 
 
 async def on_inline(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -280,10 +309,15 @@ async def on_inline(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     card = await svc.scan_text(text, lang=query.from_user.language_code)
     result = InlineQueryResultArticle(
-        id=(card.verdict_id or "0")[:64], title=f"{card.emoji} {card.headline}",
-        description=f"{card.score}/100", input_message_content=InputTextMessageContent(
-            card.to_html(), parse_mode=ParseMode.HTML,
-            link_preview_options=LinkPreviewOptions(is_disabled=True)))
+        id=(card.verdict_id or "0")[:64],
+        title=f"{card.emoji} {card.headline}",
+        description=f"{card.score}/100",
+        input_message_content=InputTextMessageContent(
+            card.to_html(),
+            parse_mode=ParseMode.HTML,
+            link_preview_options=LinkPreviewOptions(is_disabled=True),
+        ),
+    )
     await query.answer([result], cache_time=30, is_personal=True)
 
 
@@ -333,8 +367,12 @@ def main() -> None:
 
         analyst = AIAnalyst()
     app = build_application(cfg, analyst=analyst)
-    log.info("UniPhish bot polling (online=%s, rate=%s/%ss)", cfg.online, cfg.rate_limit,
-             cfg.rate_window_s)
+    log.info(
+        "UniPhish bot polling (online=%s, rate=%s/%ss)",
+        cfg.online,
+        cfg.rate_limit,
+        cfg.rate_window_s,
+    )
     app.run_polling(allowed_updates=[Update.MESSAGE, Update.INLINE_QUERY])
 
 

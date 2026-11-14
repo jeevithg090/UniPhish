@@ -130,12 +130,12 @@ def test_encode_pads_short_and_truncates_long(m: UrlModel) -> None:
     assert seq.shape == (2, MAX_LEN)
     assert seq.dtype == np.uint8
     assert list(seq[0, :2]) == [ord("a"), ord("b")]
-    assert np.all(seq[0, 2:] == 0)                 # zero-padded
-    assert np.all(seq[1] == ord("x"))              # truncated to 600, no padding
+    assert np.all(seq[0, 2:] == 0)  # zero-padded
+    assert np.all(seq[1] == ord("x"))  # truncated to 600, no padding
 
 
 def test_multibyte_encoding_matches_utf8(m: UrlModel) -> None:
-    url = "https://пример.example/"              # Cyrillic (2 bytes/char)
+    url = "https://пример.example/"  # Cyrillic (2 bytes/char)
     seq = m.encode([url])[0]
     raw = url.encode("utf-8")[:MAX_LEN]
     assert list(seq[: len(raw)]) == list(raw)
@@ -156,7 +156,7 @@ def test_predict_seq_rejects_wrong_width(m: UrlModel) -> None:
 # Temperature calibration
 # --------------------------------------------------------------------------- #
 def test_temperature_softens_but_preserves_ranking() -> None:
-    hot = UrlModel()                                 # T = 1
+    hot = UrlModel()  # T = 1
     cool = UrlModel(temperature=4.0)
     urls = [BENIGN, PHISH, "a.co", "http://login.example.test/verify"]
     # logits are temperature-independent
@@ -225,7 +225,7 @@ def test_saliency_empty_url(m: UrlModel) -> None:
 
 
 def test_saliency_byte_offsets_are_multibyte_aware(m: UrlModel) -> None:
-    url = "http://пример.example/"              # Cyrillic chars are 2 bytes each
+    url = "http://пример.example/"  # Cyrillic chars are 2 bytes each
     sal = occlusion_saliency(url, m)
     # offsets are contiguous and match cumulative UTF-8 lengths
     pos = 0
@@ -269,7 +269,7 @@ def test_top_spans_highlights_phish_in_logit_space(m: UrlModel) -> None:
     # Probability space saturates (nothing to show); logit space (the default) must find
     # the incriminating region of a confidently-flagged URL.
     assert top_spans(PHISH, on="prob", model=m) == []
-    spans = top_spans(PHISH, k=3, model=m)                 # on="logit" by default
+    spans = top_spans(PHISH, k=3, model=m)  # on="logit" by default
     assert spans, "logit-space highlighting should surface the phishing tokens"
     assert all(isinstance(sp, SalientSpan) and sp.space == "logit" for sp in spans)
     assert len(spans) <= 3

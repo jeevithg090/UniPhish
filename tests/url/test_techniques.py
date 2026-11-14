@@ -15,21 +15,24 @@ def test_every_technique_maps_to_catalog_ids():
         assert all(i in CATALOG for i in ids), (tech, ids)
 
 
-@pytest.mark.parametrize("url,primary", [
-    ("https://pаypal.com/", "homoglyph"),
-    ("https://paypa1.com/", "typosquat"),
-    ("https://paypal-secure.test/", "combosquat"),
-    ("https://paypal.com.evil.test/", "subdomain_stuffing"),
-    ("http://203.0.113.5/x", "ip_host"),
-    ("http://0xCB007105/x", "ip_obfuscation"),
-    ("https://bit.ly/abc", "url_shortener"),
-    ("https://evil.duckdns.org/x", "dynamic_dns"),
-    ("https://paypal.com@evil.example/", "at_redirect"),
-    ("data:text/html,hello", "data_uri"),
-    ("https://a.b.c.d.evil.test/", "excessive_subdomains"),
-    ("https://site.test/go?next=https://other.example/a", "open_redirect_abuse"),
-    ("https://example.top/", "suspicious_tld"),
-])
+@pytest.mark.parametrize(
+    "url,primary",
+    [
+        ("https://pаypal.com/", "homoglyph"),
+        ("https://paypa1.com/", "typosquat"),
+        ("https://paypal-secure.test/", "combosquat"),
+        ("https://paypal.com.evil.test/", "subdomain_stuffing"),
+        ("http://203.0.113.5/x", "ip_host"),
+        ("http://0xCB007105/x", "ip_obfuscation"),
+        ("https://bit.ly/abc", "url_shortener"),
+        ("https://evil.duckdns.org/x", "dynamic_dns"),
+        ("https://paypal.com@evil.example/", "at_redirect"),
+        ("data:text/html,hello", "data_uri"),
+        ("https://a.b.c.d.evil.test/", "excessive_subdomains"),
+        ("https://site.test/go?next=https://other.example/a", "open_redirect_abuse"),
+        ("https://example.top/", "suspicious_tld"),
+    ],
+)
 def test_primary_technique(url, primary):
     r = classify(url)
     assert r.primary == primary, r

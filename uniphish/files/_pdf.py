@@ -45,7 +45,7 @@ def _inflate_streams(data: bytes) -> bytes:
     for n, m in enumerate(_STREAM_RE.finditer(data)):
         if n >= _MAX_STREAMS or total >= _MAX_TOTAL_OUT:
             break
-        chunk = data[m.end():m.end() + 2_000_000]
+        chunk = data[m.end() : m.end() + 2_000_000]
         d = zlib.decompressobj()
         try:
             res = d.decompress(chunk, _MAX_STREAM_OUT)
@@ -69,26 +69,47 @@ def analyze_pdf(data: bytes, f: Findings) -> None:
         # Only meaningful when unescaping actually revealed a keyword we care about.
         revealed = any(counts[k] for k in ("JS", "JavaScript", "Launch", "OpenAction"))
         if revealed and any(
-                not rx.search(raw) for k, rx in _TOKENS.items()
-                if k in ("JS", "JavaScript", "Launch", "OpenAction") and counts[k]):
-            f.add("file.pdf.obfuscated_names",
-                  "Keywords such as /JavaScript or /OpenAction are hex-escaped (#xx) to "
-                  "evade simple scanners.")
+            not rx.search(raw)
+            for k, rx in _TOKENS.items()
+            if k in ("JS", "JavaScript", "Launch", "OpenAction") and counts[k]
+        ):
+            f.add(
+                "file.pdf.obfuscated_names",
+                "Keywords such as /JavaScript or /OpenAction are hex-escaped (#xx) to "
+                "evade simple scanners.",
+            )
     if counts["OpenAction"] or counts["AA"]:
-        f.add("file.pdf.open_action", "An /OpenAction or /AA entry runs when the PDF is opened.",
-              open_action=counts["OpenAction"], additional_actions=counts["AA"])
+        f.add(
+            "file.pdf.open_action",
+            "An /OpenAction or /AA entry runs when the PDF is opened.",
+            open_action=counts["OpenAction"],
+            additional_actions=counts["AA"],
+        )
     if counts["JS"] or counts["JavaScript"]:
-        f.add("file.pdf.javascript", "The PDF contains embedded JavaScript (/JS, /JavaScript).",
-              js=counts["JS"], javascript=counts["JavaScript"])
+        f.add(
+            "file.pdf.javascript",
+            "The PDF contains embedded JavaScript (/JS, /JavaScript).",
+            js=counts["JS"],
+            javascript=counts["JavaScript"],
+        )
     if counts["Launch"]:
-        f.add("file.pdf.launch", "A /Launch action can start an external program or file.",
-              launch=counts["Launch"])
+        f.add(
+            "file.pdf.launch",
+            "A /Launch action can start an external program or file.",
+            launch=counts["Launch"],
+        )
     if counts["EmbeddedFile"]:
-        f.add("file.pdf.embedded_file", "The PDF embeds another file (/EmbeddedFile).",
-              embedded=counts["EmbeddedFile"])
+        f.add(
+            "file.pdf.embedded_file",
+            "The PDF embeds another file (/EmbeddedFile).",
+            embedded=counts["EmbeddedFile"],
+        )
     if counts["SubmitForm"]:
-        f.add("file.pdf.submit_form", "A form action submits data to a remote server.",
-              submit_form=counts["SubmitForm"])
+        f.add(
+            "file.pdf.submit_form",
+            "A form action submits data to a remote server.",
+            submit_form=counts["SubmitForm"],
+        )
     uris = [m.group(1).decode("latin-1") for m in _URI_RE.finditer(view)][:200]
     if uris:
         for u in uris:

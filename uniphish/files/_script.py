@@ -13,25 +13,45 @@ import re
 from uniphish.files._common import MAX_SCAN_BYTES, Findings
 
 _PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
-    ("powershell_encoded", re.compile(
-        r"(?i)powershell(?:\.exe)?[^\r\n]{0,200}?\s-e(?:nc(?:odedcommand)?)?\s+[A-Za-z0-9+/=]{20,}")),
-    ("download_cradle", re.compile(
-        r"(?i)\b(?:downloadstring|downloadfile|invoke-webrequest|iwr|invoke-restmethod|"
-        r"start-bitstransfer|net\.webclient|msxml2\.xmlhttp|winhttp\.winhttprequest)\b")),
+    (
+        "powershell_encoded",
+        re.compile(
+            r"(?i)powershell(?:\.exe)?[^\r\n]{0,200}?\s-e(?:nc(?:odedcommand)?)?\s+[A-Za-z0-9+/=]{20,}"
+        ),
+    ),
+    (
+        "download_cradle",
+        re.compile(
+            r"(?i)\b(?:downloadstring|downloadfile|invoke-webrequest|iwr|invoke-restmethod|"
+            r"start-bitstransfer|net\.webclient|msxml2\.xmlhttp|winhttp\.winhttprequest)\b"
+        ),
+    ),
     ("invoke_expression", re.compile(r"(?i)\b(?:invoke-expression|iex)\b\s*[(\s$]")),
     ("hidden_window", re.compile(r"(?i)-w(?:indowstyle)?\s+hidden|-nop\b|-noni\b")),
     ("certutil_download", re.compile(r"(?i)certutil[^\r\n]{0,80}-urlcache")),
     ("bitsadmin", re.compile(r"(?i)\bbitsadmin\b[^\r\n]{0,80}/transfer")),
     ("mshta", re.compile(r"(?i)\bmshta(?:\.exe)?\s+[\"']?(?:https?:|vbscript:|javascript:)")),
     ("regsvr32_remote", re.compile(r"(?i)regsvr32[^\r\n]{0,80}/i:https?://")),
-    ("wscript_shell", re.compile(
-        r"(?i)wscript\.shell|shell\.application|scripting\.filesystemobject")),
+    (
+        "wscript_shell",
+        re.compile(r"(?i)wscript\.shell|shell\.application|scripting\.filesystemobject"),
+    ),
     ("base64_decode", re.compile(r"(?i)frombase64string|certutil[^\r\n]{0,40}-decode")),
     ("rundll32", re.compile(r"(?i)\brundll32(?:\.exe)?\s+[\w\\.:/-]{1,100},")),
     ("cmd_interpreter", re.compile(r"(?i)\bcmd(?:\.exe)?\s+/[ck]\b")),
 )
-_INTERPRETERS = ("powershell", "cmd.exe", "cmd /c", "mshta", "wscript", "cscript", "rundll32",
-                 "regsvr32", "bitsadmin", "certutil")
+_INTERPRETERS = (
+    "powershell",
+    "cmd.exe",
+    "cmd /c",
+    "mshta",
+    "wscript",
+    "cscript",
+    "rundll32",
+    "regsvr32",
+    "bitsadmin",
+    "certutil",
+)
 
 
 def decode_text(data: bytes) -> str:
@@ -59,16 +79,21 @@ def analyze_script(data: bytes, f: Findings) -> None:
     f.add_urls_from_text(text)
     hits = scan_commands(text)
     if hits:
-        f.add("file.script.suspicious_commands",
-              f"Script contains download/execution patterns: {', '.join(hits[:6])}.",
-              patterns=hits)
+        f.add(
+            "file.script.suspicious_commands",
+            f"Script contains download/execution patterns: {', '.join(hits[:6])}.",
+            patterns=hits,
+        )
 
 
 def analyze_lnk(data: bytes, f: Findings) -> None:
     """Pull ASCII and UTF-16 strings out of a shortcut and look for interpreter commands."""
     blob = data[:1_000_000]
-    texts = [blob.decode("latin-1"), blob.decode("utf-16-le", "ignore"),
-             blob[1:].decode("utf-16-le", "ignore")]
+    texts = [
+        blob.decode("latin-1"),
+        blob.decode("utf-16-le", "ignore"),
+        blob[1:].decode("utf-16-le", "ignore"),
+    ]
     hits: list[str] = []
     for t in texts:
         f.add_urls_from_text(t)
@@ -78,7 +103,10 @@ def analyze_lnk(data: bytes, f: Findings) -> None:
     low = " ".join(texts).lower()
     interp = [i for i in _INTERPRETERS if i in low]
     if hits or interp:
-        f.add("file.lnk.command",
-              "The shortcut embeds an interpreter command line"
-              + (f" ({', '.join(interp[:4])})." if interp else "."),
-              interpreters=interp, patterns=hits)
+        f.add(
+            "file.lnk.command",
+            "The shortcut embeds an interpreter command line"
+            + (f" ({', '.join(interp[:4])})." if interp else "."),
+            interpreters=interp,
+            patterns=hits,
+        )

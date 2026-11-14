@@ -243,7 +243,8 @@ def generate(src_dir: Path, out_dir: Path) -> dict[str, int]:
         "confusables.json.gz": _write_gzip_json(out_dir / "confusables.json.gz", confusables),
         "scripts.json.gz": _write_gzip_json(out_dir / "scripts.json.gz", scripts),
         "identifier_status.json.gz": _write_gzip_json(
-            out_dir / "identifier_status.json.gz", identifier),
+            out_dir / "identifier_status.json.gz", identifier
+        ),
     }
     (out_dir / "VERSION").write_text(version + "\n", encoding="utf-8")
     sizes["confusable_mappings"] = len(confusables["map"])
@@ -252,12 +253,14 @@ def generate(src_dir: Path, out_dir: Path) -> dict[str, int]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--src", type=Path, help="directory holding the raw Unicode .txt files")
     ap.add_argument("--out", type=Path, required=True, help="output asset directory")
-    ap.add_argument("--download", action="store_true",
-                    help="fetch the source files first (build machines only)")
+    ap.add_argument(
+        "--download", action="store_true", help="fetch the source files first (build machines only)"
+    )
     args = ap.parse_args(argv)
 
     if args.download:

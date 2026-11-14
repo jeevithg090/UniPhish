@@ -19,9 +19,9 @@ from uniphish.hunt.ct import (
 from uniphish.store import Store
 
 LOOKALIKES = {
-    "paypa1.test": "paypal",                    # digit typo
-    "xn--pypal-4ve.test": "paypal",             # IDN homoglyph
-    "secure-paypal-login.test": "paypal",       # combosquat
+    "paypa1.test": "paypal",  # digit typo
+    "xn--pypal-4ve.test": "paypal",  # IDN homoglyph
+    "secure-paypal-login.test": "paypal",  # combosquat
     "apple-id-verify.test": "apple",
     "micr0soft-support.test": "microsoft",
 }
@@ -43,25 +43,46 @@ def hunter(store):
 # --------------------------------------------------------------------------- #
 # parsing
 # --------------------------------------------------------------------------- #
-@pytest.mark.parametrize("raw,expected", [
-    ("Example.COM.", "example.com"),
-    ("*.login.Example.com", "login.example.com"),
-    ("  a.b.test ", "a.b.test"),
-    ("pаypal.test", "xn--pypal-4ve.test"),      # Cyrillic а
-    ("localhost", None), ("1.2.3.4", None), ("a@b.com", None), ("http://x.com", None),
-    ("a b.com", None), ("-a.com", None), ("a" * 64 + ".com", None), ("", None), (None, None),
-    ("a." + "b" * 250 + ".com", None), ("[::1]", None), ("x.123", None), (42, None),
-])
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        ("Example.COM.", "example.com"),
+        ("*.login.Example.com", "login.example.com"),
+        ("  a.b.test ", "a.b.test"),
+        ("pаypal.test", "xn--pypal-4ve.test"),  # Cyrillic а
+        ("localhost", None),
+        ("1.2.3.4", None),
+        ("a@b.com", None),
+        ("http://x.com", None),
+        ("a b.com", None),
+        ("-a.com", None),
+        ("a" * 64 + ".com", None),
+        ("", None),
+        (None, None),
+        ("a." + "b" * 250 + ".com", None),
+        ("[::1]", None),
+        ("x.123", None),
+        (42, None),
+    ],
+)
 def test_clean_domain(raw, expected):
     assert clean_domain(raw) == expected
 
 
 def test_parse_certstream_message():
-    msg = {"message_type": "certificate_update", "data": {
-        "seen": 1.7e9, "source": {"name": "Argon"},
-        "leaf_cert": {"all_domains": ["*.paypa1.test", "paypa1.test", "bad domain", "x"],
-                      "issuer": {"O": "Test CA"}, "not_before": 1700000000,
-                      "fingerprint": "AA:BB"}}}
+    msg = {
+        "message_type": "certificate_update",
+        "data": {
+            "seen": 1.7e9,
+            "source": {"name": "Argon"},
+            "leaf_cert": {
+                "all_domains": ["*.paypa1.test", "paypa1.test", "bad domain", "x"],
+                "issuer": {"O": "Test CA"},
+                "not_before": 1700000000,
+                "fingerprint": "AA:BB",
+            },
+        },
+    }
     out = parse_record(msg)
     assert [d for d, _ in out] == ["paypa1.test", "paypa1.test"]
     meta = out[0][1]
@@ -101,8 +122,12 @@ class FakeWS:
 
 
 def _cert(*domains):
-    return json.dumps({"message_type": "certificate_update", "data": {
-        "leaf_cert": {"all_domains": list(domains)}}})
+    return json.dumps(
+        {
+            "message_type": "certificate_update",
+            "data": {"leaf_cert": {"all_domains": list(domains)}},
+        }
+    )
 
 
 def _connector(script):
@@ -126,21 +151,33 @@ async def _nosleep(_):
 
 
 def test_stream_reconnects_after_failures_and_closure():
-    conn = _connector([ConnectionError("boom"),
-                       FakeWS([_cert("a.test"), "not json", b'{"message_type":"heartbeat"}']),
-                       FakeWS([_cert("b.test", "c.test")])])
+    conn = _connector(
+        [
+            ConnectionError("boom"),
+            FakeWS([_cert("a.test"), "not json", b'{"message_type":"heartbeat"}']),
+            FakeWS([_cert("b.test", "c.test")]),
+        ]
+    )
     got: list[str] = []
-    n = asyncio.run(stream_certstream(lambda d, m: got.append(d), connect=conn, max_certs=3,
-                                      sleep=_nosleep, backoff_base_s=0.0))
+    n = asyncio.run(
+        stream_certstream(
+            lambda d, m: got.append(d),
+            connect=conn,
+            max_certs=3,
+            sleep=_nosleep,
+            backoff_base_s=0.0,
+        )
+    )
     assert n == 3 and got == ["a.test", "b.test", "c.test"]
     assert len(conn.calls) == 3
-    assert conn.calls[0][1]["max_size"] == 1 << 20      # bounded frames
+    assert conn.calls[0][1]["max_size"] == 1 << 20  # bounded frames
 
 
 def test_stream_gives_up_after_max_reconnects():
     conn = _connector([OSError("down")])
-    n = asyncio.run(stream_certstream(lambda d, m: None, connect=conn, max_reconnects=2,
-                                      sleep=_nosleep))
+    n = asyncio.run(
+        stream_certstream(lambda d, m: None, connect=conn, max_reconnects=2, sleep=_nosleep)
+    )
     assert n == 0 and len(conn.calls) == 3
 
 
@@ -154,8 +191,9 @@ def test_stream_idle_timeout_triggers_reconnect_and_stop_event():
             got.append(d)
             stop.set()
 
-        n = await stream_certstream(cb, connect=conn, stop=stop, idle_timeout_s=0.05,
-                                    sleep=_nosleep)
+        n = await stream_certstream(
+            cb, connect=conn, stop=stop, idle_timeout_s=0.05, sleep=_nosleep
+        )
         return n, got, len(conn.calls)
 
     assert asyncio.run(main()) == (1, ["z.test"], 2)
@@ -166,8 +204,9 @@ def test_stream_stop_while_blocked_on_socket():
         stop = asyncio.Event()
         conn = _connector([FakeWS([], then="hang")])
         asyncio.get_running_loop().call_later(0.05, stop.set)
-        return await asyncio.wait_for(stream_certstream(lambda d, m: None, connect=conn,
-                                                        stop=stop), 5)
+        return await asyncio.wait_for(
+            stream_certstream(lambda d, m: None, connect=conn, stop=stop), 5
+        )
 
     assert asyncio.run(main()) == 0
 
@@ -183,13 +222,19 @@ def test_stream_rejects_insecure_and_bad_source():
 
 def test_sample_replay_file(tmp_path):
     f = tmp_path / "s.jsonl"
-    f.write_text('{"domain": "paypa1.test", "issuer": "T"}\n\n"x.example.test"\n'
-                 'garbage{\n{"domains": ["a.test", "*.b.test"]}\nplain.test\n')
+    f.write_text(
+        '{"domain": "paypa1.test", "issuer": "T"}\n\n"x.example.test"\n'
+        'garbage{\n{"domains": ["a.test", "*.b.test"]}\nplain.test\n'
+    )
     got = []
-    n = asyncio.run(stream_certstream(lambda d, m: got.append((d, m)), source="sample",
-                                      path=f))
-    assert [d for d, _ in got] == ["paypa1.test", "x.example.test", "a.test", "b.test",
-                                    "plain.test"][:n]
+    n = asyncio.run(stream_certstream(lambda d, m: got.append((d, m)), source="sample", path=f))
+    assert [d for d, _ in got] == [
+        "paypa1.test",
+        "x.example.test",
+        "a.test",
+        "b.test",
+        "plain.test",
+    ][:n]
     assert got[0][1]["source"] == "sample" and got[0][1]["issuer"] == "T"
 
 
@@ -239,6 +284,7 @@ def test_fresh_cert_raises_recorded_score(store):
 
 def test_freshness_from_cert_timestamp(store):
     import time
+
     h = CTHunter(store=store)
     now = time.time()
     assert h._is_fresh({"not_before": now - 60}, None)
@@ -262,14 +308,14 @@ def test_watch_brands_filter(store):
 
 def test_high_score_non_brand_domain_respects_threshold(store):
     h = CTHunter(store=store, threshold=10, brand_floor=100)
-    hit = h.process("kitchen-recipes.test", fresh=True)   # 12 >= 10, no brand
+    hit = h.process("kitchen-recipes.test", fresh=True)  # 12 >= 10, no brand
     assert hit and hit.brand is None and hit.reason == "score"
     assert CTHunter(store=Store(":memory:"), threshold=90).process("blog.example.org") is None
 
 
 def test_dedup_and_invalid(hunter, store):
     assert hunter.process("paypa1.test")
-    assert hunter.process("PAYPA1.test.") is None          # same host, normalised
+    assert hunter.process("PAYPA1.test.") is None  # same host, normalised
     assert hunter.process("*.paypa1.test") is None
     assert hunter.process("not a domain") is None
     assert len(store.recent_hunt_events()) == 1
@@ -327,19 +373,28 @@ def test_no_bus_event_for_benign(hunter):
 
 
 def test_run_sample_end_to_end(store):
-    h = CTHunter(store=store, workers=2, queue_size=2)     # tiny queue: back-pressure, no loss
+    h = CTHunter(store=store, workers=2, queue_size=2)  # tiny queue: back-pressure, no loss
     stats = asyncio.run(h.run("sample"))
     assert stats.recorded >= 5 and stats.errors == 0 and stats.dropped_queue_full == 0
     brands = {r["brand"] for r in store.recent_hunt_events()}
     assert {"paypal", "microsoft", "apple"} <= brands
-    assert stats.duplicates >= 1                             # paypa1.test repeats in the sample
+    assert stats.duplicates >= 1  # paypa1.test repeats in the sample
     assert stats.to_dict()["by_brand"]["paypal"] >= 1
     json.dumps(stats.to_dict())
 
 
 def test_run_certstream_fake_ws_max_domains(store):
-    conn = _connector([FakeWS([_cert("paypa1.test", "my-garden-shop.test"),
-                               _cert("apple-id-verify.test"), _cert("late.test")])])
+    conn = _connector(
+        [
+            FakeWS(
+                [
+                    _cert("paypa1.test", "my-garden-shop.test"),
+                    _cert("apple-id-verify.test"),
+                    _cert("late.test"),
+                ]
+            )
+        ]
+    )
     h = CTHunter(store=store, workers=1)
     stats = asyncio.run(h.run("certstream", connect=conn, max_domains=3))
     assert stats.seen == 3 and stats.recorded == 2
@@ -373,7 +428,7 @@ def test_engine_failure_is_isolated(store):
     async def boom(*a, **k):
         raise RuntimeError("engine down")
 
-    h.engine.analyze = boom   # type: ignore[method-assign]
+    h.engine.analyze = boom  # type: ignore[method-assign]
     assert asyncio.run(h.aprocess("paypa1.test")) is None
     assert h.stats.errors == 1
 
@@ -388,6 +443,7 @@ def test_never_fetches_or_persists_verdicts(hunter, store, monkeypatch):
 
 def test_default_store_used_when_none(tmp_path):
     from uniphish.store import get_store, reset_store
+
     reset_store()
     try:
         h = CTHunter()

@@ -55,8 +55,18 @@ __all__ = [
 ]
 
 LOTS_KINDS = frozenset(
-    {"hosting", "serverless", "forms", "storage", "docs", "ipfs", "tunnel", "blog",
-     "site_builder", "file_share"}
+    {
+        "hosting",
+        "serverless",
+        "forms",
+        "storage",
+        "docs",
+        "ipfs",
+        "tunnel",
+        "blog",
+        "site_builder",
+        "file_share",
+    }
 )
 _REDIRECT_ENCODINGS = frozenset(
     {"url", "base64url", "pathtail", "proofpoint_v2", "proofpoint_v3", "opaque"}
@@ -160,9 +170,15 @@ def _tlds() -> dict[str, float]:
     out: dict[str, float] = {}
     for tld, spec in table.items():
         risk = spec.get("risk") if isinstance(spec, dict) else None
-        if (not isinstance(tld, str) or tld != tld.lower() or "." in tld
-                or isinstance(risk, bool) or not isinstance(risk, (int, float))
-                or not math.isfinite(risk) or not 0.3 <= risk <= 1.5):
+        if (
+            not isinstance(tld, str)
+            or tld != tld.lower()
+            or "." in tld
+            or isinstance(risk, bool)
+            or not isinstance(risk, (int, float))
+            or not math.isfinite(risk)
+            or not 0.3 <= risk <= 1.5
+        ):
             raise ValueError(f"tlds.yaml: invalid entry {tld!r}: {spec!r}")
         out[tld] = float(risk)
     return out
@@ -187,10 +203,10 @@ def tld_risk(suffix: str | None) -> float | None:
 class LotsEntry:
     """A legitimate platform commonly abused for hosting phishing content."""
 
-    match: str          # host suffix
-    kind: str           # one of LOTS_KINDS
+    match: str  # host suffix
+    kind: str  # one of LOTS_KINDS
     name: str
-    path: str = ""      # optional required path prefix ('' = any)
+    path: str = ""  # optional required path prefix ('' = any)
 
 
 @lru_cache(maxsize=1)
@@ -205,9 +221,14 @@ def _lots_index() -> dict[str, tuple[LotsEntry, ...]]:
             raise ValueError(f"lots.yaml: bad entry {raw!r}")
         match, kind = raw.get("match"), raw.get("kind")
         path = raw.get("path", "") or ""
-        if (not isinstance(match, str) or match != match.lower() or "/" in match
-                or kind not in LOTS_KINDS or not isinstance(path, str)
-                or (path and not path.startswith("/"))):
+        if (
+            not isinstance(match, str)
+            or match != match.lower()
+            or "/" in match
+            or kind not in LOTS_KINDS
+            or not isinstance(path, str)
+            or (path and not path.startswith("/"))
+        ):
             raise ValueError(f"lots.yaml: invalid entry {raw!r}")
         entry = LotsEntry(match, kind, str(raw.get("name") or match), path.lower())
         index.setdefault(match, []).append(entry)
@@ -320,13 +341,20 @@ def _redirect_index() -> dict[str, tuple[OpenRedirect, ...]]:
         path = raw.get("path", "") or ""
         params = raw.get("param", [])
         enc = raw.get("encoding", "url")
-        if (not isinstance(match, str) or match != match.lower() or not isinstance(name, str)
-                or not isinstance(path, str) or enc not in _REDIRECT_ENCODINGS
-                or not isinstance(params, list) or not all(isinstance(x, str) for x in params)
-                or (enc in ("url", "base64url", "proofpoint_v2") and not params)):
+        if (
+            not isinstance(match, str)
+            or match != match.lower()
+            or not isinstance(name, str)
+            or not isinstance(path, str)
+            or enc not in _REDIRECT_ENCODINGS
+            or not isinstance(params, list)
+            or not all(isinstance(x, str) for x in params)
+            or (enc in ("url", "base64url", "proofpoint_v2") and not params)
+        ):
             raise ValueError(f"open_redirects.yaml: invalid entry {raw!r}")
         index.setdefault(match, []).append(
-            OpenRedirect(name, match, path.lower(), tuple(params), enc))
+            OpenRedirect(name, match, path.lower(), tuple(params), enc)
+        )
     return {k: tuple(v) for k, v in index.items()}
 
 
@@ -341,7 +369,7 @@ def _clean_destination(value: str | None) -> str | None:
 
 def _decode_base64url(value: str) -> str | None:
     v = value
-    if len(v) > 2 and v[0].isalpha() and v[1].isdigit():   # Bing-style version prefix ("a1")
+    if len(v) > 2 and v[0].isalpha() and v[1].isdigit():  # Bing-style version prefix ("a1")
         v = v[2:]
     try:
         raw = base64.urlsafe_b64decode(v + "=" * (-len(v) % 4))
@@ -357,9 +385,9 @@ def _extract_destination(entry: OpenRedirect, path: str, params: dict[str, str])
     if enc == "proofpoint_v3":
         start = path.find("__")
         end = path.find("__;", start + 2) if start >= 0 else -1
-        return _clean_destination(path[start + 2:end]) if end > start else None
+        return _clean_destination(path[start + 2 : end]) if end > start else None
     if enc == "pathtail":
-        tail = path[len(entry.path.rstrip("/")):] if entry.path else path
+        tail = path[len(entry.path.rstrip("/")) :] if entry.path else path
         for seg in tail.split("/"):
             cand = _clean_destination(unquote(seg))
             if cand:
@@ -402,8 +430,9 @@ def open_redirect_match(host: str | None, path: str = "", query: str = "") -> Op
                 continue
             if params is None:
                 try:
-                    pairs = parse_qsl((query or "").lstrip("?")[:_MAX_QUERY],
-                                      max_num_fields=_MAX_QS_FIELDS)
+                    pairs = parse_qsl(
+                        (query or "").lstrip("?")[:_MAX_QUERY], max_num_fields=_MAX_QS_FIELDS
+                    )
                 except ValueError:
                     pairs = []
                 params = {}

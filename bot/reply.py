@@ -43,117 +43,205 @@ MAX_EXTRA_URLS = 20
 _MAX_LINK_CHARS = 120
 _MAX_REASON_CHARS = 200
 
-LEVEL_EMOJI = {"malicious": "\U0001f534", "suspicious": "\U0001f7e0", "benign": "\U0001f7e2",
-               "none": "\U0001f50e"}
+LEVEL_EMOJI = {
+    "malicious": "\U0001f534",
+    "suspicious": "\U0001f7e0",
+    "benign": "\U0001f7e2",
+    "none": "\U0001f50e",
+}
 
 # --------------------------------------------------------------------------- #
 # Localised card strings. Reasons come from the engine and stay in English.
 # --------------------------------------------------------------------------- #
 _STRINGS: dict[str, dict[str, str]] = {
     "en": {
-        "malicious": "Likely phishing", "suspicious": "Suspicious", "benign": "No threat found",
-        "risk": "Risk", "impersonates": "Impersonates", "why": "Why", "links": "Links",
-        "mitre": "MITRE ATT&CK", "todo": "What to do", "none": "Nothing to check",
-        "advice_malicious": ("Do not click, reply or enter any details. Delete the message "
-                             "and report it. If you already interacted, change your password "
-                             "and contact the real organisation through its official app or "
-                             "website."),
-        "advice_suspicious": ("Be careful. Do not click links or share codes. Check with the "
-                              "sender through a channel you already trust."),
-        "advice_benign": ("No phishing indicators found. This is not a guarantee: never share "
-                          "passwords or one-time codes."),
+        "malicious": "Likely phishing",
+        "suspicious": "Suspicious",
+        "benign": "No threat found",
+        "risk": "Risk",
+        "impersonates": "Impersonates",
+        "why": "Why",
+        "links": "Links",
+        "mitre": "MITRE ATT&CK",
+        "todo": "What to do",
+        "none": "Nothing to check",
+        "advice_malicious": (
+            "Do not click, reply or enter any details. Delete the message "
+            "and report it. If you already interacted, change your password "
+            "and contact the real organisation through its official app or "
+            "website."
+        ),
+        "advice_suspicious": (
+            "Be careful. Do not click links or share codes. Check with the "
+            "sender through a channel you already trust."
+        ),
+        "advice_benign": (
+            "No phishing indicators found. This is not a guarantee: never share "
+            "passwords or one-time codes."
+        ),
         "advice_none": "Send or forward me a link, a message or an email (.eml) to check.",
     },
     "es": {
-        "malicious": "Probable phishing", "suspicious": "Sospechoso",
-        "benign": "No se detectaron amenazas", "risk": "Riesgo", "impersonates": "Suplanta a",
-        "why": "Por qué", "links": "Enlaces", "mitre": "MITRE ATT&CK", "todo": "Qué hacer",
+        "malicious": "Probable phishing",
+        "suspicious": "Sospechoso",
+        "benign": "No se detectaron amenazas",
+        "risk": "Riesgo",
+        "impersonates": "Suplanta a",
+        "why": "Por qué",
+        "links": "Enlaces",
+        "mitre": "MITRE ATT&CK",
+        "todo": "Qué hacer",
         "none": "Nada que revisar",
-        "advice_malicious": ("No hagas clic, no respondas ni introduzcas datos. Elimina el "
-                             "mensaje y denúncialo. Si ya interactuaste, cambia tu contraseña "
-                             "y contacta con la organización real desde su app o sitio web "
-                             "oficial."),
-        "advice_suspicious": ("Actúa con cautela. No hagas clic en enlaces ni compartas "
-                              "códigos. Verifica con el remitente por un canal que ya "
-                              "conozcas."),
-        "advice_benign": ("No se encontraron indicios de phishing. No es una garantía: nunca "
-                          "compartas contraseñas ni códigos de un solo uso."),
+        "advice_malicious": (
+            "No hagas clic, no respondas ni introduzcas datos. Elimina el "
+            "mensaje y denúncialo. Si ya interactuaste, cambia tu contraseña "
+            "y contacta con la organización real desde su app o sitio web "
+            "oficial."
+        ),
+        "advice_suspicious": (
+            "Actúa con cautela. No hagas clic en enlaces ni compartas "
+            "códigos. Verifica con el remitente por un canal que ya "
+            "conozcas."
+        ),
+        "advice_benign": (
+            "No se encontraron indicios de phishing. No es una garantía: nunca "
+            "compartas contraseñas ni códigos de un solo uso."
+        ),
         "advice_none": "Envíame o reenvíame un enlace, un mensaje o un correo (.eml).",
     },
     "fr": {
-        "malicious": "Hameçonnage probable", "suspicious": "Suspect",
-        "benign": "Aucune menace détectée", "risk": "Risque", "impersonates": "Usurpe",
-        "why": "Pourquoi", "links": "Liens", "mitre": "MITRE ATT&CK", "todo": "Que faire",
+        "malicious": "Hameçonnage probable",
+        "suspicious": "Suspect",
+        "benign": "Aucune menace détectée",
+        "risk": "Risque",
+        "impersonates": "Usurpe",
+        "why": "Pourquoi",
+        "links": "Liens",
+        "mitre": "MITRE ATT&CK",
+        "todo": "Que faire",
         "none": "Rien à vérifier",
-        "advice_malicious": ("Ne cliquez pas, ne répondez pas et ne saisissez aucune "
-                             "information. Supprimez le message et signalez-le. Si vous avez "
-                             "déjà interagi, changez votre mot de passe et contactez la vraie "
-                             "organisation via son application ou son site officiel."),
-        "advice_suspicious": ("Restez prudent. Ne cliquez sur aucun lien et ne partagez aucun "
-                              "code. Vérifiez auprès de l'expéditeur par un canal que vous "
-                              "connaissez déjà."),
-        "advice_benign": ("Aucun indice d'hameçonnage trouvé. Ce n'est pas une garantie : ne "
-                          "partagez jamais vos mots de passe ni vos codes à usage unique."),
+        "advice_malicious": (
+            "Ne cliquez pas, ne répondez pas et ne saisissez aucune "
+            "information. Supprimez le message et signalez-le. Si vous avez "
+            "déjà interagi, changez votre mot de passe et contactez la vraie "
+            "organisation via son application ou son site officiel."
+        ),
+        "advice_suspicious": (
+            "Restez prudent. Ne cliquez sur aucun lien et ne partagez aucun "
+            "code. Vérifiez auprès de l'expéditeur par un canal que vous "
+            "connaissez déjà."
+        ),
+        "advice_benign": (
+            "Aucun indice d'hameçonnage trouvé. Ce n'est pas une garantie : ne "
+            "partagez jamais vos mots de passe ni vos codes à usage unique."
+        ),
         "advice_none": "Envoyez-moi ou transférez-moi un lien, un message ou un e-mail (.eml).",
     },
     "de": {
-        "malicious": "Wahrscheinlich Phishing", "suspicious": "Verdächtig",
-        "benign": "Keine Bedrohung gefunden", "risk": "Risiko",
-        "impersonates": "Gibt sich aus als", "why": "Warum", "links": "Links",
-        "mitre": "MITRE ATT&CK", "todo": "Was zu tun ist", "none": "Nichts zu prüfen",
-        "advice_malicious": ("Nicht klicken, nicht antworten und keine Daten eingeben. "
-                             "Nachricht löschen und melden. Falls Sie bereits reagiert haben, "
-                             "ändern Sie Ihr Passwort und kontaktieren Sie die echte "
-                             "Organisation über ihre offizielle App oder Website."),
-        "advice_suspicious": ("Vorsicht. Keine Links öffnen und keine Codes weitergeben. "
-                              "Fragen Sie beim Absender über einen Ihnen bekannten Kanal "
-                              "nach."),
-        "advice_benign": ("Keine Phishing-Hinweise gefunden. Das ist keine Garantie: Geben "
-                          "Sie niemals Passwörter oder Einmalcodes weiter."),
+        "malicious": "Wahrscheinlich Phishing",
+        "suspicious": "Verdächtig",
+        "benign": "Keine Bedrohung gefunden",
+        "risk": "Risiko",
+        "impersonates": "Gibt sich aus als",
+        "why": "Warum",
+        "links": "Links",
+        "mitre": "MITRE ATT&CK",
+        "todo": "Was zu tun ist",
+        "none": "Nichts zu prüfen",
+        "advice_malicious": (
+            "Nicht klicken, nicht antworten und keine Daten eingeben. "
+            "Nachricht löschen und melden. Falls Sie bereits reagiert haben, "
+            "ändern Sie Ihr Passwort und kontaktieren Sie die echte "
+            "Organisation über ihre offizielle App oder Website."
+        ),
+        "advice_suspicious": (
+            "Vorsicht. Keine Links öffnen und keine Codes weitergeben. "
+            "Fragen Sie beim Absender über einen Ihnen bekannten Kanal "
+            "nach."
+        ),
+        "advice_benign": (
+            "Keine Phishing-Hinweise gefunden. Das ist keine Garantie: Geben "
+            "Sie niemals Passwörter oder Einmalcodes weiter."
+        ),
         "advice_none": "Senden oder leiten Sie mir einen Link, eine Nachricht oder eine "
-                       "E-Mail (.eml) weiter.",
+        "E-Mail (.eml) weiter.",
     },
     "pt": {
-        "malicious": "Provável phishing", "suspicious": "Suspeito",
-        "benign": "Nenhuma ameaça encontrada", "risk": "Risco", "impersonates": "Imita",
-        "why": "Por quê", "links": "Links", "mitre": "MITRE ATT&CK", "todo": "O que fazer",
+        "malicious": "Provável phishing",
+        "suspicious": "Suspeito",
+        "benign": "Nenhuma ameaça encontrada",
+        "risk": "Risco",
+        "impersonates": "Imita",
+        "why": "Por quê",
+        "links": "Links",
+        "mitre": "MITRE ATT&CK",
+        "todo": "O que fazer",
         "none": "Nada para verificar",
-        "advice_malicious": ("Não clique, não responda e não informe dados. Apague a mensagem "
-                             "e denuncie. Se já interagiu, troque sua senha e contate a "
-                             "organização verdadeira pelo app ou site oficial."),
-        "advice_suspicious": ("Tenha cautela. Não clique em links nem compartilhe códigos. "
-                              "Confirme com o remetente por um canal que você já conhece."),
-        "advice_benign": ("Nenhum indício de phishing encontrado. Isso não é garantia: nunca "
-                          "compartilhe senhas ou códigos de uso único."),
+        "advice_malicious": (
+            "Não clique, não responda e não informe dados. Apague a mensagem "
+            "e denuncie. Se já interagiu, troque sua senha e contate a "
+            "organização verdadeira pelo app ou site oficial."
+        ),
+        "advice_suspicious": (
+            "Tenha cautela. Não clique em links nem compartilhe códigos. "
+            "Confirme com o remetente por um canal que você já conhece."
+        ),
+        "advice_benign": (
+            "Nenhum indício de phishing encontrado. Isso não é garantia: nunca "
+            "compartilhe senhas ou códigos de uso único."
+        ),
         "advice_none": "Envie ou encaminhe um link, uma mensagem ou um e-mail (.eml).",
     },
     "ru": {
-        "malicious": "Вероятный фишинг", "suspicious": "Подозрительно",
-        "benign": "Угроз не найдено", "risk": "Риск", "impersonates": "Выдаёт себя за",
-        "why": "Почему", "links": "Ссылки", "mitre": "MITRE ATT&CK", "todo": "Что делать",
+        "malicious": "Вероятный фишинг",
+        "suspicious": "Подозрительно",
+        "benign": "Угроз не найдено",
+        "risk": "Риск",
+        "impersonates": "Выдаёт себя за",
+        "why": "Почему",
+        "links": "Ссылки",
+        "mitre": "MITRE ATT&CK",
+        "todo": "Что делать",
         "none": "Нечего проверять",
-        "advice_malicious": ("Не переходите по ссылкам, не отвечайте и не вводите данные. "
-                             "Удалите сообщение и сообщите о нём. Если вы уже взаимодействовали, "
-                             "смените пароль и свяжитесь с настоящей организацией через её "
-                             "официальное приложение или сайт."),
-        "advice_suspicious": ("Будьте осторожны. Не переходите по ссылкам и не сообщайте коды. "
-                              "Уточните у отправителя по уже известному вам каналу."),
-        "advice_benign": ("Признаков фишинга не найдено. Это не гарантия: никогда не сообщайте "
-                          "пароли и одноразовые коды."),
+        "advice_malicious": (
+            "Не переходите по ссылкам, не отвечайте и не вводите данные. "
+            "Удалите сообщение и сообщите о нём. Если вы уже взаимодействовали, "
+            "смените пароль и свяжитесь с настоящей организацией через её "
+            "официальное приложение или сайт."
+        ),
+        "advice_suspicious": (
+            "Будьте осторожны. Не переходите по ссылкам и не сообщайте коды. "
+            "Уточните у отправителя по уже известному вам каналу."
+        ),
+        "advice_benign": (
+            "Признаков фишинга не найдено. Это не гарантия: никогда не сообщайте "
+            "пароли и одноразовые коды."
+        ),
         "advice_none": "Отправьте или перешлите ссылку, сообщение или письмо (.eml).",
     },
     "hi": {
-        "malicious": "संभावित फ़िशिंग", "suspicious": "संदिग्ध",
-        "benign": "कोई ख़तरा नहीं मिला", "risk": "जोखिम", "impersonates": "नकल कर रहा है",
-        "why": "कारण", "links": "लिंक", "mitre": "MITRE ATT&CK", "todo": "क्या करें",
+        "malicious": "संभावित फ़िशिंग",
+        "suspicious": "संदिग्ध",
+        "benign": "कोई ख़तरा नहीं मिला",
+        "risk": "जोखिम",
+        "impersonates": "नकल कर रहा है",
+        "why": "कारण",
+        "links": "लिंक",
+        "mitre": "MITRE ATT&CK",
+        "todo": "क्या करें",
         "none": "जाँचने के लिए कुछ नहीं",
-        "advice_malicious": ("लिंक पर क्लिक न करें, जवाब न दें और कोई जानकारी न भरें। संदेश हटाएँ "
-                             "और रिपोर्ट करें। यदि आप पहले ही जवाब दे चुके हैं, तो पासवर्ड बदलें और "
-                             "असली संस्था से उसके आधिकारिक ऐप या वेबसाइट के ज़रिए संपर्क करें।"),
-        "advice_suspicious": ("सावधान रहें। लिंक पर क्लिक न करें और कोड साझा न करें। भेजने वाले से "
-                              "किसी जाने-पहचाने माध्यम से पुष्टि करें।"),
-        "advice_benign": ("फ़िशिंग के कोई संकेत नहीं मिले। यह गारंटी नहीं है: पासवर्ड या वन-टाइम कोड "
-                          "कभी साझा न करें।"),
+        "advice_malicious": (
+            "लिंक पर क्लिक न करें, जवाब न दें और कोई जानकारी न भरें। संदेश हटाएँ "
+            "और रिपोर्ट करें। यदि आप पहले ही जवाब दे चुके हैं, तो पासवर्ड बदलें और "
+            "असली संस्था से उसके आधिकारिक ऐप या वेबसाइट के ज़रिए संपर्क करें।"
+        ),
+        "advice_suspicious": (
+            "सावधान रहें। लिंक पर क्लिक न करें और कोड साझा न करें। भेजने वाले से "
+            "किसी जाने-पहचाने माध्यम से पुष्टि करें।"
+        ),
+        "advice_benign": (
+            "फ़िशिंग के कोई संकेत नहीं मिले। यह गारंटी नहीं है: पासवर्ड या वन-टाइम कोड कभी साझा न करें।"
+        ),
         "advice_none": "कोई लिंक, संदेश या ईमेल (.eml) भेजें या फ़ॉरवर्ड करें।",
     },
 }
@@ -185,7 +273,8 @@ _FTP_RE = re.compile(r"(?i)\bf(t)p(://)")
 _DOT_RE = re.compile(r"(?<=[A-Za-z0-9])\.(?=[A-Za-z0-9])")
 _SECRET_KV_RE = re.compile(
     r"(?i)\b(password|passwd|pwd|passcode|pin|token|secret|api[_-]?key|otp|cvv)"
-    r"\s{0,3}[:=]\s{0,3}[^\s&]{1,128}")
+    r"\s{0,3}[:=]\s{0,3}[^\s&]{1,128}"
+)
 _AT_RE = re.compile(r"(?<!\[)@(?!\])")
 _OPAQUE_RE = re.compile(r"\b[A-Za-z0-9_\-]{32,}\b")
 _CARD_RE = re.compile(r"\b(?:\d[ -]?){13,19}\b")
@@ -223,7 +312,7 @@ def defang_url(url: str, limit: int = _MAX_LINK_CHARS) -> str:
     scheme = ""
     m = re.match(r"(?i)([a-z][a-z0-9+.\-]{0,15})://", s)
     if m:
-        scheme, s = m.group(1).lower(), s[m.end():]
+        scheme, s = m.group(1).lower(), s[m.end() :]
     cut = min((i for i in (s.find("/"), s.find("?"), s.find("#")) if i >= 0), default=len(s))
     authority, rest = s[:cut], s[cut:]
     authority = authority.rsplit("@", 1)[-1]  # drop user:password@
@@ -261,7 +350,7 @@ class CardLink:
 class ReplyCard:
     """Everything the bot says about one scan. All strings are display-ready and inert."""
 
-    level: str                       # malicious | suspicious | benign | none
+    level: str  # malicious | suspicious | benign | none
     score: int
     headline: str
     advice: str
@@ -273,7 +362,7 @@ class ReplyCard:
     links: tuple[CardLink, ...] = ()
     mitre: tuple[str, ...] = ()
     subject: str | None = None
-    note: str | None = None          # optional extra line (e.g. AI analyst narrative)
+    note: str | None = None  # optional extra line (e.g. AI analyst narrative)
     verdict_id: str | None = None
     labels: dict[str, str] = field(default_factory=dict, repr=False)
 
@@ -303,8 +392,9 @@ class ReplyCard:
         if self.subject:
             lines.append(f"✉️ <i>{_esc(self.subject)}</i>")
         if self.brand and self.is_threat:
-            lines.append(f"\U0001f3af {_esc(self._label('impersonates'))}: "
-                         f"<b>{_esc(self.brand)}</b>")
+            lines.append(
+                f"\U0001f3af {_esc(self._label('impersonates'))}: <b>{_esc(self.brand)}</b>"
+            )
         if self.reasons:
             lines += ["", f"<b>{_esc(self._label('why'))}</b>"]
             lines += [f"• {_esc(r)}" for r in self.reasons]
@@ -330,12 +420,19 @@ class ReplyCard:
 
     def as_dict(self) -> dict[str, Any]:
         return {
-            "level": self.level, "score": self.score, "headline": self.headline,
-            "brand": self.brand, "brand_technique": self.brand_technique,
+            "level": self.level,
+            "score": self.score,
+            "headline": self.headline,
+            "brand": self.brand,
+            "brand_technique": self.brand_technique,
             "reasons": list(self.reasons),
             "links": [{"text": x.text, "level": x.level, "kind": x.kind} for x in self.links],
-            "mitre": list(self.mitre), "advice": self.advice, "lang": self.lang,
-            "kind": self.kind, "subject": self.subject, "verdict_id": self.verdict_id,
+            "mitre": list(self.mitre),
+            "advice": self.advice,
+            "lang": self.lang,
+            "kind": self.kind,
+            "subject": self.subject,
+            "verdict_id": self.verdict_id,
         }
 
 
@@ -368,8 +465,13 @@ def _reasons(verdict: Verdict) -> tuple[str, ...]:
 
 
 def _links(verdict: Verdict) -> tuple[CardLink, ...]:
-    kids = [c for c in verdict.walk() if c is not verdict and c.level.value != "benign"
-            and c.kind.value in {"url", "file", "page"}]
+    kids = [
+        c
+        for c in verdict.walk()
+        if c is not verdict
+        and c.level.value != "benign"
+        and c.kind.value in {"url", "file", "page"}
+    ]
     kids.sort(key=lambda c: c.score, reverse=True)
     out: list[CardLink] = []
     seen: set[str] = set()
@@ -410,28 +512,47 @@ def card_from_verdict(verdict: Verdict, *, lang: str = "en", kind: str | None = 
     brand, technique = _brand(verdict) if threat else (None, None)
     subject = verdict.meta.get("subject") if verdict.kind.value == "email" else None
     return ReplyCard(
-        level=level, score=int(verdict.score), headline=s[level], advice=s[f"advice_{level}"],
-        lang=lang, kind=kind or verdict.kind.value, brand=brand, brand_technique=technique,
+        level=level,
+        score=int(verdict.score),
+        headline=s[level],
+        advice=s[f"advice_{level}"],
+        lang=lang,
+        kind=kind or verdict.kind.value,
+        brand=brand,
+        brand_technique=technique,
         reasons=_reasons(verdict) if threat else (),
         links=_links(verdict) if threat else (),
         mitre=_mitre(verdict) if threat else (),
         subject=defang_text(subject, 100) if isinstance(subject, str) and subject else None,
-        verdict_id=verdict.id, labels=s)
+        verdict_id=verdict.id,
+        labels=s,
+    )
 
 
 def empty_card(lang: str = "en") -> ReplyCard:
     """The 'nothing to check' card."""
     s = _STRINGS[lang if lang in _STRINGS else "en"]
-    return ReplyCard(level="none", score=0, headline=s["none"], advice=s["advice_none"],
-                     lang=lang, kind="none", labels=s)
+    return ReplyCard(
+        level="none",
+        score=0,
+        headline=s["none"],
+        advice=s["advice_none"],
+        lang=lang,
+        kind="none",
+        labels=s,
+    )
 
 
 # --------------------------------------------------------------------------- #
 # Scanning entry points
 # --------------------------------------------------------------------------- #
 def _opts(online: bool, fetch_pages: bool) -> dict[str, Any]:
-    return {"online": bool(online), "fetch_pages": bool(fetch_pages and online),
-            "persist": False, "timeout_s": 20.0}
+    return {
+        "online": bool(online),
+        "fetch_pages": bool(fetch_pages and online),
+        "persist": False,
+        "timeout_s": 20.0,
+    }
 
 
 def _detect_language(text: str) -> list[str]:
@@ -445,9 +566,14 @@ def _detect_language(text: str) -> list[str]:
 
 
 def build_reply_with_verdict(
-        text: str | None, *, lang: str | None = None, extra_urls: Sequence[str] = (),
-        online: bool = False, fetch_pages: bool = False,
-        scan: Callable[..., Verdict] | None = None) -> tuple[ReplyCard, Verdict | None]:
+    text: str | None,
+    *,
+    lang: str | None = None,
+    extra_urls: Sequence[str] = (),
+    online: bool = False,
+    fetch_pages: bool = False,
+    scan: Callable[..., Verdict] | None = None,
+) -> tuple[ReplyCard, Verdict | None]:
     """Like :func:`build_reply` but also returns the engine verdict (``None`` if no scan ran
     or the engine failed). Used by front-ends that want to add an AI analyst note."""
     body = clean(text or "", MAX_SCAN_CHARS) if text else ""
@@ -470,10 +596,15 @@ def build_reply_with_verdict(
     return card_from_verdict(verdict, lang=chosen, kind="text"), verdict
 
 
-def build_reply(text: str | None, *, lang: str | None = None,
-                extra_urls: Sequence[str] = (), online: bool = False,
-                fetch_pages: bool = False,
-                scan: Callable[..., Verdict] | None = None) -> ReplyCard:
+def build_reply(
+    text: str | None,
+    *,
+    lang: str | None = None,
+    extra_urls: Sequence[str] = (),
+    online: bool = False,
+    fetch_pages: bool = False,
+    scan: Callable[..., Verdict] | None = None,
+) -> ReplyCard:
     """Scan a message and return the reply card (pure: no Telegram, no persistence).
 
     Args:
@@ -489,15 +620,23 @@ def build_reply(text: str | None, *, lang: str | None = None,
     Never raises on hostile input; an engine failure yields a conservative
     "could not check" suspicious card rather than a false all-clear.
     """
-    return build_reply_with_verdict(text, lang=lang, extra_urls=extra_urls, online=online,
-                                    fetch_pages=fetch_pages, scan=scan)[0]
+    return build_reply_with_verdict(
+        text, lang=lang, extra_urls=extra_urls, online=online, fetch_pages=fetch_pages, scan=scan
+    )[0]
 
 
 def _failure_card(lang: str) -> ReplyCard:
     s = _STRINGS[lang if lang in _STRINGS else "en"]
-    return ReplyCard(level="suspicious", score=50, headline=s["suspicious"],
-                     advice=s["advice_suspicious"], lang=lang, kind="error",
-                     reasons=("The automatic check could not be completed",), labels=s)
+    return ReplyCard(
+        level="suspicious",
+        score=50,
+        headline=s["suspicious"],
+        advice=s["advice_suspicious"],
+        lang=lang,
+        kind="error",
+        reasons=("The automatic check could not be completed",),
+        labels=s,
+    )
 
 
 _HTML_EXT = (".html", ".htm", ".xhtml")
@@ -515,11 +654,17 @@ def classify_upload(data: bytes, filename: str | None) -> str:
     return "file"
 
 
-def build_file_reply(data: bytes, filename: str | None = None, *, lang: str | None = None,
-                     online: bool = False, fetch_pages: bool = False,
-                     scan_file: Callable[..., Verdict] | None = None,
-                     scan_email: Callable[..., Verdict] | None = None,
-                     scan_page: Callable[..., Verdict] | None = None) -> ReplyCard:
+def build_file_reply(
+    data: bytes,
+    filename: str | None = None,
+    *,
+    lang: str | None = None,
+    online: bool = False,
+    fetch_pages: bool = False,
+    scan_file: Callable[..., Verdict] | None = None,
+    scan_email: Callable[..., Verdict] | None = None,
+    scan_page: Callable[..., Verdict] | None = None,
+) -> ReplyCard:
     """Scan an uploaded document / image (QR codes are decoded) and return a card.
 
     ``.eml`` goes through the email analyzer (headers, authentication, links,
@@ -539,8 +684,9 @@ def build_file_reply(data: bytes, filename: str | None = None, *, lang: str | No
         elif kind == "page":
             verdict = (scan_page or uniphish.scan_page)(data, None, **opts)
         else:
-            verdict = (scan_file or uniphish.scan_file)(data, clean(filename or "", 255) or None,
-                                                         **opts)
+            verdict = (scan_file or uniphish.scan_file)(
+                data, clean(filename or "", 255) or None, **opts
+            )
     except Exception:
         log.exception("file scan failed")
         return _failure_card(chosen)
@@ -548,8 +694,20 @@ def build_file_reply(data: bytes, filename: str | None = None, *, lang: str | No
 
 
 __all__ = [
-    "MAX_CARD_CHARS", "MAX_SCAN_CHARS", "SUPPORTED_LANGS", "CardLink", "ReplyCard",
-    "build_file_reply", "build_reply", "build_reply_with_verdict", "card_from_verdict",
-    "classify_upload", "clean", "defang_text", "defang_url", "empty_card", "pick_language",
+    "MAX_CARD_CHARS",
+    "MAX_SCAN_CHARS",
+    "SUPPORTED_LANGS",
+    "CardLink",
+    "ReplyCard",
+    "build_file_reply",
+    "build_reply",
+    "build_reply_with_verdict",
+    "card_from_verdict",
+    "classify_upload",
+    "clean",
+    "defang_text",
+    "defang_url",
+    "empty_card",
+    "pick_language",
     "redact",
 ]

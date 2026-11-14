@@ -46,8 +46,20 @@ _SEP_CLASS = (
     "\\u060c\\u061b\\u061f\\u06d4\\u0964\\u0965"
 )
 _TOKEN_RE = re.compile("[^" + _SEP_CLASS + "]+")
-_SPACELESS = ("CJK", "HIRAGANA", "KATAKANA", "HANGUL", "THAI", "LAO", "KHMER", "MYANMAR",
-              "TIBETAN", "BOPOMOFO", "IDEOGRAPHIC", "HALFWIDTH KATAKANA")
+_SPACELESS = (
+    "CJK",
+    "HIRAGANA",
+    "KATAKANA",
+    "HANGUL",
+    "THAI",
+    "LAO",
+    "KHMER",
+    "MYANMAR",
+    "TIBETAN",
+    "BOPOMOFO",
+    "IDEOGRAPHIC",
+    "HALFWIDTH KATAKANA",
+)
 
 
 @dataclass(frozen=True)
@@ -60,7 +72,7 @@ class LureHit:
     weight: float
     start: int
     end: int
-    partial: bool = False   # glued into / stemmed from a longer token; weight discounted
+    partial: bool = False  # glued into / stemmed from a longer token; weight discounted
 
 
 @dataclass(frozen=True)
@@ -138,11 +150,19 @@ def _index() -> _Index:
             if cat not in cat_w or not isinstance(items, list):
                 raise ValueError(f"lures.yaml: bad category {cat!r} under {lang!r}")
             for item in items:
-                text, weight = (item.get("t"), item.get("w", cat_w[cat])) \
-                    if isinstance(item, dict) else (item, cat_w[cat])
-                if (not isinstance(text, str) or not text.strip() or text != text.strip().lower()
-                        or isinstance(weight, bool) or not isinstance(weight, (int, float))
-                        or not 0 < weight <= 2):
+                text, weight = (
+                    (item.get("t"), item.get("w", cat_w[cat]))
+                    if isinstance(item, dict)
+                    else (item, cat_w[cat])
+                )
+                if (
+                    not isinstance(text, str)
+                    or not text.strip()
+                    or text != text.strip().lower()
+                    or isinstance(weight, bool)
+                    or not isinstance(weight, (int, float))
+                    or not 0 < weight <= 2
+                ):
                     raise ValueError(f"lures.yaml: bad term {item!r} under {lang}/{cat}")
                 term = _Term(text, lang, cat, float(weight))
                 count += 1
@@ -157,21 +177,44 @@ def _index() -> _Index:
                     _best(token_idx.setdefault(toks[0], {}), toks, term)
                     if len(toks) != 1:
                         continue
-                    if (lang in _COMPOUND_LANGS and form.isascii() and form.isalnum()
-                            and len(form) >= 5 and weight >= 0.5 and form not in _NO_COMPOUND):
+                    if (
+                        lang in _COMPOUND_LANGS
+                        and form.isascii()
+                        and form.isalnum()
+                        and len(form) >= 5
+                        and weight >= 0.5
+                        and form not in _NO_COMPOUND
+                    ):
                         _best(compounds, form, term)
                     if lang in stem_langs and len(form) >= _STEM_MIN:
                         _best(stems, form, term)
 
-    tokens = {first: tuple(sorted(p.items(), key=lambda kv: -len(kv[0])))
-              for first, p in token_idx.items()}
+    tokens = {
+        first: tuple(sorted(p.items(), key=lambda kv: -len(kv[0])))
+        for first, p in token_idx.items()
+    }
     by_first = {c: tuple(sorted(d.items(), key=lambda kv: -len(kv[0]))) for c, d in substr.items()}
-    first_re = (re.compile("[" + "".join(re.escape(c) for c in sorted(by_first)) + "]")
-                if by_first else None)
-    comp_re = (re.compile("|".join(re.escape(t) for t in sorted(compounds, key=lambda s: -len(s))))
-               if compounds else None)
-    return _Index(tokens, by_first, first_re, comp_re, compounds, stems,
-                  tuple(sorted({len(s) for s in stems})), frozenset(langs), count)
+    first_re = (
+        re.compile("[" + "".join(re.escape(c) for c in sorted(by_first)) + "]")
+        if by_first
+        else None
+    )
+    comp_re = (
+        re.compile("|".join(re.escape(t) for t in sorted(compounds, key=lambda s: -len(s))))
+        if compounds
+        else None
+    )
+    return _Index(
+        tokens,
+        by_first,
+        first_re,
+        comp_re,
+        compounds,
+        stems,
+        tuple(sorted({len(s) for s in stems})),
+        frozenset(langs),
+        count,
+    )
 
 
 def lure_languages() -> frozenset[str]:
@@ -184,8 +227,9 @@ def lure_term_count() -> int:
     return _index().count
 
 
-def find_lures(text: str | None, *, max_chars: int = _DEFAULT_MAX_CHARS,
-               max_hits: int = 512) -> list[LureHit]:
+def find_lures(
+    text: str | None, *, max_chars: int = _DEFAULT_MAX_CHARS, max_hits: int = 512
+) -> list[LureHit]:
     """Find credential/urgency lure terms in a host, path, URL or short text.
 
     Linear time in ``len(text)``. Input beyond ``max_chars`` is ignored (attacker-
@@ -194,7 +238,7 @@ def find_lures(text: str | None, *, max_chars: int = _DEFAULT_MAX_CHARS,
     """
     if not text:
         return []
-    text = text[:max(0, max_chars)]
+    text = text[: max(0, max_chars)]
     idx = _index()
     low = _fold(text)
     cand: list[tuple[int, int, _Term, bool]] = []
@@ -219,8 +263,9 @@ def find_lures(text: str | None, *, max_chars: int = _DEFAULT_MAX_CHARS,
                         cand.append((t_start, t_start + length, term, True))
         if compound_re is not None and 5 <= len(tok) <= 64 and tok.isascii():
             for m in compound_re.finditer(tok):
-                cand.append((t_start + m.start(), t_start + m.end(),
-                             idx.compound_terms[m.group()], True))
+                cand.append(
+                    (t_start + m.start(), t_start + m.end(), idx.compound_terms[m.group()], True)
+                )
 
     if idx.first_char_re is not None:
         for m in idx.first_char_re.finditer(low):
@@ -237,7 +282,8 @@ def find_lures(text: str | None, *, max_chars: int = _DEFAULT_MAX_CHARS,
             continue
         taken[start:end] = b"\x01" * (end - start)
         weight = term.weight * (_PARTIAL_DISCOUNT if partial else 1.0)
-        hits.append(LureHit(term.term, term.lang, term.category, round(weight, 4),
-                            start, end, partial))
+        hits.append(
+            LureHit(term.term, term.lang, term.category, round(weight, 4), start, end, partial)
+        )
     hits.sort(key=lambda h: h.start)
     return hits[:max_hits]

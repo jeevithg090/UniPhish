@@ -41,14 +41,16 @@ _IPV4_DOTTED_RE = re.compile(r"^\d{1,3}(?:\.\d{1,3}){3}$")
 @lru_cache(maxsize=1)
 def _extract_private() -> tldextract.TLDExtract:
     # include_psl_private_domains=True -> pages.dev, github.io, etc. are suffixes.
-    return tldextract.TLDExtract(suffix_list_urls=(), cache_dir=None,
-                                 include_psl_private_domains=True)
+    return tldextract.TLDExtract(
+        suffix_list_urls=(), cache_dir=None, include_psl_private_domains=True
+    )
 
 
 @lru_cache(maxsize=1)
 def _extract_icann() -> tldextract.TLDExtract:
-    return tldextract.TLDExtract(suffix_list_urls=(), cache_dir=None,
-                                 include_psl_private_domains=False)
+    return tldextract.TLDExtract(
+        suffix_list_urls=(), cache_dir=None, include_psl_private_domains=False
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -167,9 +169,18 @@ def _parse_ipv4_number(host: str) -> ipaddress.IPv4Address | None:
     return None
 
 
-def _normalize_host(host: str) -> tuple[str, str, str, bool, str | None, bool,
-                                        ipaddress.IPv4Address | ipaddress.IPv6Address | None,
-                                        bool]:
+def _normalize_host(
+    host: str,
+) -> tuple[
+    str,
+    str,
+    str,
+    bool,
+    str | None,
+    bool,
+    ipaddress.IPv4Address | ipaddress.IPv6Address | None,
+    bool,
+]:
     """Return (host_unicode, host_ascii, display, is_ip, idn_error, is_idn, ip, ip_obf)."""
     # IPv6 literal
     if host.startswith("[") and host.endswith("]"):
@@ -244,7 +255,7 @@ def _percent_decode_host(host: str) -> str:
     while i < len(data):
         if data[i] == 0x25 and i + 2 < len(data):  # '%'
             try:
-                out.append(int(data[i + 1:i + 3].decode("ascii"), 16))
+                out.append(int(data[i + 1 : i + 3].decode("ascii"), 16))
                 i += 3
                 continue
             except ValueError:
@@ -272,7 +283,7 @@ def parse_url(url: str) -> ParsedURL:
     m = _SCHEME_RE.match(cleaned)
     if m:
         scheme = m.group(1).lower()
-        rest = cleaned[m.end():]
+        rest = cleaned[m.end() :]
     else:
         scheme = "http"
         rest = cleaned
@@ -313,7 +324,7 @@ def parse_url(url: str) -> ParsedURL:
         end = host_port.find("]")
         if end != -1:
             host_raw = host_port[: end + 1]
-            after = host_port[end + 1:]
+            after = host_port[end + 1 :]
             if after.startswith(":"):
                 port = _parse_port(after[1:], errors)
         else:
@@ -325,8 +336,9 @@ def parse_url(url: str) -> ParsedURL:
     else:
         host_raw = host_port
 
-    (host_unicode, host_ascii, _disp, is_ip, idn_error, is_idn, ip,
-     ip_obf) = _normalize_host(host_raw)
+    (host_unicode, host_ascii, _disp, is_ip, idn_error, is_idn, ip, ip_obf) = _normalize_host(
+        host_raw
+    )
 
     if idn_error:
         errors.append("idn-error")
@@ -348,28 +360,53 @@ def parse_url(url: str) -> ParsedURL:
         sld = ext_p.domain
         subdomain = ext_p.subdomain
         registrable = ext_p.top_domain_under_public_suffix or (
-            f"{ext_p.domain}.{ext_p.suffix}" if ext_p.domain and ext_p.suffix else host_unicode)
-        icann_registrable = (f"{ext_i.domain}.{ext_i.suffix}"
-                             if ext_i.domain and ext_i.suffix else "")
+            f"{ext_p.domain}.{ext_p.suffix}" if ext_p.domain and ext_p.suffix else host_unicode
+        )
+        icann_registrable = (
+            f"{ext_i.domain}.{ext_i.suffix}" if ext_i.domain and ext_i.suffix else ""
+        )
         try:
-            registrable_ascii = (idna.encode(registrable, uts46=True,
-                                             transitional=False).decode("ascii")
-                                 if registrable else "")
+            registrable_ascii = (
+                idna.encode(registrable, uts46=True, transitional=False).decode("ascii")
+                if registrable
+                else ""
+            )
         except Exception:
             registrable_ascii = registrable
 
-    valid = not any(e in errors for e in ("empty-host", "idn-error", "invalid-ipv6",
-                                          "invalid-port"))
+    valid = not any(
+        e in errors for e in ("empty-host", "idn-error", "invalid-ipv6", "invalid-port")
+    )
     normalized = _build_normalized(scheme, host_ascii, port, path, query, is_ip)
 
     return ParsedURL(
-        raw=raw, url=normalized, scheme=scheme, userinfo=userinfo, host=host_unicode,
-        host_ascii=host_ascii, host_unicode=host_unicode, port=port, path=path, query=query,
-        fragment=fragment, labels=labels, suffix=suffix, icann_suffix=icann_suffix,
-        registrable_domain=registrable, registrable_ascii=registrable_ascii,
-        icann_registrable=icann_registrable, sld=sld, subdomain=subdomain, is_ip=is_ip, ip=ip,
-        ip_obfuscated=ip_obf, is_idn=is_idn, idn_error=idn_error, has_userinfo=has_userinfo,
-        valid=valid, errors=tuple(errors),
+        raw=raw,
+        url=normalized,
+        scheme=scheme,
+        userinfo=userinfo,
+        host=host_unicode,
+        host_ascii=host_ascii,
+        host_unicode=host_unicode,
+        port=port,
+        path=path,
+        query=query,
+        fragment=fragment,
+        labels=labels,
+        suffix=suffix,
+        icann_suffix=icann_suffix,
+        registrable_domain=registrable,
+        registrable_ascii=registrable_ascii,
+        icann_registrable=icann_registrable,
+        sld=sld,
+        subdomain=subdomain,
+        is_ip=is_ip,
+        ip=ip,
+        ip_obfuscated=ip_obf,
+        is_idn=is_idn,
+        idn_error=idn_error,
+        has_userinfo=has_userinfo,
+        valid=valid,
+        errors=tuple(errors),
     )
 
 
@@ -377,11 +414,33 @@ def _bare(raw: str, cleaned: str, scheme: str, rest: str, errors: list[str]) -> 
     """A ParsedURL for schemes without an authority component."""
     errors = [*errors, "no-authority-scheme"] if scheme in _NO_HOST_SCHEMES else errors
     return ParsedURL(
-        raw=raw, url=cleaned, scheme=scheme, userinfo="", host="", host_ascii="", host_unicode="",
-        port=None, path=rest, query="", fragment="", labels=(), suffix="", icann_suffix="",
-        registrable_domain="", registrable_ascii="", icann_registrable="", sld="", subdomain="",
-        is_ip=False, ip=None, ip_obfuscated=False, is_idn=False, idn_error=None,
-        has_userinfo=False, valid=scheme in _NO_HOST_SCHEMES, errors=tuple(errors),
+        raw=raw,
+        url=cleaned,
+        scheme=scheme,
+        userinfo="",
+        host="",
+        host_ascii="",
+        host_unicode="",
+        port=None,
+        path=rest,
+        query="",
+        fragment="",
+        labels=(),
+        suffix="",
+        icann_suffix="",
+        registrable_domain="",
+        registrable_ascii="",
+        icann_registrable="",
+        sld="",
+        subdomain="",
+        is_ip=False,
+        ip=None,
+        ip_obfuscated=False,
+        is_idn=False,
+        idn_error=None,
+        has_userinfo=False,
+        valid=scheme in _NO_HOST_SCHEMES,
+        errors=tuple(errors),
     )
 
 
@@ -407,8 +466,7 @@ def _split_tail(tail: str) -> tuple[str, str, str]:
 
 
 def _remove_dot_segments(path: str) -> str:
-    if not path or ("/./" not in path and "/../" not in path
-                    and not path.endswith(("/.", "/.."))):
+    if not path or ("/./" not in path and "/../" not in path and not path.endswith(("/.", "/.."))):
         return path
     out: list[str] = []
     for seg in path.split("/"):
@@ -423,8 +481,9 @@ def _remove_dot_segments(path: str) -> str:
     return res or "/"
 
 
-def _build_normalized(scheme: str, host_ascii: str, port: int | None, path: str,
-                      query: str, is_ip: bool) -> str:
+def _build_normalized(
+    scheme: str, host_ascii: str, port: int | None, path: str, query: str, is_ip: bool
+) -> str:
     if not host_ascii:
         return f"{scheme}:{path}"
     netloc = host_ascii
@@ -516,7 +575,8 @@ _SCHEME_URL_RE = re.compile(
     r"""(?xi)
     \b(?:https?|ftp)://
     [^\s<>"'`\]\}]+
-    """)
+    """
+)
 _WWW_RE = re.compile(r"""(?xi)\bwww\d{0,3}\.[^\s<>"'`\]\}]+""")
 # Bare domain: label(.label)+ optional path; the suffix is validated against PSL after.
 _BARE_RE = re.compile(
@@ -525,7 +585,8 @@ _BARE_RE = re.compile(
     (?:[a-z0-9¡-￿](?:[a-z0-9¡-￿-]{0,61}[a-z0-9¡-￿])?\.)+
     [a-z¡-￿]{2,24}
     (?:/[^\s<>"'`\]\}]*)?
-    """)
+    """
+)
 _DEFANG_HINT = re.compile(r"(?i)hxxp|\[\.\]|\(\.\)|\[dot\]|\(dot\)|\[:\]|\[/\]")
 _MAX_EXTRACT_CHARS = 2_000_000
 _TRAILING = ".,;:!?)]}>\"'`"
@@ -554,8 +615,9 @@ def _valid_suffix(host: str) -> bool:
     return "." in host and last in _SPECIAL_TLDS
 
 
-def extract_urls(text: str, *, max_urls: int = 500,
-                 include_bare: bool = True) -> list[ExtractedURL]:
+def extract_urls(
+    text: str, *, max_urls: int = 500, include_bare: bool = True
+) -> list[ExtractedURL]:
     """Find URLs in free text (scheme URLs, ``www.`` hosts, defanged forms, and — when
     ``include_bare`` — bare registrable domains validated against the PSL).
 
@@ -585,8 +647,15 @@ def extract_urls(text: str, *, max_urls: int = 500,
         if not p.is_ip and (not host or not _valid_suffix(host)):
             return
         claimed.append((s, e))
-        found.append(ExtractedURL(url=normalize_url(url) if p.valid else url,
-                                  start=s, end=e, defanged=defanged, bare=bare))
+        found.append(
+            ExtractedURL(
+                url=normalize_url(url) if p.valid else url,
+                start=s,
+                end=e,
+                defanged=defanged,
+                bare=bare,
+            )
+        )
 
     # Refang a working copy so hxxp:// and [.] forms match the scheme/bare regexes,
     # but keep offsets identical (refang here only shrinks on multi-char subs, so we
@@ -596,8 +665,11 @@ def extract_urls(text: str, *, max_urls: int = 500,
             _add(m.start(), m.end(), m.group(0), bare)
 
     # Defanged scheme URLs (hxxp://, hxxps[:]//)
-    for m in re.finditer(r"(?i)\bh\s*x+\s*ps?\s*(?:://|\[:\]//|:\[/\]\[/\])"
-                         r"[^\s<>\"'`\]\}]+", scan):
+    for m in re.finditer(
+        r"(?i)\bh\s*x+\s*ps?\s*(?:://|\[:\]//|:\[/\]\[/\])"
+        r"[^\s<>\"'`\]\}]+",
+        scan,
+    ):
         _add(m.start(), m.end(), m.group(0), False)
 
     if include_bare:
@@ -605,8 +677,10 @@ def extract_urls(text: str, *, max_urls: int = 500,
             _add(m.start(), m.end(), m.group(0), True)
         # defanged bare domains: example[.]com/login
         for m in re.finditer(
-                r"(?xi)\b(?:[a-z0-9-]+\s*[\[\(\{]\s*(?:\.|dot)\s*[\]\)\}]\s*)+[a-z]{2,24}"
-                r"(?:/[^\s<>\"'`\]\}]*)?", scan):
+            r"(?xi)\b(?:[a-z0-9-]+\s*[\[\(\{]\s*(?:\.|dot)\s*[\]\)\}]\s*)+[a-z]{2,24}"
+            r"(?:/[^\s<>\"'`\]\}]*)?",
+            scan,
+        ):
             _add(m.start(), m.end(), m.group(0), True)
 
     found.sort(key=lambda u: u.start)

@@ -54,13 +54,15 @@ def analyzers(request: Request) -> dict[str, Any]:
     out: list[dict[str, Any]] = []
     if engine is not None:
         for a in engine.analyzers:
-            out.append({
-                "name": a.name,
-                "description": a.description,
-                "stage": a.stage,
-                "kinds": sorted(k.value for k in a.kinds),
-                "requires_online": a.requires_online,
-                "requires_detonation": a.requires_detonation,
-                "signals": dict(a.signals),
-            })
+            out.append(
+                {
+                    "name": a.name,
+                    "description": a.description,
+                    "stage": a.stage,
+                    "kinds": sorted(k.value for k in a.kinds),
+                    "requires_online": a.requires_online,
+                    "requires_detonation": a.requires_detonation,
+                    "signals": dict(a.signals),
+                }
+            )
     return {"analyzers": out, "signals": signal_catalog()}

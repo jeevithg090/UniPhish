@@ -49,7 +49,7 @@ LONG_URL_CHARS: int = 120
 LONG_URL_MAX_WEIGHT: float = 0.8
 LONG_URL_CONFIDENCE: float = 0.7
 _EPS: float = 1e-6
-_MIN_REPORTED: float = 0.1   # |weight| below this is noise and is not emitted
+_MIN_REPORTED: float = 0.1  # |weight| below this is noise and is not emitted
 _TOP_K: int = 5
 
 SIG_PHISHING = "ml.cnn.phishing"
@@ -110,42 +110,64 @@ class MlAnalyzer(Analyzer):
         signals: list[Signal] = []
         if abs(weight) >= _MIN_REPORTED:
             positive = weight > 0
-            evidence: dict[str, Any] = {"prob": round(prob, 6), "weight_raw_shrink": SHRINK,
-                                        "url_len": len(url)}
+            evidence: dict[str, Any] = {
+                "prob": round(prob, 6),
+                "weight_raw_shrink": SHRINK,
+                "url_len": len(url),
+            }
             spans = self._saliency(model, url) if ctx.options.explain else []
             if ctx.options.explain:
                 evidence["top_chars"] = [s["text"] for s in spans]
-            detail = (f"The byte-level model gives this URL a {prob:.1%} phishing probability."
-                      " It is one signal among many and is down-weighted, so it"
-                      " cannot decide alone.")
+            detail = (
+                f"The byte-level model gives this URL a {prob:.1%} phishing probability."
+                " It is one signal among many and is down-weighted, so it"
+                " cannot decide alone."
+            )
             if long_url and positive:
                 detail += " Long URLs are over-scored by the model, so its weight is capped."
-            signals.append(Signal(
-                id=SIG_PHISHING if positive else SIG_BENIGN,
-                title=("Byte-level ML model flags this URL as likely phishing" if positive
-                       else "Byte-level ML model finds this URL looks legitimate"),
-                detail=detail, weight=weight, category="ml", analyzer=self.name,
-                confidence=LONG_URL_CONFIDENCE if (long_url and positive) else 1.0,
-                evidence=evidence))
+            signals.append(
+                Signal(
+                    id=SIG_PHISHING if positive else SIG_BENIGN,
+                    title=(
+                        "Byte-level ML model flags this URL as likely phishing"
+                        if positive
+                        else "Byte-level ML model finds this URL looks legitimate"
+                    ),
+                    detail=detail,
+                    weight=weight,
+                    category="ml",
+                    analyzer=self.name,
+                    confidence=LONG_URL_CONFIDENCE if (long_url and positive) else 1.0,
+                    evidence=evidence,
+                )
+            )
             if positive and spans:
                 top = spans[0]
-                signals.append(Signal(
-                    id=SIG_SALIENT, title="Characters that drove the ML model's score",
-                    detail="Highlighted characters raised the model's phishing score most: "
-                           + ", ".join(repr(s["text"]) for s in spans[:3]) + ".",
-                    weight=0.0, category="ml", analyzer=self.name,
-                    span=(top["start"], top["end"]),
-                    evidence={"spans": spans}))
-        return AnalyzerResult(signals=signals,
-                              meta={"ml_prob": prob, "ml_model": info})
+                signals.append(
+                    Signal(
+                        id=SIG_SALIENT,
+                        title="Characters that drove the ML model's score",
+                        detail="Highlighted characters raised the model's phishing score most: "
+                        + ", ".join(repr(s["text"]) for s in spans[:3])
+                        + ".",
+                        weight=0.0,
+                        category="ml",
+                        analyzer=self.name,
+                        span=(top["start"], top["end"]),
+                        evidence={"spans": spans},
+                    )
+                )
+        return AnalyzerResult(signals=signals, meta={"ml_prob": prob, "ml_model": info})
 
     @staticmethod
     def _saliency(model: UrlModel, url: str) -> list[dict[str, Any]]:
         try:
             from uniphish.url.saliency import top_spans
-            return [{"start": s.start, "end": s.end, "text": s.text,
-                     "delta": round(s.delta, 4)}
-                    for s in top_spans(url, _TOP_K, model)]
+
+            return [
+                {"start": s.start, "end": s.end, "text": s.text, "delta": round(s.delta, 4)}
+                for s in top_spans(url, _TOP_K, model)
+            ]
         except Exception as exc:  # explanation is best-effort
             log.debug("saliency failed: %s", exc)
             return []

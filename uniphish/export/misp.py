@@ -58,11 +58,28 @@ def _uuid(*parts: str) -> str:
     return str(uuid.uuid5(MISP_NAMESPACE, "|".join(parts)))
 
 
-def _attr(ev: str, t: str, cat: str, value: str, *, ids: bool, comment: str = "",
-          ts: str = "0", disable_correlation: bool = False) -> dict[str, Any]:
-    return {"uuid": _uuid(ev, t, value), "type": t, "category": cat, "value": value,
-            "to_ids": ids, "distribution": "5", "comment": comment, "timestamp": ts,
-            "disable_correlation": disable_correlation}
+def _attr(
+    ev: str,
+    t: str,
+    cat: str,
+    value: str,
+    *,
+    ids: bool,
+    comment: str = "",
+    ts: str = "0",
+    disable_correlation: bool = False,
+) -> dict[str, Any]:
+    return {
+        "uuid": _uuid(ev, t, value),
+        "type": t,
+        "category": cat,
+        "value": value,
+        "to_ids": ids,
+        "distribution": "5",
+        "comment": comment,
+        "timestamp": ts,
+        "disable_correlation": disable_correlation,
+    }
 
 
 def galaxy_tag(t: MitreTechnique) -> str:
@@ -73,45 +90,95 @@ def galaxy_tag(t: MitreTechnique) -> str:
     return f'misp-galaxy:{galaxy}="{name} - {t.id}"'
 
 
-def _objects(ev: str, selected: list[tuple[Indicator, tuple[str, str]]],
-             ts: str) -> list[dict[str, Any]]:
+def _objects(
+    ev: str, selected: list[tuple[Indicator, tuple[str, str]]], ts: str
+) -> list[dict[str, Any]]:
     objs: list[dict[str, Any]] = []
     hashes: dict[str, str] = {}
     for _ind, (t, v) in selected:
         if t == "url":
             parts = urlsplit(v)
-            attrs = [_attr(ev, "url", "Network activity", v, ids=False, ts=ts,
-                           disable_correlation=True)]
+            attrs = [
+                _attr(ev, "url", "Network activity", v, ids=False, ts=ts, disable_correlation=True)
+            ]
             if parts.scheme:
-                attrs.append(_attr(ev, "text", "Other", parts.scheme, ids=False, ts=ts,
-                                   disable_correlation=True) | {"object_relation": "scheme"})
+                attrs.append(
+                    _attr(
+                        ev,
+                        "text",
+                        "Other",
+                        parts.scheme,
+                        ids=False,
+                        ts=ts,
+                        disable_correlation=True,
+                    )
+                    | {"object_relation": "scheme"}
+                )
             if parts.hostname:
-                attrs.append(_attr(ev, "domain", "Network activity", parts.hostname, ids=False,
-                                   ts=ts, disable_correlation=True)
-                             | {"object_relation": "domain"})
+                attrs.append(
+                    _attr(
+                        ev,
+                        "domain",
+                        "Network activity",
+                        parts.hostname,
+                        ids=False,
+                        ts=ts,
+                        disable_correlation=True,
+                    )
+                    | {"object_relation": "domain"}
+                )
             if parts.path and parts.path != "/":
-                attrs.append(_attr(ev, "text", "Other", parts.path, ids=False, ts=ts,
-                                   disable_correlation=True) | {"object_relation": "resource_path"})
+                attrs.append(
+                    _attr(
+                        ev, "text", "Other", parts.path, ids=False, ts=ts, disable_correlation=True
+                    )
+                    | {"object_relation": "resource_path"}
+                )
             attrs[0]["object_relation"] = "url"
-            objs.append({"uuid": _uuid(ev, "object-url", v), "name": "url",
-                         "meta-category": "network", "template_uuid": _URL_TEMPLATE,
-                         "distribution": "5", "timestamp": ts, "Attribute": attrs})
+            objs.append(
+                {
+                    "uuid": _uuid(ev, "object-url", v),
+                    "name": "url",
+                    "meta-category": "network",
+                    "template_uuid": _URL_TEMPLATE,
+                    "distribution": "5",
+                    "timestamp": ts,
+                    "Attribute": attrs,
+                }
+            )
         elif t in ("sha256", "sha1", "md5"):
             hashes[t] = v
     if hashes:
         attrs = []
         for t, v in sorted(hashes.items()):
-            attrs.append(_attr(ev, t, "Payload delivery", v, ids=False, ts=ts,
-                               disable_correlation=True) | {"object_relation": t})
-        objs.append({"uuid": _uuid(ev, "object-file", *sorted(hashes.values())), "name": "file",
-                     "meta-category": "file", "template_uuid": _FILE_TEMPLATE,
-                     "distribution": "5", "timestamp": ts, "Attribute": attrs})
+            attrs.append(
+                _attr(ev, t, "Payload delivery", v, ids=False, ts=ts, disable_correlation=True)
+                | {"object_relation": t}
+            )
+        objs.append(
+            {
+                "uuid": _uuid(ev, "object-file", *sorted(hashes.values())),
+                "name": "file",
+                "meta-category": "file",
+                "template_uuid": _FILE_TEMPLATE,
+                "distribution": "5",
+                "timestamp": ts,
+                "Attribute": attrs,
+            }
+        )
     return objs
 
 
-def to_misp_event(verdict: Verdict, *, created: datetime | None = None, tlp: str = "amber",
-                  distribution: str = "0", org_name: str = "UniPhish",
-                  include_benign: bool = False, extra_tags: Iterable[str] = ()) -> dict[str, Any]:
+def to_misp_event(
+    verdict: Verdict,
+    *,
+    created: datetime | None = None,
+    tlp: str = "amber",
+    distribution: str = "0",
+    org_name: str = "UniPhish",
+    include_benign: bool = False,
+    extra_tags: Iterable[str] = (),
+) -> dict[str, Any]:
     """Convert a verdict to a MISP event (``{"Event": {...}}``, JSON-serialisable).
 
     Args:
@@ -136,11 +203,13 @@ def to_misp_event(verdict: Verdict, *, created: datetime | None = None, tlp: str
     for ind, (t, v) in selected:
         mtype, cat = _ATTR_MAP[t]
         value = f"AS{v}" if t == "asn" else v
-        attributes.append(_attr(ev, mtype, cat, value, ids=True, ts=ts,
-                                comment=ind.role or ind.context or ""))
+        attributes.append(
+            _attr(ev, mtype, cat, value, ids=True, ts=ts, comment=ind.role or ind.context or "")
+        )
     summary = verdict.summary or f"UniPhish {verdict.level.value} verdict"
-    attributes.append(_attr(ev, "comment", "Other", summary[:2000], ids=False, ts=ts,
-                            disable_correlation=True))
+    attributes.append(
+        _attr(ev, "comment", "Other", summary[:2000], ids=False, ts=ts, disable_correlation=True)
+    )
 
     techniques = _techniques(verdict) if publish else []
     tags = [f"tlp:{tlp}", "phishing", f'uniphish:level="{verdict.level.value}"']
@@ -151,16 +220,23 @@ def to_misp_event(verdict: Verdict, *, created: datetime | None = None, tlp: str
     tags = list(dict.fromkeys(tags))
 
     galaxies = []
-    for fw, gname, ns_, gtype in (("attack", "Attack Pattern", "mitre-attack",
-                                   "mitre-attack-pattern"),
-                                  ("atlas", "Attack Pattern", "mitre-atlas",
-                                   "mitre-atlas-attack-pattern")):
-        clusters = [{"value": galaxy_tag(t).split('="', 1)[1][:-1], "tag_name": galaxy_tag(t),
-                     "meta": {"external_id": [t.id], **({"refs": [t.url]} if t.url else {})}}
-                    for t in techniques if t.framework == fw]
+    for fw, gname, ns_, gtype in (
+        ("attack", "Attack Pattern", "mitre-attack", "mitre-attack-pattern"),
+        ("atlas", "Attack Pattern", "mitre-atlas", "mitre-atlas-attack-pattern"),
+    ):
+        clusters = [
+            {
+                "value": galaxy_tag(t).split('="', 1)[1][:-1],
+                "tag_name": galaxy_tag(t),
+                "meta": {"external_id": [t.id], **({"refs": [t.url]} if t.url else {})},
+            }
+            for t in techniques
+            if t.framework == fw
+        ]
         if clusters:
-            galaxies.append({"name": gname, "namespace": ns_, "type": gtype,
-                             "GalaxyCluster": clusters})
+            galaxies.append(
+                {"name": gname, "namespace": ns_, "type": gtype, "GalaxyCluster": clusters}
+            )
 
     event: dict[str, Any] = {
         "uuid": ev,
@@ -194,9 +270,15 @@ def to_misp_feed(verdicts: Iterable[Verdict], **kwargs: Any) -> dict[str, Any]:
     hashes: list[list[str]] = []
     for uid, e in events.items():
         ev = e["Event"]
-        manifest[uid] = {"info": ev["info"], "Orgc": ev["Orgc"], "date": ev["date"],
-                         "analysis": ev["analysis"], "threat_level_id": ev["threat_level_id"],
-                         "timestamp": ev["timestamp"], "Tag": ev["Tag"]}
+        manifest[uid] = {
+            "info": ev["info"],
+            "Orgc": ev["Orgc"],
+            "date": ev["date"],
+            "analysis": ev["analysis"],
+            "threat_level_id": ev["threat_level_id"],
+            "timestamp": ev["timestamp"],
+            "Tag": ev["Tag"],
+        }
         for a in ev["Attribute"]:
             if a["type"] != "comment":
                 digest = hashlib.md5(a["value"].encode(), usedforsecurity=False).hexdigest()
@@ -208,8 +290,10 @@ def misp_feed_files(verdicts: Iterable[Verdict], **kwargs: Any) -> dict[str, str
     """Render a feed as ``{filename: text}``: ``manifest.json``, ``hashes.csv`` and one
     ``<uuid>.json`` per event, ready to be served over HTTP or written to a directory."""
     feed = to_misp_feed(verdicts, **kwargs)
-    files = {"manifest.json": json.dumps(feed["manifest"], sort_keys=True, indent=1),
-             "hashes.csv": "".join(f"{h},{u}\n" for h, u in feed["hashes"])}
+    files = {
+        "manifest.json": json.dumps(feed["manifest"], sort_keys=True, indent=1),
+        "hashes.csv": "".join(f"{h},{u}\n" for h, u in feed["hashes"]),
+    }
     for uid, e in feed["events"].items():
         files[f"{uid}.json"] = json.dumps(e, sort_keys=True, indent=1)
     return files

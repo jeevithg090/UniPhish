@@ -32,11 +32,20 @@ __all__ = ["ECS_VERSION", "to_ecs", "to_ndjson"]
 
 ECS_VERSION = "8.11.0"
 _TACTIC_IDS = {
-    "reconnaissance": "TA0043", "resource-development": "TA0042", "initial-access": "TA0001",
-    "execution": "TA0002", "persistence": "TA0003", "privilege-escalation": "TA0004",
-    "defense-evasion": "TA0005", "credential-access": "TA0006", "discovery": "TA0007",
-    "lateral-movement": "TA0008", "collection": "TA0009", "command-and-control": "TA0011",
-    "exfiltration": "TA0010", "impact": "TA0040",
+    "reconnaissance": "TA0043",
+    "resource-development": "TA0042",
+    "initial-access": "TA0001",
+    "execution": "TA0002",
+    "persistence": "TA0003",
+    "privilege-escalation": "TA0004",
+    "defense-evasion": "TA0005",
+    "credential-access": "TA0006",
+    "discovery": "TA0007",
+    "lateral-movement": "TA0008",
+    "collection": "TA0009",
+    "command-and-control": "TA0011",
+    "exfiltration": "TA0010",
+    "impact": "TA0040",
 }
 _CONFIDENCE = ((0.85, "High"), (0.5, "Medium"))
 
@@ -72,10 +81,12 @@ def _url_fields(url: str) -> dict[str, Any]:
 
 def _indicator(iocs: Iocs, verdict: Verdict) -> tuple[dict[str, Any], dict[str, Any]]:
     """Return (threat.indicator, top-level url) for the primary IOC ({} if none)."""
-    base: dict[str, Any] = {"provider": "UniPhish", "confidence": _confidence(verdict.risk),
-                            "description": verdict.summary or "Phishing indicator",
-                            "first_seen": verdict.created_at.isoformat(timespec="milliseconds")
-                            .replace("+00:00", "Z")}
+    base: dict[str, Any] = {
+        "provider": "UniPhish",
+        "confidence": _confidence(verdict.risk),
+        "description": verdict.summary or "Phishing indicator",
+        "first_seen": verdict.created_at.isoformat(timespec="milliseconds").replace("+00:00", "Z"),
+    }
     if iocs.urls:
         url = _url_fields(iocs.urls[0].url)
         return {**base, "type": "url", "url": url}, url
@@ -83,8 +94,11 @@ def _indicator(iocs: Iocs, verdict: Verdict) -> tuple[dict[str, Any], dict[str, 
         host = (iocs.domains or iocs.shared_hosts)[0]
         return {**base, "type": "domain-name", "url": {"domain": host}}, {"domain": host}
     if iocs.ips:
-        return {**base, "type": "ipv6-addr" if ":" in iocs.ips[0] else "ipv4-addr",
-                "ip": iocs.ips[0]}, {}
+        return {
+            **base,
+            "type": "ipv6-addr" if ":" in iocs.ips[0] else "ipv4-addr",
+            "ip": iocs.ips[0],
+        }, {}
     if iocs.sha256:
         return {**base, "type": "file", "file": {"hash": {"sha256": iocs.sha256[0]}}}, {}
     if iocs.emails:
@@ -116,22 +130,35 @@ def to_ecs(verdict: Verdict, *, allow_benign: bool = False) -> dict[str, Any]:
             "risk_score": float(verdict.score),
             "reason": verdict.summary,
         },
-        "rule": {"name": "UniPhish phishing detection", "id": f"uniphish.{verdict.level.value}",
-                 "category": "phishing", "ruleset": "UniPhish",
-                 "description": verdict.summary or "UniPhish explainable phishing verdict"},
-        "risk": {"score": verdict.score, "calculated_score": float(verdict.score),
-                 "calculated_score_norm": float(verdict.score)},
-        "message": (f"UniPhish verdict {verdict.level.value} ({verdict.score}/100) for "
-                    f"{_safe_target(verdict)}" + (f": {verdict.summary}" if verdict.summary
-                                                  else "")),
+        "rule": {
+            "name": "UniPhish phishing detection",
+            "id": f"uniphish.{verdict.level.value}",
+            "category": "phishing",
+            "ruleset": "UniPhish",
+            "description": verdict.summary or "UniPhish explainable phishing verdict",
+        },
+        "risk": {
+            "score": verdict.score,
+            "calculated_score": float(verdict.score),
+            "calculated_score_norm": float(verdict.score),
+        },
+        "message": (
+            f"UniPhish verdict {verdict.level.value} ({verdict.score}/100) for "
+            f"{_safe_target(verdict)}" + (f": {verdict.summary}" if verdict.summary else "")
+        ),
         "tags": ["uniphish", verdict.level.value, verdict.kind.value],
         "uniphish": {
-            "verdict_id": verdict.id, "artifact_id": verdict.artifact_id,
-            "kind": verdict.kind.value, "level": verdict.level.value,
-            "risk": verdict.risk, "confidence": verdict.confidence,
+            "verdict_id": verdict.id,
+            "artifact_id": verdict.artifact_id,
+            "kind": verdict.kind.value,
+            "level": verdict.level.value,
+            "risk": verdict.risk,
+            "confidence": verdict.confidence,
             "engine_version": verdict.engine_version,
-            "signals": [{"id": s.id, "weight": s.weight, "category": s.category}
-                        for s in verdict.top_signals(10)],
+            "signals": [
+                {"id": s.id, "weight": s.weight, "category": s.category}
+                for s in verdict.top_signals(10)
+            ],
         },
     }
     if brand:
@@ -140,15 +167,21 @@ def to_ecs(verdict: Verdict, *, allow_benign: bool = False) -> dict[str, Any]:
         tactics = sorted({t.tactic for t in attack if t.tactic})
         doc["threat"] = {
             "framework": "MITRE ATT&CK",
-            "technique": {"id": [t.id for t in attack], "name": [t.name for t in attack],
-                          "reference": [t.url for t in attack]},
+            "technique": {
+                "id": [t.id for t in attack],
+                "name": [t.name for t in attack],
+                "reference": [t.url for t in attack],
+            },
         }
         if tactics:
             doc["threat"]["tactic"] = {
                 "id": [_TACTIC_IDS[t] for t in tactics if t in _TACTIC_IDS],
                 "name": [t.replace("-", " ").title() for t in tactics],
-                "reference": [f"https://attack.mitre.org/tactics/{_TACTIC_IDS[t]}/"
-                              for t in tactics if t in _TACTIC_IDS],
+                "reference": [
+                    f"https://attack.mitre.org/tactics/{_TACTIC_IDS[t]}/"
+                    for t in tactics
+                    if t in _TACTIC_IDS
+                ],
             }
     atlas = [t.id for t in techs if t.framework == "atlas"]
     if atlas:
@@ -182,5 +215,8 @@ def _safe_target(verdict: Verdict) -> str:
 def to_ndjson(verdicts: Iterable[Verdict] | Verdict, *, allow_benign: bool = False) -> str:
     """ECS documents as newline-delimited JSON (one per verdict, trailing newline)."""
     items = [verdicts] if isinstance(verdicts, Verdict) else list(verdicts)
-    return "".join(json.dumps(to_ecs(v, allow_benign=allow_benign), ensure_ascii=True,
-                              separators=(",", ":")) + "\n" for v in items)
+    return "".join(
+        json.dumps(to_ecs(v, allow_benign=allow_benign), ensure_ascii=True, separators=(",", ":"))
+        + "\n"
+        for v in items
+    )

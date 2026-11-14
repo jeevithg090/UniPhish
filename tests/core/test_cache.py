@@ -65,7 +65,7 @@ def test_ttlcache_update_moves_to_end():
     c.set("a", 1)
     c.set("b", 2)
     c.set("a", 10)  # refresh 'a'
-    c.set("c", 3)   # should evict 'b'
+    c.set("c", 3)  # should evict 'b'
     assert c.get("a") == 10 and c.get("c") == 3 and c.get("b") is None
 
 

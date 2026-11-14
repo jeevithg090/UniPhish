@@ -100,13 +100,14 @@ def test_no_default_regex_is_unsafe():
 # --------------------------------------------------------------------------- #
 # host scoping (AiTM / OAuth must not fire on the genuine service)
 # --------------------------------------------------------------------------- #
-@pytest.mark.parametrize("name", ["aitm_ms_ests.html", "aitm_ms_assets.html",
-                                  "oauth_device.html", "oauth_consent.html"])
+@pytest.mark.parametrize(
+    "name", ["aitm_ms_ests.html", "aitm_ms_assets.html", "oauth_device.html", "oauth_consent.html"]
+)
 def test_host_scope_skips_genuine_hosts_and_unknown_urls(name):
     html = _read(name)
     assert _ids(html, "https://login.microsoftonline.com/common/oauth2") == set()
     assert _ids(html, "https://account.live.com/") == set()
-    assert _ids(html, None) == set()          # require_url: cannot rule out the real site
+    assert _ids(html, None) == set()  # require_url: cannot rule out the real site
 
 
 def test_aitm_flag_on_lookalike_subdomain_of_other_domain():
@@ -134,16 +135,18 @@ def test_signal_shape_and_detail():
 
 
 def test_clickfix_text_only_is_weaker_than_with_clipboard():
-    text_only = {m.signature.id: m.signature.weight
-                 for m in match_html(_read("clickfix_text_only.html"))}
-    with_clip = {m.signature.id: m.signature.weight
-                 for m in match_html(_read("clickfix_runbox.html"))}
+    text_only = {
+        m.signature.id: m.signature.weight for m in match_html(_read("clickfix_text_only.html"))
+    }
+    with_clip = {
+        m.signature.id: m.signature.weight for m in match_html(_read("clickfix_runbox.html"))
+    }
     assert text_only["clickfix.run_dialog_text"] < with_clip["clickfix.run_dialog_clipboard"]
 
 
 def test_captcha_gate_not_flagged_when_clipboard_used():
     ids = _ids(_read("clickfix_captcha.html"), None)
-    assert "captcha.fake_gate" not in ids       # that is ClickFix, reported as such
+    assert "captcha.fake_gate" not in ids  # that is ClickFix, reported as such
 
 
 # --------------------------------------------------------------------------- #
@@ -178,40 +181,67 @@ def test_analyzer_uses_page_url_and_emits_exfil_indicator():
     res = _run(art)
     assert [s.id for s in res.signals] == ["kit.generic.form_handler_script"]
     assert [(i.type.value, i.value, i.role) for i in res.indicators] == [
-        ("domain", "collector.evil.test", "exfil-endpoint")]
+        ("domain", "collector.evil.test", "exfil-endpoint")
+    ]
 
 
 def test_analyzer_benign_and_empty_pages_produce_nothing():
-    assert _run(Artifact.from_page(_read("benign_login.html"), url="https://shop.example.com/")
-                ).signals == []
+    assert (
+        _run(
+            Artifact.from_page(_read("benign_login.html"), url="https://shop.example.com/")
+        ).signals
+        == []
+    )
     assert _run(Artifact.from_page("")).signals == []
     assert _run(Artifact.from_page(b"\xff\xfe\x00garbage<<<")).signals == []
 
 
 def test_analyzer_reads_favicon_hashes_from_meta():
-    rules = [{"id": "x.fav", "name": "fav", "family": "generic_kit", "severity_weight": 3,
-              "all_of": [{"kind": "favicon_mmh3", "hashes": [-123456]}]}]
+    rules = [
+        {
+            "id": "x.fav",
+            "name": "fav",
+            "family": "generic_kit",
+            "severity_weight": 3,
+            "all_of": [{"kind": "favicon_mmh3", "hashes": [-123456]}],
+        }
+    ]
     sigs = load_signatures(rules)
     html = "<html><body>hi</body></html>"
     assert match_html(html, signatures=sigs) == []
-    assert [m.signature.id for m in match_html(html, favicon_hashes=[-123456],
-                                               signatures=sigs)] == ["x.fav"]
+    assert [
+        m.signature.id for m in match_html(html, favicon_hashes=[-123456], signatures=sigs)
+    ] == ["x.fav"]
 
 
 # --------------------------------------------------------------------------- #
 # engine: every matcher kind, plus rule validation
 # --------------------------------------------------------------------------- #
 def _one(matcher: dict, html: str, url: str | None = None, **extra) -> bool:
-    rule = {"id": "t.rule", "name": "t", "family": "generic_kit", "severity_weight": 1,
-            "all_of": [matcher], **extra}
+    rule = {
+        "id": "t.rule",
+        "name": "t",
+        "family": "generic_kit",
+        "severity_weight": 1,
+        "all_of": [matcher],
+        **extra,
+    }
     return bool(match_html(html, url, signatures=load_signatures([rule])))
 
 
 def test_matcher_kinds_cover_spec():
     assert set(MATCHER_KINDS) == {
-        "text_contains", "html_regex", "form_action_cross_origin", "has_clipboard_write",
-        "title_regex", "resource_host_suffix", "meta", "favicon_mmh3", "script_src_regex",
-        "dom_pattern"}
+        "text_contains",
+        "html_regex",
+        "form_action_cross_origin",
+        "has_clipboard_write",
+        "title_regex",
+        "resource_host_suffix",
+        "meta",
+        "favicon_mmh3",
+        "script_src_regex",
+        "dom_pattern",
+    }
 
 
 def test_text_contains_uses_visible_text_only():
@@ -223,22 +253,33 @@ def test_text_contains_uses_visible_text_only():
 
 def test_html_regex_scopes():
     assert _one({"kind": "html_regex", "pattern": r"<b\s{0,2}id=x"}, "<b  id=x>")
-    assert not _one({"kind": "html_regex", "scope": "text", "pattern": "hidden"},
-                    "<script>hidden</script><p>shown</p>")
+    assert not _one(
+        {"kind": "html_regex", "scope": "text", "pattern": "hidden"},
+        "<script>hidden</script><p>shown</p>",
+    )
 
 
 def test_title_regex_and_meta_and_script_src():
-    assert _one({"kind": "title_regex", "pattern": "^just a moment"},
-                "<title>Just a moment...</title>")
-    assert _one({"kind": "meta", "field": "generator", "contains": "fakekit"},
-                '<meta name="generator" content="FakeKit 1.0">')
-    assert _one({"kind": "meta", "field": "refresh_offsite", "present": True},
-                '<meta http-equiv="refresh" content="0;url=https://other.example/">',
-                "https://a.example.com/")
-    assert _one({"kind": "script_src_regex", "pattern": r"cdn\.evil\.test/"},
-                '<script src="https://cdn.evil.test/a.js"></script>')
-    assert not _one({"kind": "script_src_regex", "pattern": r"cdn\.evil\.test/"},
-                    "<script>var cdn='cdn.evil.test/'</script>")
+    assert _one(
+        {"kind": "title_regex", "pattern": "^just a moment"}, "<title>Just a moment...</title>"
+    )
+    assert _one(
+        {"kind": "meta", "field": "generator", "contains": "fakekit"},
+        '<meta name="generator" content="FakeKit 1.0">',
+    )
+    assert _one(
+        {"kind": "meta", "field": "refresh_offsite", "present": True},
+        '<meta http-equiv="refresh" content="0;url=https://other.example/">',
+        "https://a.example.com/",
+    )
+    assert _one(
+        {"kind": "script_src_regex", "pattern": r"cdn\.evil\.test/"},
+        '<script src="https://cdn.evil.test/a.js"></script>',
+    )
+    assert not _one(
+        {"kind": "script_src_regex", "pattern": r"cdn\.evil\.test/"},
+        "<script>var cdn='cdn.evil.test/'</script>",
+    )
 
 
 def test_resource_host_suffix_needs_foreign_page():
@@ -250,57 +291,131 @@ def test_resource_host_suffix_needs_foreign_page():
 
 
 def test_dom_pattern_and_clipboard_matchers():
-    assert _one({"kind": "dom_pattern", "selector": "div.a > span", "min": 2},
-                "<div class=a><span>1</span><span>2</span></div>")
-    assert not _one({"kind": "dom_pattern", "selector": "div.a > span", "min": 3},
-                    "<div class=a><span>1</span><span>2</span></div>")
-    assert _one({"kind": "has_clipboard_write"},
-                "<script>navigator.clipboard.writeText('x')</script>")
+    assert _one(
+        {"kind": "dom_pattern", "selector": "div.a > span", "min": 2},
+        "<div class=a><span>1</span><span>2</span></div>",
+    )
+    assert not _one(
+        {"kind": "dom_pattern", "selector": "div.a > span", "min": 3},
+        "<div class=a><span>1</span><span>2</span></div>",
+    )
+    assert _one(
+        {"kind": "has_clipboard_write"}, "<script>navigator.clipboard.writeText('x')</script>"
+    )
 
 
 def test_negated_matcher_and_any_of_min():
-    rule = {"id": "t.neg", "name": "t", "family": "generic_kit", "severity_weight": 1,
-            "all_of": [{"kind": "text_contains", "terms": ["a"]},
-                       {"kind": "text_contains", "terms": ["b"], "not": True}],
-            "any_of": [{"kind": "text_contains", "terms": ["x"]},
-                       {"kind": "text_contains", "terms": ["y"]}], "min_any": 2}
+    rule = {
+        "id": "t.neg",
+        "name": "t",
+        "family": "generic_kit",
+        "severity_weight": 1,
+        "all_of": [
+            {"kind": "text_contains", "terms": ["a"]},
+            {"kind": "text_contains", "terms": ["b"], "not": True},
+        ],
+        "any_of": [
+            {"kind": "text_contains", "terms": ["x"]},
+            {"kind": "text_contains", "terms": ["y"]},
+        ],
+        "min_any": 2,
+    }
     sigs = load_signatures([rule])
     assert match_html("<p>a x y</p>", signatures=sigs)
     assert not match_html("<p>a x</p>", signatures=sigs)
     assert not match_html("<p>a b x y</p>", signatures=sigs)
 
 
-@pytest.mark.parametrize("bad", [
-    {"id": "Bad Id", "name": "t", "family": "generic_kit", "severity_weight": 1,
-     "all_of": [{"kind": "has_clipboard_write"}]},
-    {"id": "t.a", "name": "t", "family": "nope", "severity_weight": 1,
-     "all_of": [{"kind": "has_clipboard_write"}]},
-    {"id": "t.a", "name": "t", "family": "generic_kit", "severity_weight": 99,
-     "all_of": [{"kind": "has_clipboard_write"}]},
-    {"id": "t.a", "name": "t", "family": "generic_kit", "severity_weight": 1,
-     "mitre": ["T9999"], "all_of": [{"kind": "has_clipboard_write"}]},
-    {"id": "t.a", "name": "t", "family": "generic_kit", "severity_weight": 1},
-    {"id": "t.a", "name": "t", "family": "generic_kit", "severity_weight": 1,
-     "all_of": [{"kind": "wat"}]},
-    {"id": "t.a", "name": "t", "family": "generic_kit", "severity_weight": 1,
-     "all_of": [{"kind": "has_clipboard_write", "typo": 1}]},
-    {"id": "t.a", "name": "t", "family": "generic_kit", "severity_weight": 1,
-     "all_of": [{"kind": "has_clipboard_write", "not": True}]},
-    {"id": "t.a", "name": "t", "family": "generic_kit", "severity_weight": 1,
-     "all_of": [{"kind": "dom_pattern", "selector": "div[["}]},
-    {"id": "t.a", "name": "x" * 71, "family": "generic_kit", "severity_weight": 1,
-     "all_of": [{"kind": "has_clipboard_write"}]},
-    {"id": "t.a", "name": "t", "family": "generic_kit", "severity_weight": 1,
-     "all_of": [{"kind": "html_regex", "pattern": "(a+)+b"}]},
-])
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {
+            "id": "Bad Id",
+            "name": "t",
+            "family": "generic_kit",
+            "severity_weight": 1,
+            "all_of": [{"kind": "has_clipboard_write"}],
+        },
+        {
+            "id": "t.a",
+            "name": "t",
+            "family": "nope",
+            "severity_weight": 1,
+            "all_of": [{"kind": "has_clipboard_write"}],
+        },
+        {
+            "id": "t.a",
+            "name": "t",
+            "family": "generic_kit",
+            "severity_weight": 99,
+            "all_of": [{"kind": "has_clipboard_write"}],
+        },
+        {
+            "id": "t.a",
+            "name": "t",
+            "family": "generic_kit",
+            "severity_weight": 1,
+            "mitre": ["T9999"],
+            "all_of": [{"kind": "has_clipboard_write"}],
+        },
+        {"id": "t.a", "name": "t", "family": "generic_kit", "severity_weight": 1},
+        {
+            "id": "t.a",
+            "name": "t",
+            "family": "generic_kit",
+            "severity_weight": 1,
+            "all_of": [{"kind": "wat"}],
+        },
+        {
+            "id": "t.a",
+            "name": "t",
+            "family": "generic_kit",
+            "severity_weight": 1,
+            "all_of": [{"kind": "has_clipboard_write", "typo": 1}],
+        },
+        {
+            "id": "t.a",
+            "name": "t",
+            "family": "generic_kit",
+            "severity_weight": 1,
+            "all_of": [{"kind": "has_clipboard_write", "not": True}],
+        },
+        {
+            "id": "t.a",
+            "name": "t",
+            "family": "generic_kit",
+            "severity_weight": 1,
+            "all_of": [{"kind": "dom_pattern", "selector": "div[["}],
+        },
+        {
+            "id": "t.a",
+            "name": "x" * 71,
+            "family": "generic_kit",
+            "severity_weight": 1,
+            "all_of": [{"kind": "has_clipboard_write"}],
+        },
+        {
+            "id": "t.a",
+            "name": "t",
+            "family": "generic_kit",
+            "severity_weight": 1,
+            "all_of": [{"kind": "html_regex", "pattern": "(a+)+b"}],
+        },
+    ],
+)
 def test_invalid_rules_are_rejected(bad):
     with pytest.raises(KitRuleError):
         load_signatures([bad])
 
 
 def test_duplicate_ids_rejected():
-    r = {"id": "t.a", "name": "t", "family": "generic_kit", "severity_weight": 1,
-         "all_of": [{"kind": "has_clipboard_write"}]}
+    r = {
+        "id": "t.a",
+        "name": "t",
+        "family": "generic_kit",
+        "severity_weight": 1,
+        "all_of": [{"kind": "has_clipboard_write"}],
+    }
     with pytest.raises(KitRuleError):
         load_signatures([r, dict(r)])
 
@@ -308,18 +423,34 @@ def test_duplicate_ids_rejected():
 # --------------------------------------------------------------------------- #
 # ReDoS guard
 # --------------------------------------------------------------------------- #
-@pytest.mark.parametrize("pattern", [
-    r"(a+)+$", r"(a*)*", r"a.*b", r"a.+b", r"a{1,}", r"(?:a|aa){1,5}",
-    r"(a{1,5}){1,5}", r"(a)\1", r"x{1,5000}",
-])
+@pytest.mark.parametrize(
+    "pattern",
+    [
+        r"(a+)+$",
+        r"(a*)*",
+        r"a.*b",
+        r"a.+b",
+        r"a{1,}",
+        r"(?:a|aa){1,5}",
+        r"(a{1,5}){1,5}",
+        r"(a)\1",
+        r"x{1,5000}",
+    ],
+)
 def test_lint_rejects_dangerous_patterns(pattern):
     with pytest.raises(KitRuleError):
         check_regex_safe(pattern)
 
 
-@pytest.mark.parametrize("pattern", [
-    r"a.{0,200}b", r"(?:ctrl|cmd)\s{0,3}\+\s{0,3}v\b", r"(?:\.exe)?\s{1,3}/c", r"[^\n<>]{0,120}?x",
-])
+@pytest.mark.parametrize(
+    "pattern",
+    [
+        r"a.{0,200}b",
+        r"(?:ctrl|cmd)\s{0,3}\+\s{0,3}v\b",
+        r"(?:\.exe)?\s{1,3}/c",
+        r"[^\n<>]{0,120}?x",
+    ],
+)
 def test_lint_accepts_bounded_patterns(pattern):
     check_regex_safe(pattern)
 
@@ -345,13 +476,13 @@ def test_adversarial_inputs_are_fast():
 
 
 def test_huge_input_is_bounded():
-    html = "<p>x</p>" * 400_000       # ~3.2 MB, over the scan cap
+    html = "<p>x</p>" * 400_000  # ~3.2 MB, over the scan cap
     start = time.perf_counter()
     assert match_html(html) == []
-    assert time.perf_counter() - start < 30.0   # dominated by the HTML parser
+    assert time.perf_counter() - start < 30.0  # dominated by the HTML parser
 
 
 def test_match_html_never_raises_on_bad_types():
-    assert match_html(None) == []                  # type: ignore[arg-type]
+    assert match_html(None) == []  # type: ignore[arg-type]
     assert match_html(b"\x00\xff<html") == []
     assert isinstance(match_html("<html" * 10_000), list)

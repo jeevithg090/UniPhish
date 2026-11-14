@@ -134,8 +134,12 @@ def test_random_label_heuristics():
     assert features("https://xkqzvbnmtrw.example/").vowelless_label
     assert features("https://a8f3k2x9q1.example/").random_looking_label
     assert features("https://3f9a1c7e5b2d4a60.example/").random_looking_label
-    for ok in ("https://strengths.org/", "https://example.com/", "https://wikipedia.org/",
-               "https://my-bank.example/"):
+    for ok in (
+        "https://strengths.org/",
+        "https://example.com/",
+        "https://wikipedia.org/",
+        "https://my-bank.example/",
+    ):
         f = features(ok)
         assert not f.random_looking_label, ok
         assert not f.vowelless_label, ok
@@ -143,8 +147,17 @@ def test_random_label_heuristics():
 
 def test_benign_baseline_is_quiet():
     f = features("https://www.example.com/")
-    assert not (f.has_at or f.is_ip or f.punycode or f.lots or f.is_shortener or f.deep_path
-                or f.open_redirect or f.sensitive_words_in_host or f.random_looking_label)
+    assert not (
+        f.has_at
+        or f.is_ip
+        or f.punycode
+        or f.lots
+        or f.is_shortener
+        or f.deep_path
+        or f.open_redirect
+        or f.sensitive_words_in_host
+        or f.random_looking_label
+    )
 
 
 def test_to_dict_is_json_serialisable():

@@ -60,19 +60,38 @@ __all__ = [
 
 #: Kinds in priority order: when two kinds yield the same domain the earlier one wins.
 KINDS: tuple[str, ...] = (
-    "homoglyph", "idn_homograph", "bitsquat", "typo", "omission", "addition",
-    "double_char", "vowel_swap", "hyphenation", "subdomain", "combosquat", "tld_swap",
+    "homoglyph",
+    "idn_homograph",
+    "bitsquat",
+    "typo",
+    "omission",
+    "addition",
+    "double_char",
+    "vowel_swap",
+    "hyphenation",
+    "subdomain",
+    "combosquat",
+    "tld_swap",
 )
 DEFAULT_MAX = 2000
 _MAX_INPUT_LEN = 253
 _MAX_LABEL = 63
-_MAX_SLD_LEN = 40              # permuting very long labels explodes output for no benefit
+_MAX_SLD_LEN = 40  # permuting very long labels explodes output for no benefit
 _KIND_CAPS: dict[str, int] = {
-    "homoglyph": 400, "idn_homograph": 12, "bitsquat": 200, "typo": 800, "omission": 80,
-    "addition": 120, "double_char": 80, "vowel_swap": 60, "hyphenation": 60,
-    "subdomain": 60, "combosquat": 240, "tld_swap": 200,
+    "homoglyph": 400,
+    "idn_homograph": 12,
+    "bitsquat": 200,
+    "typo": 800,
+    "omission": 80,
+    "addition": 120,
+    "double_char": 80,
+    "vowel_swap": 60,
+    "hyphenation": 60,
+    "subdomain": 60,
+    "combosquat": 240,
+    "tld_swap": 200,
 }
-_ALLOWED_SCRIPTS = ("Cyrl", "Grek", "Latn", "Armn")   # preference order for look-alikes
+_ALLOWED_SCRIPTS = ("Cyrl", "Grek", "Latn", "Armn")  # preference order for look-alikes
 _PER_CHAR_LOOKALIKES = 8
 _WHOLE_SCRIPTS = ("Cyrl", "Grek", "Armn")
 _LABEL_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$")
@@ -82,20 +101,75 @@ _VOWELS = "aeiou"
 
 # ASCII-only visual / leet confusions (source substring -> replacements).
 _ASCII_CONFUSIONS: dict[str, tuple[str, ...]] = {
-    "o": ("0",), "l": ("1", "i"), "i": ("1", "l"), "e": ("3",), "a": ("4",), "s": ("5",),
-    "t": ("7",), "b": ("8",), "g": ("9", "q"), "q": ("g",), "m": ("rn",), "w": ("vv",),
-    "d": ("cl",), "u": ("v",), "v": ("u",), "n": ("m",), "1": ("l", "i"), "0": ("o",),
+    "o": ("0",),
+    "l": ("1", "i"),
+    "i": ("1", "l"),
+    "e": ("3",),
+    "a": ("4",),
+    "s": ("5",),
+    "t": ("7",),
+    "b": ("8",),
+    "g": ("9", "q"),
+    "q": ("g",),
+    "m": ("rn",),
+    "w": ("vv",),
+    "d": ("cl",),
+    "u": ("v",),
+    "v": ("u",),
+    "n": ("m",),
+    "1": ("l", "i"),
+    "0": ("o",),
 }
 _ROWS = ("1234567890", "qwertyuiop", "asdfghjkl", "zxcvbnm")
 _CORE_KEYWORDS: tuple[str, ...] = (
-    "login", "secure", "support", "verify", "account", "online", "service", "update",
-    "billing", "wallet", "help", "official", "app", "pay", "mail", "portal", "signin",
-    "security", "id", "my",
+    "login",
+    "secure",
+    "support",
+    "verify",
+    "account",
+    "online",
+    "service",
+    "update",
+    "billing",
+    "wallet",
+    "help",
+    "official",
+    "app",
+    "pay",
+    "mail",
+    "portal",
+    "signin",
+    "security",
+    "id",
+    "my",
 )
 _LURE_CATEGORIES = ("credential", "account", "security", "financial", "delivery", "identity")
 _COMMON_TLDS: tuple[str, ...] = (
-    "com", "net", "org", "co", "io", "info", "biz", "us", "uk", "co.uk", "de", "fr", "ru",
-    "cn", "in", "br", "app", "online", "site", "shop", "store", "live", "cc", "me", "tv",
+    "com",
+    "net",
+    "org",
+    "co",
+    "io",
+    "info",
+    "biz",
+    "us",
+    "uk",
+    "co.uk",
+    "de",
+    "fr",
+    "ru",
+    "cn",
+    "in",
+    "br",
+    "app",
+    "online",
+    "site",
+    "shop",
+    "store",
+    "live",
+    "cc",
+    "me",
+    "tv",
 )
 
 
@@ -120,8 +194,12 @@ class Permutation:
             return self.domain
 
     def to_dict(self) -> dict[str, str]:
-        return {"domain": self.domain, "display": self.display, "kind": self.kind,
-                "note": self.note}
+        return {
+            "domain": self.domain,
+            "display": self.display,
+            "kind": self.kind,
+            "note": self.note,
+        }
 
 
 # --------------------------------------------------------------------------- #
@@ -216,8 +294,11 @@ def _keywords() -> tuple[str, ...]:
         for lang in ("und", "en"):
             for cat in _LURE_CATEGORIES:
                 for item in (langs.get(lang, {}) or {}).get(cat, []) or []:
-                    term, w = (item, weights.get(cat, 0.5)) if isinstance(item, str) else (
-                        item.get("t", ""), item.get("w", weights.get(cat, 0.5)))
+                    term, w = (
+                        (item, weights.get(cat, 0.5))
+                        if isinstance(item, str)
+                        else (item.get("t", ""), item.get("w", weights.get(cat, 0.5)))
+                    )
                     term = str(term).lower().replace("-", "")
                     if 3 <= len(term) <= 14 and term.isascii() and term.isalnum():
                         scored.append((-float(w), term))
@@ -270,11 +351,11 @@ def _neighbors() -> dict[str, str]:
     out: dict[str, str] = {}
     for r, row in enumerate(_ROWS):
         for i, ch in enumerate(row):
-            near = set(row[max(0, i - 1):i] + row[i + 1:i + 2])
-            if r > 0:                       # row above: keys at i and i+1
-                near.update(_ROWS[r - 1][i:i + 2])
-            if r + 1 < len(_ROWS):          # row below: keys at i-1 and i
-                near.update(_ROWS[r + 1][max(0, i - 1):i + 1])
+            near = set(row[max(0, i - 1) : i] + row[i + 1 : i + 2])
+            if r > 0:  # row above: keys at i and i+1
+                near.update(_ROWS[r - 1][i : i + 2])
+            if r + 1 < len(_ROWS):  # row below: keys at i-1 and i
+                near.update(_ROWS[r + 1][max(0, i - 1) : i + 1])
             out[ch] = "".join(sorted(near))
     return out
 
@@ -286,15 +367,15 @@ def _gen_homoglyph(sld: str, suffix: str) -> Iterator[tuple[str, str, str]]:
     # single substitutions: Unicode look-alikes first (the most dangerous), then ASCII
     for i, ch in enumerate(sld):
         for repl in _safe_lookalikes(ch):
-            yield sld[:i] + repl + sld[i + 1:], suffix, f"{ch!r}->U+{ord(repl):04X} at {i}"
+            yield sld[:i] + repl + sld[i + 1 :], suffix, f"{ch!r}->U+{ord(repl):04X} at {i}"
     for i, ch in enumerate(sld):
         for repl in _ASCII_CONFUSIONS.get(ch, ()):
-            yield sld[:i] + repl + sld[i + 1:], suffix, f"{ch!r}->{repl!r} (ASCII look-alike)"
+            yield sld[:i] + repl + sld[i + 1 :], suffix, f"{ch!r}->{repl!r} (ASCII look-alike)"
     # confusable multi-glyph sequences in the other direction (rn -> m, vv -> w, cl -> d)
     for seq, repl in (("rn", "m"), ("vv", "w"), ("cl", "d")):
         start = sld.find(seq)
         while start != -1:
-            yield sld[:start] + repl + sld[start + len(seq):], suffix, f"{seq!r}->{repl!r}"
+            yield sld[:start] + repl + sld[start + len(seq) :], suffix, f"{seq!r}->{repl!r}"
             start = sld.find(seq, start + 1)
     # double substitutions with the preferred (first) look-alike per character
     firsts = [(i, _safe_lookalikes(ch)[:1]) for i, ch in enumerate(sld)]
@@ -333,27 +414,30 @@ def _gen_bitsquat(sld: str, suffix: str) -> Iterator[tuple[str, str, str]]:
         for bit in range(8):
             flipped = chr(ord(ch) ^ (1 << bit)).lower()
             if flipped != ch and flipped in _ALPHABET + "-":
-                yield sld[:i] + flipped + sld[i + 1:], suffix, f"bit {bit} of {ch!r} at {i}"
+                yield sld[:i] + flipped + sld[i + 1 :], suffix, f"bit {bit} of {ch!r} at {i}"
 
 
 def _gen_typo(sld: str, suffix: str) -> Iterator[tuple[str, str, str]]:
     near = _neighbors()
-    for i, ch in enumerate(sld):                       # replacement
+    for i, ch in enumerate(sld):  # replacement
         for n in near.get(ch, ""):
-            yield sld[:i] + n + sld[i + 1:], suffix, f"{ch!r} replaced by adjacent key {n!r}"
-    for i in range(len(sld) - 1):                      # transposition
+            yield sld[:i] + n + sld[i + 1 :], suffix, f"{ch!r} replaced by adjacent key {n!r}"
+    for i in range(len(sld) - 1):  # transposition
         if sld[i] != sld[i + 1]:
-            yield (sld[:i] + sld[i + 1] + sld[i] + sld[i + 2:], suffix,
-                   f"transposed {sld[i:i + 2]!r}")
-    for i, ch in enumerate(sld):                       # insertion next to a key
+            yield (
+                sld[:i] + sld[i + 1] + sld[i] + sld[i + 2 :],
+                suffix,
+                f"transposed {sld[i : i + 2]!r}",
+            )
+    for i, ch in enumerate(sld):  # insertion next to a key
         for n in near.get(ch, ""):
             yield sld[:i] + n + sld[i:], suffix, f"inserted adjacent key {n!r} before {i}"
-            yield sld[:i + 1] + n + sld[i + 1:], suffix, f"inserted adjacent key {n!r} after {i}"
+            yield sld[: i + 1] + n + sld[i + 1 :], suffix, f"inserted adjacent key {n!r} after {i}"
 
 
 def _gen_omission(sld: str, suffix: str) -> Iterator[tuple[str, str, str]]:
     for i, ch in enumerate(sld):
-        yield sld[:i] + sld[i + 1:], suffix, f"omitted {ch!r} at {i}"
+        yield sld[:i] + sld[i + 1 :], suffix, f"omitted {ch!r} at {i}"
 
 
 def _gen_addition(sld: str, suffix: str) -> Iterator[tuple[str, str, str]]:
@@ -366,7 +450,7 @@ def _gen_addition(sld: str, suffix: str) -> Iterator[tuple[str, str, str]]:
 
 def _gen_double_char(sld: str, suffix: str) -> Iterator[tuple[str, str, str]]:
     for i, ch in enumerate(sld):
-        yield sld[:i + 1] + ch + sld[i + 1:], suffix, f"repeated {ch!r} at {i}"
+        yield sld[: i + 1] + ch + sld[i + 1 :], suffix, f"repeated {ch!r} at {i}"
 
 
 def _gen_vowel_swap(sld: str, suffix: str) -> Iterator[tuple[str, str, str]]:
@@ -374,7 +458,7 @@ def _gen_vowel_swap(sld: str, suffix: str) -> Iterator[tuple[str, str, str]]:
         if ch in _VOWELS:
             for v in _VOWELS:
                 if v != ch:
-                    yield sld[:i] + v + sld[i + 1:], suffix, f"vowel {ch!r}->{v!r} at {i}"
+                    yield sld[:i] + v + sld[i + 1 :], suffix, f"vowel {ch!r}->{v!r} at {i}"
 
 
 def _gen_hyphenation(sld: str, suffix: str) -> Iterator[tuple[str, str, str]]:
@@ -406,19 +490,27 @@ def _gen_tld_swap(sld: str, suffix: str) -> Iterator[tuple[str, str, str]]:
 
 
 _GENERATORS = {
-    "homoglyph": _gen_homoglyph, "idn_homograph": _gen_idn_homograph,
-    "bitsquat": _gen_bitsquat, "typo": _gen_typo, "omission": _gen_omission,
-    "addition": _gen_addition, "double_char": _gen_double_char,
-    "vowel_swap": _gen_vowel_swap, "hyphenation": _gen_hyphenation,
-    "subdomain": _gen_subdomain, "combosquat": _gen_combosquat, "tld_swap": _gen_tld_swap,
+    "homoglyph": _gen_homoglyph,
+    "idn_homograph": _gen_idn_homograph,
+    "bitsquat": _gen_bitsquat,
+    "typo": _gen_typo,
+    "omission": _gen_omission,
+    "addition": _gen_addition,
+    "double_char": _gen_double_char,
+    "vowel_swap": _gen_vowel_swap,
+    "hyphenation": _gen_hyphenation,
+    "subdomain": _gen_subdomain,
+    "combosquat": _gen_combosquat,
+    "tld_swap": _gen_tld_swap,
 }
 
 
 # --------------------------------------------------------------------------- #
 # Public API
 # --------------------------------------------------------------------------- #
-def generate_permutations(domain: str, *, kinds: Iterable[str] | str | None = None,
-                          max: int = DEFAULT_MAX) -> list[Permutation]:
+def generate_permutations(
+    domain: str, *, kinds: Iterable[str] | str | None = None, max: int = DEFAULT_MAX
+) -> list[Permutation]:
     """Generate look-alike domains of ``domain`` for defensive monitoring.
 
     ``kinds`` restricts the techniques (default: all, see :data:`KINDS`); ``max`` bounds
@@ -474,4 +566,4 @@ def generate_permutations(domain: str, *, kinds: Iterable[str] | str | None = No
                 progressed = True
         if not progressed:
             break
-    return [p for k in chosen for p in per_kind[k][:picked[k]]]
+    return [p for k in chosen for p in per_kind[k][: picked[k]]]

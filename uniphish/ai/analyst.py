@@ -38,7 +38,8 @@ def _sanitize_output(text: str, limit: int = 2000) -> str:
     s = _MD_LINK_RE.sub(lambda m: m.group(1), text)
     s = _TAG_RE.sub("", s)
     s = _URL_RE.sub(
-        lambda m: "hxxps://" if m.group(0).lower().startswith("https") else "hxxp://", s)
+        lambda m: "hxxps://" if m.group(0).lower().startswith("https") else "hxxp://", s
+    )
     return s.strip()[:limit]
 
 
@@ -52,8 +53,14 @@ class AIAnalyst:
         max_concurrency: cap on simultaneous API calls (rate-limit friendly).
     """
 
-    def __init__(self, settings: Settings | None = None, *, client: Any = None,
-                 timeout_s: float = 20.0, max_concurrency: int = 4) -> None:
+    def __init__(
+        self,
+        settings: Settings | None = None,
+        *,
+        client: Any = None,
+        timeout_s: float = 20.0,
+        max_concurrency: int = 4,
+    ) -> None:
         self.settings = settings or get_settings()
         self.timeout_s = timeout_s
         self._client = client
@@ -65,8 +72,10 @@ class AIAnalyst:
         """True when an LLM call is possible (injected client, or key and SDK present)."""
         if self._client is not None:
             return True
-        return bool(self.settings.anthropic_api_key) and \
-            importlib.util.find_spec("anthropic") is not None
+        return (
+            bool(self.settings.anthropic_api_key)
+            and importlib.util.find_spec("anthropic") is not None
+        )
 
     # ------------------------------------------------------------------ #
     def _get_client(self) -> Any:
@@ -74,7 +83,8 @@ class AIAnalyst:
             import anthropic  # local import: optional dependency
 
             self._client = anthropic.AsyncAnthropic(
-                api_key=self.settings.anthropic_api_key, timeout=self.timeout_s, max_retries=2)
+                api_key=self.settings.anthropic_api_key, timeout=self.timeout_s, max_retries=2
+            )
         return self._client
 
     def _semaphore(self) -> asyncio.Semaphore:
@@ -86,7 +96,8 @@ class AIAnalyst:
         async with self._semaphore():
             return await asyncio.wait_for(
                 self._get_client().messages.create(model=self.settings.ai_model, **kwargs),
-                timeout=self.timeout_s + 5)
+                timeout=self.timeout_s + 5,
+            )
 
     # ------------------------------------------------------------------ #
     async def narrative(self, verdict: Verdict) -> str:
@@ -95,10 +106,16 @@ class AIAnalyst:
             try:
                 system, user = build_narrative_prompt(verdict)
                 resp = await self._create(
-                    max_tokens=400, temperature=0.2, system=system,
-                    messages=[{"role": "user", "content": user}])
-                text = "".join(getattr(b, "text", "") for b in resp.content
-                               if getattr(b, "type", "text") == "text").strip()
+                    max_tokens=400,
+                    temperature=0.2,
+                    system=system,
+                    messages=[{"role": "user", "content": user}],
+                )
+                text = "".join(
+                    getattr(b, "text", "")
+                    for b in resp.content
+                    if getattr(b, "type", "text") == "text"
+                ).strip()
                 if text:
                     return _sanitize_output(text)
             except Exception as exc:
@@ -115,10 +132,13 @@ class AIAnalyst:
             try:
                 system, user = build_triage_prompt(verdict)
                 resp = await self._create(
-                    max_tokens=500, temperature=0.0, system=system,
+                    max_tokens=500,
+                    temperature=0.0,
+                    system=system,
                     tools=[TRIAGE_TOOL],
                     tool_choice={"type": "tool", "name": TRIAGE_TOOL["name"]},
-                    messages=[{"role": "user", "content": user}])
+                    messages=[{"role": "user", "content": user}],
+                )
                 for block in resp.content:
                     if getattr(block, "type", "") == "tool_use":
                         result = _validate_triage(getattr(block, "input", None))
@@ -142,17 +162,26 @@ def _validate_triage(data: Any) -> dict[str, Any] | None:
         conf = 0.5
     sigs = data.get("notable_signals")
     sigs = [_sanitize_output(str(s), 200) for s in sigs[:8]] if isinstance(sigs, list) else []
-    return {"assessment": assessment, "confidence": round(conf, 2),
-            "recommended_action": action, "notable_signals": sigs,
-            "rationale": _sanitize_output(str(data.get("rationale", "")), 600),
-            "source": "ai"}
+    return {
+        "assessment": assessment,
+        "confidence": round(conf, 2),
+        "recommended_action": action,
+        "notable_signals": sigs,
+        "rationale": _sanitize_output(str(data.get("rationale", "")), 600),
+        "source": "ai",
+    }
 
 
 # ---------------------------------------------------------------------- #
 # Deterministic fallbacks
 # ---------------------------------------------------------------------- #
-_KIND_LABEL = {"url": "URL", "page": "web page", "email": "email", "file": "file",
-               "text": "text message"}
+_KIND_LABEL = {
+    "url": "URL",
+    "page": "web page",
+    "email": "email",
+    "file": "file",
+    "text": "text message",
+}
 _ACTION_TEXT = {
     "block": "Block it and do not interact with it; report it for takedown.",
     "warn": "Treat it with caution and verify through an official channel before acting.",
@@ -165,25 +194,29 @@ def template_narrative(verdict: Verdict) -> str:
     kind = _KIND_LABEL.get(verdict.kind.value, verdict.kind.value)
     target = defang(verdict.target, 120) or "(unnamed)"
     if verdict.level is Level.BENIGN:
-        lead = (f"The {kind} {target} was assessed as benign "
-                f"(risk {verdict.score}/100).")
+        lead = f"The {kind} {target} was assessed as benign (risk {verdict.score}/100)."
     else:
-        lead = (f"The {kind} {target} was assessed as {verdict.level.value} "
-                f"(risk {verdict.score}/100).")
+        lead = (
+            f"The {kind} {target} was assessed as {verdict.level.value} (risk {verdict.score}/100)."
+        )
     parts = [lead]
     if verdict.brand and not verdict.brand.official:
-        parts.append(f"It appears to impersonate {defang(verdict.brand.name, 80)} "
-                     f"using a {verdict.brand.technique} technique.")
+        parts.append(
+            f"It appears to impersonate {defang(verdict.brand.name, 80)} "
+            f"using a {verdict.brand.technique} technique."
+        )
     elif verdict.brand and verdict.brand.official:
         parts.append(f"It matches an official {defang(verdict.brand.name, 80)} asset.")
     sigs = verdict.top_signals(3)
     if sigs:
-        parts.append("Strongest evidence: " + "; ".join(defang(s.title, 100).rstrip(".")
-                                                         for s in sigs) + ".")
+        parts.append(
+            "Strongest evidence: " + "; ".join(defang(s.title, 100).rstrip(".") for s in sigs) + "."
+        )
     elif verdict.level is not Level.BENIGN:
         parts.append("No single signal dominates; the risk comes from combined weak evidence.")
-    parts.append("Recommended action: "
-                 + _ACTION_TEXT.get(verdict.action.value, "Review manually."))
+    parts.append(
+        "Recommended action: " + _ACTION_TEXT.get(verdict.action.value, "Review manually.")
+    )
     return " ".join(parts)
 
 

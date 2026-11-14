@@ -54,9 +54,11 @@ PHISH_EML = (
 
 
 def eml(subject: str, body: str = "hello") -> bytes:
-    return (f"From: a@sender.example\r\nTo: b@rcpt.example\r\nSubject: {subject}\r\n"
-            f"Message-ID: <{abs(hash(subject))}@sender.example>\r\n"
-            f"Date: Wed, 05 Nov 2025 10:00:00 +0000\r\n\r\n{body}\r\n").encode()
+    return (
+        f"From: a@sender.example\r\nTo: b@rcpt.example\r\nSubject: {subject}\r\n"
+        f"Message-ID: <{abs(hash(subject))}@sender.example>\r\n"
+        f"Date: Wed, 05 Nov 2025 10:00:00 +0000\r\n\r\n{body}\r\n"
+    ).encode()
 
 
 class FakeEngine:
@@ -73,23 +75,44 @@ class FakeEngine:
         text = raw.decode("utf-8", "replace")
         if "EXPLODE" in text:
             raise RuntimeError("analyzer exploded for victim@example.com")
-        subject = next((ln[9:].strip() for ln in text.splitlines() if ln.startswith("Subject:")),
-                       "(none)")
-        level = (Level.MALICIOUS if "phish" in subject.lower()
-                 else Level.SUSPICIOUS if "maybe" in subject.lower() else Level.BENIGN)
+        subject = next(
+            (ln[9:].strip() for ln in text.splitlines() if ln.startswith("Subject:")), "(none)"
+        )
+        level = (
+            Level.MALICIOUS
+            if "phish" in subject.lower()
+            else Level.SUSPICIOUS
+            if "maybe" in subject.lower()
+            else Level.BENIGN
+        )
         score = {Level.MALICIOUS: 95, Level.SUSPICIOUS: 60, Level.BENIGN: 4}[level]
         bad = level is not Level.BENIGN
         return Verdict(
-            kind=ArtifactKind.EMAIL, target=subject, artifact_id=artifact.id[:24],
-            risk=score / 100, score=score, logit=2.0, level=level,
-            action={Level.MALICIOUS: Action.BLOCK, Level.SUSPICIOUS: Action.WARN,
-                    Level.BENIGN: Action.ALLOW}[level],
-            confidence=0.9, summary=f"{level.value} message {subject}",
+            kind=ArtifactKind.EMAIL,
+            target=subject,
+            artifact_id=artifact.id[:24],
+            risk=score / 100,
+            score=score,
+            logit=2.0,
+            level=level,
+            action={
+                Level.MALICIOUS: Action.BLOCK,
+                Level.SUSPICIOUS: Action.WARN,
+                Level.BENIGN: Action.ALLOW,
+            }[level],
+            confidence=0.9,
+            summary=f"{level.value} message {subject}",
             meta={"subject": subject},
             brand=BrandMatch(brand="paypal", name="PayPal", technique="sender", confidence=0.9)
-            if "paypal" in subject.lower() else None,
-            indicators=[Indicator(type=IndicatorType.URL, value="https://evil.example.test/x",
-                                  malicious=True)] if bad else [],
+            if "paypal" in subject.lower()
+            else None,
+            indicators=[
+                Indicator(
+                    type=IndicatorType.URL, value="https://evil.example.test/x", malicious=True
+                )
+            ]
+            if bad
+            else [],
         )
 
 
@@ -106,8 +129,12 @@ async def test_process_eml_bytes_persists_and_fans_out_with_real_engine(tmp_path
         jsonl = tmp_path / "triage.jsonl"
         sink_store = Store(":memory:")
         # Generous budgets: the first analysis pays one-off asset/model load costs.
-        proc = MailboxProcessor(Engine(), store, [FileSink(jsonl), StoreSink(sink_store)],
-                                options={"analyzer_timeout_s": 120.0, "timeout_s": 180.0})
+        proc = MailboxProcessor(
+            Engine(),
+            store,
+            [FileSink(jsonl), StoreSink(sink_store)],
+            options={"analyzer_timeout_s": 120.0, "timeout_s": 180.0},
+        )
         verdict = await proc.aprocess_eml_bytes(PHISH_EML, source="fixture")
 
         assert verdict.kind is ArtifactKind.EMAIL
@@ -274,8 +301,11 @@ def test_blocking_maildir_and_mbox_wrappers(tmp_path, engine):
     summary = proc.process_mbox(path)
     assert summary.total == 3
     assert summary.by_level == {"malicious": 1, "suspicious": 1, "benign": 1}
-    assert [i.source for i in summary.items] == ["reports.mbox#0", "reports.mbox#1",
-                                                 "reports.mbox#2"]
+    assert [i.source for i in summary.items] == [
+        "reports.mbox#0",
+        "reports.mbox#1",
+        "reports.mbox#2",
+    ]
     capped = MailboxProcessor(engine, max_messages=2).process_mbox(path)
     assert capped.total == 2
 
@@ -302,8 +332,13 @@ async def test_batch_with_real_engine_end_to_end(tmp_path):
 class FakeIMAP:
     """Just enough of imaplib.IMAP4 for the poller; records every call."""
 
-    def __init__(self, messages: dict[str, bytes], *, login_error: str | None = None,
-                 capabilities: tuple[str, ...] = ("IMAP4REV1",)) -> None:
+    def __init__(
+        self,
+        messages: dict[str, bytes],
+        *,
+        login_error: str | None = None,
+        capabilities: tuple[str, ...] = ("IMAP4REV1",),
+    ) -> None:
         self.messages = messages
         self.login_error = login_error
         self.capabilities = capabilities
@@ -377,7 +412,8 @@ async def test_imap_honours_global_online_setting(engine, monkeypatch):
     fake = FakeIMAP({"7": eml("lunch")})
     factory, _ = _factory_for(fake)
     summary = await MailboxProcessor(engine).poll_imap(
-        "imap.example.test", "u", "p", imap_factory=factory)
+        "imap.example.test", "u", "p", imap_factory=factory
+    )
     assert summary.total == 1
 
 
@@ -387,8 +423,15 @@ async def test_imap_poll_scans_marks_seen_and_moves_only_successes(engine):
     store = Store(":memory:")
     proc = MailboxProcessor(engine, store)
     summary = await proc.poll_imap(
-        "imap.example.test", "reports@corp.example", "hunter2-password", "Reports",
-        move_to="Processed", since=date(2025, 11, 1), allow_network=True, imap_factory=factory)
+        "imap.example.test",
+        "reports@corp.example",
+        "hunter2-password",
+        "Reports",
+        move_to="Processed",
+        since=date(2025, 11, 1),
+        allow_network=True,
+        imap_factory=factory,
+    )
 
     assert seen["host"] == "imap.example.test" and seen["port"] == 993
     assert summary.total == 3 and summary.errors == 1
@@ -405,8 +448,7 @@ async def test_imap_poll_scans_marks_seen_and_moves_only_successes(engine):
         assert ("uid", "STORE", uid, "+FLAGS", "(\\Seen)") in calls
         assert ("uid", "COPY", uid, "Processed") in calls
         assert ("uid", "STORE", uid, "+FLAGS", "(\\Deleted)") in calls
-    assert not any(c[:3] == ("uid", "STORE", "12") or c[:3] == ("uid", "COPY", "12")
-                   for c in calls)
+    assert not any(c[:3] == ("uid", "STORE", "12") or c[:3] == ("uid", "COPY", "12") for c in calls)
     assert ("expunge",) in calls
     assert fake.logged_out
     assert [i.source for i in summary.items][:1] == ["imap:Reports/11"]
@@ -417,8 +459,14 @@ async def test_imap_uses_move_when_server_supports_it(engine):
     fake = FakeIMAP({"5": eml("hello")}, capabilities=("IMAP4REV1", "MOVE"))
     factory, _ = _factory_for(fake)
     await MailboxProcessor(engine).poll_imap(
-        "imap.example.test", "u", "p", move_to="Done", allow_network=True,
-        imap_factory=factory, mark_seen=False)
+        "imap.example.test",
+        "u",
+        "p",
+        move_to="Done",
+        allow_network=True,
+        imap_factory=factory,
+        mark_seen=False,
+    )
     assert ("uid", "MOVE", "5", "Done") in fake.calls
     assert not any(c[:2] == ("uid", "COPY") for c in fake.calls)
     assert not any(c[:4] == ("uid", "STORE", "5", "+FLAGS") for c in fake.calls)
@@ -429,8 +477,14 @@ async def test_imap_without_ssl_requires_starttls_and_respects_limits(engine):
     fake = FakeIMAP({str(i): eml(f"m{i}") for i in range(1, 6)})
     factory, seen = _factory_for(fake)
     summary = await MailboxProcessor(engine).poll_imap(
-        "imap.example.test", "u", "p", ssl=False, max_messages=2, allow_network=True,
-        imap_factory=factory)
+        "imap.example.test",
+        "u",
+        "p",
+        ssl=False,
+        max_messages=2,
+        allow_network=True,
+        imap_factory=factory,
+    )
     assert seen["port"] == 143
     assert fake.calls.index(("starttls",)) < fake.calls.index(("login", "u"))
     assert summary.total == 2
@@ -442,8 +496,8 @@ async def test_imap_login_error_is_scrubbed_and_session_closed(engine):
     factory, _ = _factory_for(fake)
     with pytest.raises(MailboxError) as exc:
         await MailboxProcessor(engine).poll_imap(
-            "imap.example.test", "u", "hunter2-password", allow_network=True,
-            imap_factory=factory)
+            "imap.example.test", "u", "hunter2-password", allow_network=True, imap_factory=factory
+        )
     assert "hunter2-password" not in str(exc.value) and "login failed" in str(exc.value)
     assert fake.logged_out
 
@@ -454,7 +508,8 @@ async def test_imap_select_failure(engine):
     factory, _ = _factory_for(fake)
     with pytest.raises(MailboxError, match="cannot select"):
         await MailboxProcessor(engine).poll_imap(
-            "imap.example.test", "u", "p", "Nope", allow_network=True, imap_factory=factory)
+            "imap.example.test", "u", "p", "Nope", allow_network=True, imap_factory=factory
+        )
 
 
 def test_imap_date_is_locale_independent():

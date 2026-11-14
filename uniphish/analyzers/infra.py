@@ -65,8 +65,16 @@ log = logging.getLogger("uniphish.analyzers.infra")
 MAX_IPS = 3
 #: Minimum brand confidence for "this URL impersonates a brand" conclusions.
 BRAND_MIN_CONFIDENCE = 0.5
-_INTERNAL_SUFFIXES = (".local", ".localhost", ".internal", ".lan", ".home.arpa", ".intranet",
-                      ".corp", ".private")
+_INTERNAL_SUFFIXES = (
+    ".local",
+    ".localhost",
+    ".internal",
+    ".lan",
+    ".home.arpa",
+    ".intranet",
+    ".corp",
+    ".private",
+)
 
 # Weights (signed log-odds) from the spec.
 W_AGE_LT_7 = 2.5
@@ -133,9 +141,15 @@ class InfraAnalyzer(Analyzer):
         "infra.asn.brand_on_abuse_hosting": "Brand lookalike hosted on an abuse-prone network",
     }
 
-    def __init__(self, *, dns: DnsFn | None = None, rdap: RdapFn | None = None,
-                 tls: TlsFn | None = None, asn: AsnFn | None = None,
-                 max_ips: int = MAX_IPS) -> None:
+    def __init__(
+        self,
+        *,
+        dns: DnsFn | None = None,
+        rdap: RdapFn | None = None,
+        tls: TlsFn | None = None,
+        asn: AsnFn | None = None,
+        max_ips: int = MAX_IPS,
+    ) -> None:
         self._dns = dns
         self._rdap = rdap
         self._tls = tls
@@ -147,8 +161,9 @@ class InfraAnalyzer(Analyzer):
         return bool(artifact.url)
 
     @staticmethod
-    async def _guard(label: str, coro: Awaitable[Any], timeout: float,
-                     unavailable: dict[str, str]) -> Any:
+    async def _guard(
+        label: str, coro: Awaitable[Any], timeout: float, unavailable: dict[str, str]
+    ) -> Any:
         """Await ``coro`` with a timeout; failures are recorded, never raised."""
         try:
             return await asyncio.wait_for(coro, timeout=max(0.2, timeout))
@@ -212,15 +227,23 @@ class InfraAnalyzer(Analyzer):
 
         reg_dns = _registrable(parsed, icann=False)
         reg_icann = _registrable(parsed, icann=True)
-        private_suffix = bool(parsed.registrable_domain and parsed.icann_registrable
-                              and parsed.registrable_domain != parsed.icann_registrable)
+        private_suffix = bool(
+            parsed.registrable_domain
+            and parsed.icann_registrable
+            and parsed.registrable_domain != parsed.icann_registrable
+        )
         lots = lots_match(parsed.host_ascii, parsed.path) if not is_ip else None
-        shared_hosting = bool(lots or private_suffix or (not is_ip and (
-            is_dyndns(host) or is_shortener(host))))
+        shared_hosting = bool(
+            lots or private_suffix or (not is_ip and (is_dyndns(host) or is_shortener(host)))
+        )
         brand = self._brand_for(parsed, ctx)
         official = bool(brand and brand.official)
-        impersonating = bool(brand and not brand.official and brand.technique != "official"
-                             and brand.confidence >= BRAND_MIN_CONFIDENCE)
+        impersonating = bool(
+            brand
+            and not brand.official
+            and brand.technique != "official"
+            and brand.confidence >= BRAND_MIN_CONFIDENCE
+        )
         creds_like = impersonating or self._credential_like(parsed, ctx)
         top_site = bool(not is_ip and not shared_hosting and is_top_site(reg_icann))
 
@@ -232,13 +255,23 @@ class InfraAnalyzer(Analyzer):
 
         want_rdap = not is_ip and not shared_hosting
         if not is_ip and shared_hosting:
-            meta["age_skipped"] = ("living-off-trusted-sites / shared hosting: the registrable "
-                                   "parent's age says nothing about this page")
+            meta["age_skipped"] = (
+                "living-off-trusted-sites / shared hosting: the registrable "
+                "parent's age says nothing about this page"
+            )
         t_a = min(6.0, remaining())
-        dns_task = (self._guard("dns", dns_fn(host, domain=reg_dns, timeout=min(4.0, t_a)),
-                                t_a, unavailable) if not is_ip else None)
-        rdap_task = (self._guard("rdap", rdap_fn(reg_icann, timeout=min(5.0, t_a)),
-                                 t_a, unavailable) if want_rdap else None)
+        dns_task = (
+            self._guard(
+                "dns", dns_fn(host, domain=reg_dns, timeout=min(4.0, t_a)), t_a, unavailable
+            )
+            if not is_ip
+            else None
+        )
+        rdap_task = (
+            self._guard("rdap", rdap_fn(reg_icann, timeout=min(5.0, t_a)), t_a, unavailable)
+            if want_rdap
+            else None
+        )
         dns_res: DNSResult | None
         rdap_res: RdapInfo | None
         if dns_task is not None or rdap_task is not None:
@@ -249,8 +282,7 @@ class InfraAnalyzer(Analyzer):
         if is_ip:
             dns_res = DNSResult(host=host, domain=host)
             (dns_res.aaaa if ":" in host else dns_res.a).append(host)
-        if dns_res is not None and not dns_res.resolves and "dns" not in unavailable \
-                and not is_ip:
+        if dns_res is not None and not dns_res.resolves and "dns" not in unavailable and not is_ip:
             unavailable["dns"] = "host does not resolve"
 
         ips = [i for i in (dns_res.ips if dns_res else []) if is_public_ip(i)]
@@ -264,19 +296,21 @@ class InfraAnalyzer(Analyzer):
         port = parsed.effective_port or 443
         probe_tls = parsed.scheme == "https" and bool(ips) and port in tls_mod.ALLOWED_PORTS
         if parsed.scheme == "https" and not probe_tls:
-            unavailable["tls"] = ("no public address" if not ips
-                                  else f"port {port} not probed")
+            unavailable["tls"] = "no public address" if not ips else f"port {port} not probed"
         if probe_tls and t_b > 0.3:
-            tasks.append(self._guard(
-                "tls", tls_fn(host, port=port, ips=ips, timeout=min(5.0, t_b)),
-                t_b, unavailable))
+            tasks.append(
+                self._guard(
+                    "tls", tls_fn(host, port=port, ips=ips, timeout=min(5.0, t_b)), t_b, unavailable
+                )
+            )
         else:
             tasks.append(_none())
         asn_tasks = []
         if t_b > 0.3:
             for ip in public_ips:
-                asn_tasks.append(self._guard(f"asn:{ip}", asn_fn(ip, timeout=min(4.0, t_b)),
-                                             t_b, unavailable))
+                asn_tasks.append(
+                    self._guard(f"asn:{ip}", asn_fn(ip, timeout=min(4.0, t_b)), t_b, unavailable)
+                )
         gathered = await asyncio.gather(*tasks, *asn_tasks)
         tls_res = gathered[0]
         asn_infos = [a for a in gathered[1:] if a is not None]
@@ -298,29 +332,44 @@ class InfraAnalyzer(Analyzer):
         if tls_res is not None:
             signals.extend(self._cert_signals(tls_res, host, impersonating, creds_like, brand))
         if dns_res is not None:
-            signals.extend(self._dns_signals(dns_res, reg_dns, creds_like, official,
-                                             shared_hosting, top_site, is_ip))
+            signals.extend(
+                self._dns_signals(
+                    dns_res, reg_dns, creds_like, official, shared_hosting, top_site, is_ip
+                )
+            )
         signals.extend(self._asn_signals(asn_infos, impersonating, brand))
 
         # ---- indicators ------------------------------------------------------ #
         indicators: list[Indicator] = []
         for ip in ips[:16]:
             version = ipaddress.ip_address(ip).version
-            indicators.append(Indicator(
-                type=IndicatorType.IPV6 if version == 6 else IndicatorType.IPV4,
-                value=ip, role="resolved", context=f"resolved address of {host}"))
+            indicators.append(
+                Indicator(
+                    type=IndicatorType.IPV6 if version == 6 else IndicatorType.IPV4,
+                    value=ip,
+                    role="resolved",
+                    context=f"resolved address of {host}",
+                )
+            )
         if tls_res is not None and tls_res.cert_sha256:
-            indicators.append(Indicator(
-                type=IndicatorType.CERT_SHA256, value=tls_res.cert_sha256, role="tls-leaf",
-                context=f"leaf certificate presented by {host}"))
+            indicators.append(
+                Indicator(
+                    type=IndicatorType.CERT_SHA256,
+                    value=tls_res.cert_sha256,
+                    role="tls-leaf",
+                    context=f"leaf certificate presented by {host}",
+                )
+            )
         seen_asn: set[int] = set()
         for a in asn_infos:
             if a.asn in seen_asn:
                 continue
             seen_asn.add(a.asn)
-            indicators.append(Indicator(
-                type=IndicatorType.ASN, value=f"AS{a.asn}", role="hosting",
-                context=a.label))
+            indicators.append(
+                Indicator(
+                    type=IndicatorType.ASN, value=f"AS{a.asn}", role="hosting", context=a.label
+                )
+            )
 
         # ---- meta ------------------------------------------------------------ #
         infra_meta: dict[str, Any] = {
@@ -339,9 +388,9 @@ class InfraAnalyzer(Analyzer):
             infra_meta["expected_infra_note"] = (
                 f"official {brand.name if brand else 'brand'} domain served from "
                 + ", ".join(sorted({a.label for a in asn_infos}))
-                + "; recorded as the brand's expected infrastructure baseline")
-        return AnalyzerResult(signals=signals, indicators=indicators,
-                              meta={"infra": infra_meta})
+                + "; recorded as the brand's expected infrastructure baseline"
+            )
+        return AnalyzerResult(signals=signals, indicators=indicators, meta={"infra": infra_meta})
 
     # ------------------------------------------------------------------ signals #
     @staticmethod
@@ -350,8 +399,7 @@ class InfraAnalyzer(Analyzer):
         if age is None:
             return []
         when = info.registered.date().isoformat() if info.registered else "unknown date"
-        ev = {"domain": domain, "age_days": age, "registered": when,
-              "registrar": info.registrar}
+        ev = {"domain": domain, "age_days": age, "registered": when, "registrar": info.registrar}
         reg = f" via {info.registrar}" if info.registrar else ""
         if age < 7:
             sid, w, label = "infra.domain.age_lt_7d", W_AGE_LT_7, "less than 7 days"
@@ -360,91 +408,145 @@ class InfraAnalyzer(Analyzer):
         elif age < 90:
             sid, w, label = "infra.domain.age_lt_90d", W_AGE_LT_90, "less than 90 days"
         elif age > 730 and not shared_hosting:
-            return [Signal(
-                id="infra.domain.age_gt_2y",
-                title="Domain has been registered for more than two years",
-                detail=f"{domain} was registered on {when} ({age // 365} years ago){reg}; "
-                       "long-lived domains are rarely throwaway phishing infrastructure.",
-                weight=W_AGE_OLD, category="infra", evidence=ev)]
+            return [
+                Signal(
+                    id="infra.domain.age_gt_2y",
+                    title="Domain has been registered for more than two years",
+                    detail=f"{domain} was registered on {when} ({age // 365} years ago){reg}; "
+                    "long-lived domains are rarely throwaway phishing infrastructure.",
+                    weight=W_AGE_OLD,
+                    category="infra",
+                    evidence=ev,
+                )
+            ]
         else:
             return []
-        return [Signal(
-            id=sid, title=f"Domain registered {label} ago",
-            detail=f"{domain} was registered on {when} ({age} day{'s' if age != 1 else ''} "
-                   f"ago){reg}. Phishing domains are typically used within days of "
-                   "registration.",
-            weight=w, category="infra", evidence=ev, mitre=["T1583.001"])]
+        return [
+            Signal(
+                id=sid,
+                title=f"Domain registered {label} ago",
+                detail=f"{domain} was registered on {when} ({age} day{'s' if age != 1 else ''} "
+                f"ago){reg}. Phishing domains are typically used within days of "
+                "registration.",
+                weight=w,
+                category="infra",
+                evidence=ev,
+                mitre=["T1583.001"],
+            )
+        ]
 
     @staticmethod
-    def _cert_signals(t: TlsInfo, host: str, impersonating: bool, creds_like: bool,
-                      brand: BrandMatch | None) -> list[Signal]:
+    def _cert_signals(
+        t: TlsInfo, host: str, impersonating: bool, creds_like: bool, brand: BrandMatch | None
+    ) -> list[Signal]:
         out: list[Signal] = []
         issuer = t.issuer_org or t.issuer_cn or t.issuer or "unknown issuer"
         base_ev = {"cert_sha256": t.cert_sha256, "issuer": issuer, "host": host}
         if t.age_days is not None and t.age_days < 7 and not t.self_signed:
-            out.append(Signal(
-                id="infra.cert.fresh", title="TLS certificate issued less than 7 days ago",
-                detail=f"The certificate for {host} was issued by {issuer} "
-                       f"{t.age_days} day{'s' if t.age_days != 1 else ''} ago, consistent "
-                       "with newly stood-up infrastructure.",
-                weight=W_CERT_FRESH, category="infra",
-                evidence={**base_ev, "age_days": t.age_days}, mitre=["T1583.001"]))
+            out.append(
+                Signal(
+                    id="infra.cert.fresh",
+                    title="TLS certificate issued less than 7 days ago",
+                    detail=f"The certificate for {host} was issued by {issuer} "
+                    f"{t.age_days} day{'s' if t.age_days != 1 else ''} ago, consistent "
+                    "with newly stood-up infrastructure.",
+                    weight=W_CERT_FRESH,
+                    category="infra",
+                    evidence={**base_ev, "age_days": t.age_days},
+                    mitre=["T1583.001"],
+                )
+            )
         if t.free_ca and impersonating:
             name = brand.name if brand else "a brand"
-            out.append(Signal(
-                id="infra.cert.free_ca_brand",
-                title="Free-CA certificate on a brand-impersonating site",
-                detail=f"{host} impersonates {name} but presents a certificate from the free "
-                       f"CA {issuer}; brands normally use organisation-validated certificates.",
-                weight=W_CERT_FREE_BRAND, category="infra",
-                evidence={**base_ev, "brand": brand.brand if brand else None}))
+            out.append(
+                Signal(
+                    id="infra.cert.free_ca_brand",
+                    title="Free-CA certificate on a brand-impersonating site",
+                    detail=f"{host} impersonates {name} but presents a certificate from the free "
+                    f"CA {issuer}; brands normally use organisation-validated certificates.",
+                    weight=W_CERT_FREE_BRAND,
+                    category="infra",
+                    evidence={**base_ev, "brand": brand.brand if brand else None},
+                )
+            )
         if t.self_signed and creds_like:
-            out.append(Signal(
-                id="infra.cert.self_signed",
-                title="Self-signed certificate on a login-style page",
-                detail=f"{host} looks like a sign-in page but its certificate is "
-                       "self-signed, so no CA vouches for the site.",
-                weight=W_CERT_SELF_SIGNED, category="infra", evidence=base_ev))
+            out.append(
+                Signal(
+                    id="infra.cert.self_signed",
+                    title="Self-signed certificate on a login-style page",
+                    detail=f"{host} looks like a sign-in page but its certificate is "
+                    "self-signed, so no CA vouches for the site.",
+                    weight=W_CERT_SELF_SIGNED,
+                    category="infra",
+                    evidence=base_ev,
+                )
+            )
         if t.covers_host is False:
             names = ", ".join(t.sans[:5]) or (t.subject_cn or "no names")
-            out.append(Signal(
-                id="infra.cert.san_mismatch",
-                title="TLS certificate does not cover this host name",
-                detail=f"The certificate served for {host} lists {names}"
-                       f"{' ...' if len(t.sans) > 5 else ''}, none of which match the "
-                       "host being visited.",
-                weight=W_CERT_SAN_MISMATCH, category="infra",
-                evidence={**base_ev, "sans": list(t.sans[:20]), "san_count": t.san_count}))
+            out.append(
+                Signal(
+                    id="infra.cert.san_mismatch",
+                    title="TLS certificate does not cover this host name",
+                    detail=f"The certificate served for {host} lists {names}"
+                    f"{' ...' if len(t.sans) > 5 else ''}, none of which match the "
+                    "host being visited.",
+                    weight=W_CERT_SAN_MISMATCH,
+                    category="infra",
+                    evidence={**base_ev, "sans": list(t.sans[:20]), "san_count": t.san_count},
+                )
+            )
         return out
 
     @staticmethod
-    def _dns_signals(d: DNSResult, domain: str, creds_like: bool, official: bool,
-                     shared_hosting: bool, top_site: bool, is_ip: bool) -> list[Signal]:
+    def _dns_signals(
+        d: DNSResult,
+        domain: str,
+        creds_like: bool,
+        official: bool,
+        shared_hosting: bool,
+        top_site: bool,
+        is_ip: bool,
+    ) -> list[Signal]:
         out: list[Signal] = []
-        if (not is_ip and creds_like and not official and not shared_hosting and not top_site
-                and d.resolves and d.no_mx):
-            out.append(Signal(
-                id="infra.dns.no_mx",
-                title="Login/brand-style domain has no mail exchanger",
-                detail=f"{domain} looks like an account or brand domain but publishes no MX "
-                       "record: it was set up to serve a page, not to run a real service.",
-                weight=W_NO_MX, category="infra",
-                evidence={"domain": domain, "mx": d.mx, "ns": d.ns[:4]}))
+        if (
+            not is_ip
+            and creds_like
+            and not official
+            and not shared_hosting
+            and not top_site
+            and d.resolves
+            and d.no_mx
+        ):
+            out.append(
+                Signal(
+                    id="infra.dns.no_mx",
+                    title="Login/brand-style domain has no mail exchanger",
+                    detail=f"{domain} looks like an account or brand domain but publishes no MX "
+                    "record: it was set up to serve a page, not to run a real service.",
+                    weight=W_NO_MX,
+                    category="infra",
+                    evidence={"domain": domain, "mx": d.mx, "ns": d.ns[:4]},
+                )
+            )
         if d.fast_flux and not official and not top_site:
-            out.append(Signal(
-                id="infra.dns.fast_flux",
-                title="Many low-TTL addresses across unrelated networks (fast-flux)",
-                detail=f"{d.host} resolves to {len(d.a)} IPv4 addresses with a {d.a_ttl}s TTL "
-                       f"spread over {d.distinct_networks} networks, a pattern used to "
-                       "keep phishing pages alive despite takedowns.",
-                weight=W_FAST_FLUX, category="infra",
-                evidence={"a_count": len(d.a), "ttl": d.a_ttl,
-                          "networks": d.distinct_networks}))
+            out.append(
+                Signal(
+                    id="infra.dns.fast_flux",
+                    title="Many low-TTL addresses across unrelated networks (fast-flux)",
+                    detail=f"{d.host} resolves to {len(d.a)} IPv4 addresses with a {d.a_ttl}s TTL "
+                    f"spread over {d.distinct_networks} networks, a pattern used to "
+                    "keep phishing pages alive despite takedowns.",
+                    weight=W_FAST_FLUX,
+                    category="infra",
+                    evidence={"a_count": len(d.a), "ttl": d.a_ttl, "networks": d.distinct_networks},
+                )
+            )
         return out
 
     @staticmethod
-    def _asn_signals(infos: list[AsnInfo], impersonating: bool,
-                     brand: BrandMatch | None) -> list[Signal]:
+    def _asn_signals(
+        infos: list[AsnInfo], impersonating: bool, brand: BrandMatch | None
+    ) -> list[Signal]:
         if not impersonating or not infos:
             return []
         name = brand.name if brand else "a brand"
@@ -453,28 +555,43 @@ class InfraAnalyzer(Analyzer):
         abuse = [a for a in infos if a.is_abuse_prone]
         if resid:
             a = resid[0]
-            out.append(Signal(
-                id="infra.asn.brand_on_residential",
-                title="Brand lookalike hosted on a consumer-ISP-like network",
-                detail=f"The site imitating {name} is served from {a.ip} in {a.label}"
-                       f"{' (' + a.country + ')' if a.country else ''}, which looks like a "
-                       "consumer or mobile ISP rather than a business hoster.",
-                weight=W_ASN_RESIDENTIAL, category="infra",
-                evidence={"asn": a.asn, "org": a.org, "ip": a.ip, "brand": brand.brand
-                          if brand else None}))
+            out.append(
+                Signal(
+                    id="infra.asn.brand_on_residential",
+                    title="Brand lookalike hosted on a consumer-ISP-like network",
+                    detail=f"The site imitating {name} is served from {a.ip} in {a.label}"
+                    f"{' (' + a.country + ')' if a.country else ''}, which looks like a "
+                    "consumer or mobile ISP rather than a business hoster.",
+                    weight=W_ASN_RESIDENTIAL,
+                    category="infra",
+                    evidence={
+                        "asn": a.asn,
+                        "org": a.org,
+                        "ip": a.ip,
+                        "brand": brand.brand if brand else None,
+                    },
+                )
+            )
         if abuse:
             a = abuse[0]
-            out.append(Signal(
-                id="infra.asn.brand_on_abuse_hosting",
-                title="Brand lookalike hosted on an abuse-prone network",
-                detail=f"The site imitating {name} is served from {a.ip} in {a.label}, a "
-                       "network widely reported as tolerant of abusive content.",
-                weight=W_ASN_ABUSE, category="infra",
-                evidence={"asn": a.asn, "org": a.org, "ip": a.ip, "brand": brand.brand
-                          if brand else None}))
+            out.append(
+                Signal(
+                    id="infra.asn.brand_on_abuse_hosting",
+                    title="Brand lookalike hosted on an abuse-prone network",
+                    detail=f"The site imitating {name} is served from {a.ip} in {a.label}, a "
+                    "network widely reported as tolerant of abusive content.",
+                    weight=W_ASN_ABUSE,
+                    category="infra",
+                    evidence={
+                        "asn": a.asn,
+                        "org": a.org,
+                        "ip": a.ip,
+                        "brand": brand.brand if brand else None,
+                    },
+                )
+            )
         return out
 
 
 async def _none() -> None:
     return None
-

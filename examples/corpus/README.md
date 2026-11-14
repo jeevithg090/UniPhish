@@ -50,10 +50,10 @@ from uniphish.eval.corpus import load_items, load_corpus, counts
 for item in load_items(kinds=["email"], labels="malicious"):
     verdict = engine.analyze_sync(item.to_artifact())
 
-for kind, payload, label, meta in load_corpus():      # (kind, payload, label, meta)
+for kind, payload, label, meta in load_corpus():  # (kind, payload, label, meta)
     ...
 
-counts()                                              # totals per kind / label / category
+counts()  # totals per kind / label / category
 ```
 
 `CorpusItem.to_spec()` / `.to_eval_item()` give the eval harness's `ArtifactSpec` / `EvalItem`

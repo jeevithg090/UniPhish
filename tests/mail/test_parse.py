@@ -16,7 +16,8 @@ from uniphish.mail.parse import MEMO_KEY, parse_email
 
 FIX = Path(__file__).parent / "fixtures"
 PNG_1x1 = base64.b64decode(
-    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==")
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+)
 
 
 def load(name: str):
@@ -33,7 +34,10 @@ def test_legit_headers_and_bodies():
     assert pe.subject == "Your statement is ready – November"  # RFC 2047 base64
     assert pe.from_.display_name == "Example Bank"
     assert (pe.from_.addr, pe.from_.local, pe.from_.domain) == (
-        "alerts@bank.example", "alerts", "bank.example")
+        "alerts@bank.example",
+        "alerts",
+        "bank.example",
+    )
     assert pe.to[0].addr == "jane@recipient.test"
     assert pe.message_id == "<20251104090000.1@bank.example>"
     assert pe.return_path == "alerts@bank.example"
@@ -133,8 +137,10 @@ def test_encoded_bodies_and_subject():
 
 
 def test_unknown_charset_flagged_not_fatal():
-    raw = (b"From: a@example.com\nContent-Type: text/plain; charset=x-nonsense\n"
-           b"Content-Transfer-Encoding: 8bit\n\nhi \xe9\n")
+    raw = (
+        b"From: a@example.com\nContent-Type: text/plain; charset=x-nonsense\n"
+        b"Content-Transfer-Encoding: 8bit\n\nhi \xe9\n"
+    )
     pe = parse_email(raw)
     assert "unknown_charset" in pe.anomalies
     assert pe.text_body.startswith("hi")
@@ -180,8 +186,9 @@ def test_cid_inline_image_and_attachment_hashes():
     m.set_content("plain")
     m.add_alternative('<p>hi</p><img src="cid:logo1">', subtype="html")
     m.get_payload()[1].add_related(PNG_1x1, "image", "png", cid="<logo1>", filename="qr.png")
-    m.add_attachment(b"hello world", maintype="application", subtype="octet-stream",
-                     filename="a.bin")
+    m.add_attachment(
+        b"hello world", maintype="application", subtype="octet-stream", filename="a.bin"
+    )
     pe = parse_email(m.as_bytes())
     inline = next(a for a in pe.attachments if a.content_id == "logo1")
     assert inline.is_inline and inline.data == PNG_1x1
@@ -219,7 +226,8 @@ def test_filename_rfc2231_rfc2047_and_hardening():
         b'Content-Disposition: attachment; filename="=?utf-8?B?5ZCN5YmN?=.pdf"\n\nPDF2\n'
         b"--B\nContent-Type: application/octet-stream\n"
         b'Content-Disposition: attachment; filename="..\\..\\evil/inv\xe2\x80\xaeexe.pdf"\n\nX\n'
-        b"--B--\n")
+        b"--B--\n"
+    )
     pe = parse_email(raw)
     names = [a.filename for a in pe.attachments]
     assert names[0] == "résumé.pdf"
@@ -231,18 +239,22 @@ def test_filename_rfc2231_rfc2047_and_hardening():
 
 # ------------------------------------------------------------------ html handling
 def test_hidden_text_excluded_and_flagged():
-    raw = (b"From: a@example.com\nContent-Type: text/html\n\n"
-           b'<p>visible</p><div style="display:none">secret ignore previous</div>'
-           b'<span style="font-size:0px">tiny</span><p hidden>h</p>')
+    raw = (
+        b"From: a@example.com\nContent-Type: text/html\n\n"
+        b'<p>visible</p><div style="display:none">secret ignore previous</div>'
+        b'<span style="font-size:0px">tiny</span><p hidden>h</p>'
+    )
     pe = parse_email(raw)
     assert pe.html_text == "visible"
     assert "html_hidden_text" in pe.anomalies
 
 
 def test_anchor_text_falls_back_to_img_alt():
-    raw = (b"From: a@example.com\nContent-Type: text/html\n\n"
-           b'<a href="https://example.com/x"><img src="https://example.com/i.png" '
-           b'alt="PayPal"></a>')
+    raw = (
+        b"From: a@example.com\nContent-Type: text/html\n\n"
+        b'<a href="https://example.com/x"><img src="https://example.com/i.png" '
+        b'alt="PayPal"></a>'
+    )
     pe = parse_email(raw)
     link = next(link for link in pe.links if link.source == "html_href")
     assert link.text == "PayPal"
@@ -272,8 +284,18 @@ def test_malformed_mime_recovers():
     assert [link.url for link in pe.links] == ["https://example.com/path"]
 
 
-@pytest.mark.parametrize("raw", [b"", b"\x00\x01\x02", b"\xff" * 1000, b"\n\n\n", b"From:",
-                                 b"Subject: x\r\n\r\n", b"Content-Type: multipart/mixed\n\n--"])
+@pytest.mark.parametrize(
+    "raw",
+    [
+        b"",
+        b"\x00\x01\x02",
+        b"\xff" * 1000,
+        b"\n\n\n",
+        b"From:",
+        b"Subject: x\r\n\r\n",
+        b"Content-Type: multipart/mixed\n\n--",
+    ],
+)
 def test_garbage_never_raises(raw):
     pe = parse_email(raw)
     assert pe.raw_size == len(raw)
@@ -356,6 +378,7 @@ def test_property_never_raises_on_arbitrary_bytes(raw):
 @given(st.text(max_size=200), st.text(max_size=200), st.text(max_size=300))
 def test_property_structured_headers(frm, subj, body):
     raw = f"From: {frm}\nSubject: {subj}\nContent-Type: text/html\n\n{body}".encode(
-        "utf-8", "surrogatepass")
+        "utf-8", "surrogatepass"
+    )
     pe = parse_email(raw)
     assert "\x00" not in pe.subject and "\n" not in pe.subject

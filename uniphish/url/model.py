@@ -79,9 +79,9 @@ class ModelUnavailable(RuntimeError):
 class _ConvBranch:
     """One im2col-ready conv branch."""
 
-    k: int                                # kernel size
-    w: np.ndarray                         # (k*64, 128) float32, rows ordered (offset, channel)
-    b: np.ndarray                         # (128,) float32
+    k: int  # kernel size
+    w: np.ndarray  # (k*64, 128) float32, rows ordered (offset, channel)
+    b: np.ndarray  # (128,) float32
 
 
 @dataclass(frozen=True)
@@ -93,14 +93,14 @@ class _Weights:
     track ``model.js`` exactly through the sigmoid.
     """
 
-    emb: np.ndarray                       # (256, 64) float32
+    emb: np.ndarray  # (256, 64) float32
     conv: tuple[_ConvBranch, ...]
-    fc1_w: np.ndarray                     # (640, 256) float64
-    fc1_b: np.ndarray                     # (256,) float64
-    fc2_w: np.ndarray                     # (256, 128) float64
-    fc2_b: np.ndarray                     # (128,) float64
-    out_w: np.ndarray                     # (128, 1) float64
-    out_b: np.ndarray                     # (1,) float64
+    fc1_w: np.ndarray  # (640, 256) float64
+    fc1_b: np.ndarray  # (256,) float64
+    fc2_w: np.ndarray  # (256, 128) float64
+    fc2_b: np.ndarray  # (128,) float64
+    out_w: np.ndarray  # (128, 1) float64
+    out_b: np.ndarray  # (1,) float64
 
 
 def _encode(urls: Sequence[str]) -> np.ndarray:
@@ -143,8 +143,13 @@ class UrlModel:
             manifest.
     """
 
-    def __init__(self, manifest_path: str | Path | None = None,
-                 weights_path: str | Path | None = None, *, temperature: float = 1.0) -> None:
+    def __init__(
+        self,
+        manifest_path: str | Path | None = None,
+        weights_path: str | Path | None = None,
+        *,
+        temperature: float = 1.0,
+    ) -> None:
         if temperature <= 0:
             raise ValueError("temperature must be > 0")
         self.temperature = float(temperature)
@@ -233,7 +238,7 @@ class UrlModel:
             raise ValueError(f"seq must be (N, {MAX_LEN}); got {seq.shape}")
         w = self._w
         n = seq.shape[0]
-        x = w.emb[seq]                                  # (N, MAX_LEN, 64) float32
+        x = w.emb[seq]  # (N, MAX_LEN, 64) float32
         pooled: list[np.ndarray] = []
         for br in w.conv:
             positions = MAX_LEN - br.k + 1
@@ -243,12 +248,12 @@ class UrlModel:
             win = sliding_window_view(x, br.k, axis=1).transpose(0, 1, 3, 2)
             win = np.ascontiguousarray(win).reshape(n * positions, br.k * EMBED_DIM)
             conv = (win @ br.w + br.b).reshape(n, positions, FILTERS)
-            np.maximum(conv, 0.0, out=conv)             # ReLU (padding positions included)
-            pooled.append(conv.max(axis=1))             # global max pool -> (N, 128) float32
-        z = np.concatenate(pooled, axis=1)              # (N, 640) float32
+            np.maximum(conv, 0.0, out=conv)  # ReLU (padding positions included)
+            pooled.append(conv.max(axis=1))  # global max pool -> (N, 128) float32
+        z = np.concatenate(pooled, axis=1)  # (N, 640) float32
         h1 = _dense(z, w.fc1_w, w.fc1_b, relu=True)
         h2 = _dense(h1, w.fc2_w, w.fc2_b, relu=True)
-        logit = _dense(h2, w.out_w, w.out_b, relu=False)[:, 0]   # (N,) float32
+        logit = _dense(h2, w.out_w, w.out_b, relu=False)[:, 0]  # (N,) float32
         prob = _sigmoid(logit.astype(np.float64) / self.temperature).astype(np.float32)
         return logit, prob
 
@@ -309,7 +314,8 @@ def _load_weights(path: Path, manifest: dict[str, Any]) -> np.ndarray:
     if data.size != expected:
         raise ModelUnavailable(
             f"weights size mismatch: file has {data.size} float32 values, "
-            f"manifest describes {expected} ({path})")
+            f"manifest describes {expected} ({path})"
+        )
     if not np.isfinite(data).all():
         raise ModelUnavailable("weights contain non-finite values (NaN/Inf)")
     return data
@@ -327,8 +333,8 @@ def _build_weights(raw: np.ndarray, manifest: dict[str, Any]) -> _Weights:
         raise ModelUnavailable(f"unexpected embedding shape {emb.shape}")
     branches = []
     for k in KERNELS:
-        wk = _tensor(raw, manifest, f"conv{k}_w", np.float32)   # (k, 64, 128)
-        bk = _tensor(raw, manifest, f"conv{k}_b", np.float32)   # (128,)
+        wk = _tensor(raw, manifest, f"conv{k}_w", np.float32)  # (k, 64, 128)
+        bk = _tensor(raw, manifest, f"conv{k}_b", np.float32)  # (128,)
         if wk.shape != (k, EMBED_DIM, FILTERS) or bk.shape != (FILTERS,):
             raise ModelUnavailable(f"unexpected conv{k} shapes {wk.shape}, {bk.shape}")
         # C-order reshape (k, 64, 128) -> (k*64, 128): row index = offset*64 + channel.

@@ -60,15 +60,16 @@ def test_host_policy_can_allow_private():
 
 
 # --------------------------------------------------------------------------- live render
-requires_browser = pytest.mark.skipif(
-    not playwright_available(), reason="Playwright not installed")
+requires_browser = pytest.mark.skipif(not playwright_available(), reason="Playwright not installed")
 
 
 @pytest.mark.slow
 @requires_browser
 async def test_render_inline_html_basic():
-    html = ("<!doctype html><html><head><title>Account Verify</title></head>"
-            "<body><h1>Please sign in</h1><p>welcome</p></body></html>")
+    html = (
+        "<!doctype html><html><head><title>Account Verify</title></head>"
+        "<body><h1>Please sign in</h1><p>welcome</p></body></html>"
+    )
     res = await detonate(html=html, timeout_s=15.0, settle_ms=300)
     if res.error and "executable" in res.error.lower():  # browser binary absent
         pytest.skip(f"browser unavailable: {res.error}")

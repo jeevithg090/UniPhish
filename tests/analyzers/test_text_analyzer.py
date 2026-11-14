@@ -11,8 +11,7 @@ from uniphish.core.analyzer import AnalysisContext, AnalysisOptions, Analyzer, A
 from uniphish.core.engine import Engine
 from uniphish.core.types import Artifact, ArtifactKind, IndicatorType, Level, Signal
 
-PARCEL = ("Your parcel is on hold. Pay a $1.99 fee within 24 hours: "
-          "http://post-track.example/x")
+PARCEL = "Your parcel is on hold. Pay a $1.99 fee within 24 hours: http://post-track.example/x"
 
 
 class StubURL(Analyzer):
@@ -26,8 +25,9 @@ class StubURL(Analyzer):
         bad = any(w in (artifact.url or "") for w in ("track", "evil", "paypa1"))
         if not bad:
             return AnalyzerResult()
-        return AnalyzerResult(signals=[Signal(id="url.stub", title="Stub bad URL", weight=6.0,
-                                              category="url")])
+        return AnalyzerResult(
+            signals=[Signal(id="url.stub", title="Stub bad URL", weight=6.0, category="url")]
+        )
 
 
 def run(text: str, **meta) -> AnalyzerResult:
@@ -65,15 +65,18 @@ def test_parcel_smishing_extracts_child_and_propagates_risk():
 
 
 def test_parcel_text_alone_is_not_benign_floor_but_below_malicious():
-    v = engine().analyze_sync(Artifact.from_text(PARCEL),
-                              AnalysisOptions(persist=False, max_depth=0))
+    v = engine().analyze_sync(
+        Artifact.from_text(PARCEL), AnalysisOptions(persist=False, max_depth=0)
+    )
     assert v.level is not Level.MALICIOUS
     assert v.score > 12  # moved off the prior by the language alone
 
 
 def test_bank_credential_urgency_with_brand_mismatch():
-    text = ("PayPal: your account is limited. Verify your login immediately or it will be "
-            "closed: http://paypa1-secure.example/v")
+    text = (
+        "PayPal: your account is limited. Verify your login immediately or it will be "
+        "closed: http://paypa1-secure.example/v"
+    )
     res = run(text)
     assert "social.brand_link_mismatch" in ids(res)
     m = sig(res, "social.brand_link_mismatch")
@@ -109,8 +112,10 @@ def test_delivered_code_and_warning_is_not_otp_request():
 
 
 def test_gift_card_bec_text():
-    text = ("Buy 5 Apple gift cards $100 each and send me the codes, I'm in a meeting, "
-            "urgent. Keep it confidential")
+    text = (
+        "Buy 5 Apple gift cards $100 each and send me the codes, I'm in a meeting, "
+        "urgent. Keep it confidential"
+    )
     res = run(text)
     pay = sig(res, "social.payment_request")
     assert pay.weight == 2.5 and "T1657" in pay.mitre and pay.evidence["secrecy"] is True
@@ -118,8 +123,10 @@ def test_gift_card_bec_text():
 
 
 def test_tech_support_callback_number_indicator():
-    res = run("Microsoft security alert: your PC is infected. Call Microsoft support at "
-              "+1 (888) 555-0100 now")
+    res = run(
+        "Microsoft security alert: your PC is infected. Call Microsoft support at "
+        "+1 (888) 555-0100 now"
+    )
     s = sig(res, "social.callback_number")
     assert s.weight == 2.0
     phones = [i for i in res.indicators if i.type is IndicatorType.PHONE]
@@ -140,11 +147,14 @@ def test_crypto_seed_phrase_request():
     assert s.weight == 4.0 and s.span is not None
 
 
-@pytest.mark.parametrize("text", [
-    "Never share your seed phrase with anyone, not even support.",
-    "Our blog explains what a seed phrase is.",
-    "Do not give your private key to anyone",
-])
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Never share your seed phrase with anyone, not even support.",
+        "Our blog explains what a seed phrase is.",
+        "Do not give your private key to anyone",
+    ],
+)
 def test_seed_phrase_warnings_and_mentions_do_not_fire(text):
     assert "social.crypto_seed_request" not in ids(run(text))
 
@@ -155,12 +165,15 @@ def test_spanish_seed_phrase_request():
 
 
 # ------------------------------------------------------------------ benign
-@pytest.mark.parametrize("text", [
-    "Hey, lunch at 1? I'll bring the notes.",
-    "Running 10 minutes late, see you at the station",
-    "Happy birthday! Dinner at 8 at mine",
-    "Your code is 123456. Never share it.",
-])
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Hey, lunch at 1? I'll bring the notes.",
+        "Running 10 minutes late, see you at the station",
+        "Happy birthday! Dinner at 8 at mine",
+        "Your code is 123456. Never share it.",
+    ],
+)
 def test_benign_chat_stays_low(text):
     v = verdict(text)
     assert v.level is Level.BENIGN
@@ -175,12 +188,14 @@ def test_benign_message_with_link_has_child_but_no_signals():
 
 
 # ------------------------------------------------------------- multilingual
-@pytest.mark.parametrize("text,lang", [
-    ("Su paquete está retenido. Verifique su cuenta urgentemente", "es"),
-    ("आपका खाता बंद हो जाएगा, "
-     "तुरंत सत्यापित करें", "hi"),
-    ("Sua conta foi bloqueada. Confirme seus dados imediatamente", "pt"),
-])
+@pytest.mark.parametrize(
+    "text,lang",
+    [
+        ("Su paquete está retenido. Verifique su cuenta urgentemente", "es"),
+        ("आपका खाता बंद हो जाएगा, तुरंत सत्यापित करें", "hi"),
+        ("Sua conta foi bloqueada. Confirme seus dados imediatamente", "pt"),
+    ],
+)
 def test_multilingual_pressure(text, lang):
     res = run(text)
     assert lang in res.meta["languages"]
@@ -188,14 +203,14 @@ def test_multilingual_pressure(text, lang):
 
 
 def test_spanish_credential_ask_fires_pressure_with_link():
-    res = run("Su paquete está retenido, verifique su cuenta urgentemente: "
-              "http://correos-envio.example/p")
+    res = run(
+        "Su paquete está retenido, verifique su cuenta urgentemente: http://correos-envio.example/p"
+    )
     assert res.children and "social.pressure" in ids(res)
 
 
 def test_otp_request_hindi():
-    res = run("आपके खाते में समस्या है। "
-              "ओटीपी साझा करें")
+    res = run("आपके खाते में समस्या है। ओटीपी साझा करें")
     assert "social.otp_request" in ids(res)
 
 
@@ -210,11 +225,15 @@ def test_meta_and_catalog_declared():
 
 
 def test_all_catalog_signals_are_emitted_somewhere():
-    texts = [PARCEL, "Please share your OTP", "send gift cards, keep it confidential, urgent",
-             "Your PC is infected. Call Microsoft support at +1 888 555 0100",
-             "Enter your seed phrase", "PayPal: verify your login now, urgent, "
-             "http://paypa1.example/x",
-             "Your Netflix subscription expired, update at http://other.example"]
+    texts = [
+        PARCEL,
+        "Please share your OTP",
+        "send gift cards, keep it confidential, urgent",
+        "Your PC is infected. Call Microsoft support at +1 888 555 0100",
+        "Enter your seed phrase",
+        "PayPal: verify your login now, urgent, http://paypa1.example/x",
+        "Your Netflix subscription expired, update at http://other.example",
+    ]
     seen: set[str] = set()
     for t in texts:
         seen |= ids(run(t))
@@ -238,8 +257,9 @@ def test_links_capped_and_bad_input_safe():
     text = " ".join(f"http://h{i}.example/p" for i in range(100))
     res = run(text)
     assert len(res.children) <= 25
-    assert not TextAnalyzer().applies(Artifact.from_text("   "),
-                                      AnalysisContext(options=AnalysisOptions()))
+    assert not TextAnalyzer().applies(
+        Artifact.from_text("   "), AnalysisContext(options=AnalysisOptions())
+    )
 
 
 def test_huge_text_is_bounded():
@@ -257,5 +277,7 @@ def test_engine_registration():
     from uniphish.core.analyzer import REGISTRY
 
     assert REGISTRY["text"] is TextAnalyzer
-    assert asyncio.run(Engine(analyzers=[TextAnalyzer()]).analyze_text("hi there")).level \
+    assert (
+        asyncio.run(Engine(analyzers=[TextAnalyzer()]).analyze_text("hi there")).level
         is Level.BENIGN
+    )

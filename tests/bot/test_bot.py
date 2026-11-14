@@ -19,10 +19,12 @@ import bot
 from bot import reply as R
 from bot.limits import BotConfig, RateLimiter
 
-SMISH = ("Your PayPal account is suspended! Verify now: "
-         "https://paypal-secure-login.example.test/verify?session=abcdef0123456789abcdef0123456789 "
-         "or lose access within 24 hours. Reply with the code we sent.")
-HOMOGLYPH = "check this https://pаypal.com/signin"   # Cyrillic a
+SMISH = (
+    "Your PayPal account is suspended! Verify now: "
+    "https://paypal-secure-login.example.test/verify?session=abcdef0123456789abcdef0123456789 "
+    "or lose access within 24 hours. Reply with the code we sent."
+)
+HOMOGLYPH = "check this https://pаypal.com/signin"  # Cyrillic a
 
 
 # ------------------------------- defanging ---------------------------------- #
@@ -61,10 +63,12 @@ def test_smishing_text_card_is_threat_with_brand_and_defanged_link():
     assert card.level in {"suspicious", "malicious"} and card.score >= 50
     assert card.brand == "PayPal"
     assert card.reasons and len(card.reasons) <= R.MAX_REASONS
-    assert card.links and card.links[0].text.startswith("hxxps://paypal-secure-login[.]example[.]test")
+    assert card.links and card.links[0].text.startswith(
+        "hxxps://paypal-secure-login[.]example[.]test"
+    )
     html = card.to_html()
     assert "http://" not in html and "https://" not in html
-    assert "abcdef0123456789" not in html and "session" not in html   # query never echoed
+    assert "abcdef0123456789" not in html and "session" not in html  # query never echoed
     assert "T1566" in html and "PayPal" in html
     assert card.advice in html
 
@@ -93,8 +97,7 @@ def test_empty_and_whitespace_give_none_card():
 
 def test_hidden_text_link_url_is_scanned():
     plain = R.build_reply("Click paypal.com to continue")
-    hidden = R.build_reply("Click paypal.com to continue",
-                           extra_urls=["https://pаypal.com/signin"])
+    hidden = R.build_reply("Click paypal.com to continue", extra_urls=["https://pаypal.com/signin"])
     assert hidden.score > plain.score and hidden.level == "malicious"
 
 
@@ -105,8 +108,14 @@ def test_card_never_echoes_user_text():
 
 
 def test_html_escaping_of_dynamic_values():
-    card = R.ReplyCard(level="suspicious", score=60, headline="<b>x</b>", advice="a<b",
-                       reasons=("<script>",), subject="<i>s</i>")
+    card = R.ReplyCard(
+        level="suspicious",
+        score=60,
+        headline="<b>x</b>",
+        advice="a<b",
+        reasons=("<script>",),
+        subject="<i>s</i>",
+    )
     out = card.to_html()
     assert "<script>" not in out and "&lt;script&gt;" in out
     assert "&lt;b&gt;x&lt;/b&gt;" in out
@@ -137,6 +146,7 @@ def test_scan_called_offline_and_without_persistence():
     def spy(text, **opts):
         seen.update(opts)
         import uniphish
+
         return uniphish.scan_text("hello", **opts)
 
     R.build_reply("hello there", scan=spy)
@@ -144,7 +154,7 @@ def test_scan_called_offline_and_without_persistence():
     R.build_reply("hello there", online=True, fetch_pages=True, scan=spy)
     assert seen["online"] is True and seen["fetch_pages"] is True
     R.build_reply("hello there", online=False, fetch_pages=True, scan=spy)
-    assert seen["fetch_pages"] is False   # fetching requires online
+    assert seen["fetch_pages"] is False  # fetching requires online
 
 
 def test_verdict_not_persisted():
@@ -163,8 +173,10 @@ def test_pick_language():
 
 
 def test_spanish_text_gets_spanish_card():
-    card = R.build_reply("Su cuenta ha sido suspendida, verifique ahora o perderá el acceso "
-                         "https://paypal-secure-login.example.test/verify")
+    card = R.build_reply(
+        "Su cuenta ha sido suspendida, verifique ahora o perderá el acceso "
+        "https://paypal-secure-login.example.test/verify"
+    )
     assert card.lang == "es"
     assert "Qué hacer" in card.to_html()
 
@@ -181,11 +193,13 @@ def test_every_language_has_every_key():
 
 
 # ------------------------------- files --------------------------------------- #
-EML = (b"From: PayPal Support <support@paypal-secure-login.example.test>\r\n"
-       b"To: victim@example.test\r\nSubject: Account suspended <urgent>\r\n"
-       b"Date: Mon, 01 Jan 2024 10:00:00 +0000\r\nMessage-ID: <1@example.test>\r\n"
-       b"Content-Type: text/plain\r\n\r\n"
-       b"Verify now or lose access: https://paypal-secure-login.example.test/verify\r\n")
+EML = (
+    b"From: PayPal Support <support@paypal-secure-login.example.test>\r\n"
+    b"To: victim@example.test\r\nSubject: Account suspended <urgent>\r\n"
+    b"Date: Mon, 01 Jan 2024 10:00:00 +0000\r\nMessage-ID: <1@example.test>\r\n"
+    b"Content-Type: text/plain\r\n\r\n"
+    b"Verify now or lose access: https://paypal-secure-login.example.test/verify\r\n"
+)
 
 
 def test_classify_upload():
@@ -203,8 +217,10 @@ def test_eml_upload_scanned_as_email():
 
 
 def test_html_upload_scanned_as_page():
-    page = (b"<html><body><form action='https://c.example.test/p'>"
-            b"<input type=password></form></body></html>")
+    page = (
+        b"<html><body><form action='https://c.example.test/p'>"
+        b"<input type=password></form></body></html>"
+    )
     card = R.build_file_reply(page, "login.html")
     assert card.kind == "page"
 
@@ -230,10 +246,10 @@ def test_rate_limiter_window_and_notify_once():
     d = rl.check(1)
     assert not d.allowed and d.notify and 0 < d.retry_after <= 10
     d2 = rl.check(1)
-    assert not d2.allowed and not d2.notify      # no reply spam
-    assert rl.check(2).allowed                   # other chats unaffected
+    assert not d2.allowed and not d2.notify  # no reply spam
+    assert rl.check(2).allowed  # other chats unaffected
     now[0] = 10.5
-    assert rl.check(1).allowed                   # window slid
+    assert rl.check(1).allowed  # window slid
 
 
 def test_rate_limiter_disabled_and_bounded_memory():
@@ -275,8 +291,9 @@ HAVE_TG = tb is not None and tb.TELEGRAM_AVAILABLE
 
 
 class FakeMessage:
-    def __init__(self, text=None, *, entities=None, caption=None, document=None, photo=None,
-                 reply_to=None):
+    def __init__(
+        self, text=None, *, entities=None, caption=None, document=None, photo=None, reply_to=None
+    ):
         self.text, self.caption = text, caption
         self.entities, self.caption_entities = entities or [], []
         self.document, self.photo, self.reply_to_message = document, photo or [], reply_to
@@ -287,8 +304,12 @@ class FakeMessage:
 
 
 def make_update(msg, chat_id=1, lang="en"):
-    return SimpleNamespace(effective_message=msg, effective_chat=SimpleNamespace(id=chat_id),
-                           effective_user=SimpleNamespace(language_code=lang), inline_query=None)
+    return SimpleNamespace(
+        effective_message=msg,
+        effective_chat=SimpleNamespace(id=chat_id),
+        effective_user=SimpleNamespace(language_code=lang),
+        inline_query=None,
+    )
 
 
 def make_ctx(cfg=None, args=None, analyst=None):
@@ -444,4 +465,5 @@ def test_handlers_do_not_block_other_work():
 for _name, _fn in list(globals().items()):
     if _name.startswith("test_") and _name not in _PURE_TESTS:
         globals()[_name] = pytest.mark.skipif(
-            not HAVE_TG, reason="python-telegram-bot not installed")(_fn)
+            not HAVE_TG, reason="python-telegram-bot not installed"
+        )(_fn)

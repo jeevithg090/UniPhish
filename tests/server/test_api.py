@@ -22,7 +22,7 @@ from uniphish.server.app import create_app
 
 # A tiny, synthetic, inert phishing email using reserved/example domains only.
 SAMPLE_EML = (
-    b"From: \"PayPal Security\" <alert@secure-paypal.example>\r\n"
+    b'From: "PayPal Security" <alert@secure-paypal.example>\r\n'
     b"To: victim@example.com\r\n"
     b"Subject: Your account is limited - verify now\r\n"
     b"Reply-To: harvest@evil.test\r\n"
@@ -87,15 +87,15 @@ def test_scan_url(client):
 
 
 def test_scan_text(client):
-    r = client.post("/v1/scan/text",
-                    json={"text": "Your parcel is held. Pay the fee: http://dhl-fee.evil.test"})
+    r = client.post(
+        "/v1/scan/text", json={"text": "Your parcel is held. Pay the fee: http://dhl-fee.evil.test"}
+    )
     assert r.status_code == 200
     assert r.json()["kind"] == "text"
 
 
 def test_scan_email(client):
-    r = client.post("/v1/scan/email",
-                    json={"email": base64.b64encode(SAMPLE_EML).decode()})
+    r = client.post("/v1/scan/email", json={"email": base64.b64encode(SAMPLE_EML).decode()})
     assert r.status_code == 200
     assert r.json()["kind"] == "email"
 
@@ -107,16 +107,18 @@ def test_scan_email_raw(client):
 
 
 def test_scan_page(client):
-    r = client.post("/v1/scan/page",
-                    json={"html": SAMPLE_HTML, "url": "http://micr0soft-login.evil.test/"})
+    r = client.post(
+        "/v1/scan/page", json={"html": SAMPLE_HTML, "url": "http://micr0soft-login.evil.test/"}
+    )
     assert r.status_code == 200
     assert r.json()["kind"] == "page"
 
 
 def test_scan_file_multipart(client):
-    r = client.post("/v1/scan/file",
-                    files={"file": ("invoice.pdf.exe", b"MZ\x90\x00 inert sample",
-                                    "application/octet-stream")})
+    r = client.post(
+        "/v1/scan/file",
+        files={"file": ("invoice.pdf.exe", b"MZ\x90\x00 inert sample", "application/octet-stream")},
+    )
     assert r.status_code == 200
     assert r.json()["kind"] == "file"
 
@@ -170,7 +172,7 @@ def test_explain(client):
     assert r.status_code == 200
     body = r.json()
     assert "report" in body
-    assert body["report"]["narrative"]           # template narrative works offline
+    assert body["report"]["narrative"]  # template narrative works offline
     assert body["report"]["triage"]["source"] in {"ai", "template"}
     assert body["report"]["ai_available"] is False
 
@@ -179,8 +181,7 @@ def test_explain(client):
 # stored verdicts / stats / indicators
 # --------------------------------------------------------------------------- #
 def test_verdicts_and_stats(client):
-    vid = client.post("/v1/scan/url",
-                      json={"url": "http://paypal-login.evil.test/x"}).json()["id"]
+    vid = client.post("/v1/scan/url", json={"url": "http://paypal-login.evil.test/x"}).json()["id"]
     assert client.get(f"/v1/verdicts/{vid}").json()["id"] == vid
     assert client.get("/v1/verdicts/does-not-exist").status_code == 404
     listing = client.get("/v1/verdicts").json()
@@ -204,8 +205,9 @@ def test_indicators(client):
 # exports
 # --------------------------------------------------------------------------- #
 def test_export_by_verdict_id(client):
-    vid = client.post("/v1/scan/url",
-                      json={"url": "http://paypal-login.evil.test/signin"}).json()["id"]
+    vid = client.post("/v1/scan/url", json={"url": "http://paypal-login.evil.test/signin"}).json()[
+        "id"
+    ]
     stix = client.post("/v1/export/stix", json={"verdict_id": vid})
     assert stix.status_code == 200
     assert stix.json()["type"] == "bundle"
@@ -265,18 +267,21 @@ def test_auth_required_when_keys_set(tmp_path):
     app = create_app(make_settings(tmp_path, api_keys=["s3cret-key"]))
     with TestClient(app) as c:
         health = c.get("/v1/health")
-        assert health.status_code == 200                       # meta stays open
+        assert health.status_code == 200  # meta stays open
         assert health.json()["auth"] == "enabled"
-        assert "x-uniphish-auth" not in health.headers         # the note is for dev mode only
+        assert "x-uniphish-auth" not in health.headers  # the note is for dev mode only
         assert c.post("/v1/scan/url", json={"url": "http://a.test"}).status_code == 401
-        bad = c.post("/v1/scan/url", json={"url": "http://a.test"},
-                     headers={"x-api-key": "wrong"})
+        bad = c.post("/v1/scan/url", json={"url": "http://a.test"}, headers={"x-api-key": "wrong"})
         assert bad.status_code == 401
-        ok = c.post("/v1/scan/url", json={"url": "http://a.test"},
-                    headers={"x-api-key": "s3cret-key"})
+        ok = c.post(
+            "/v1/scan/url", json={"url": "http://a.test"}, headers={"x-api-key": "s3cret-key"}
+        )
         assert ok.status_code == 200
-        ok2 = c.post("/v1/scan/url", json={"url": "http://a.test"},
-                     headers={"authorization": "Bearer s3cret-key"})
+        ok2 = c.post(
+            "/v1/scan/url",
+            json={"url": "http://a.test"},
+            headers={"authorization": "Bearer s3cret-key"},
+        )
         assert ok2.status_code == 200
 
 
@@ -295,8 +300,9 @@ def test_rate_limit_not_bypassed_by_rotating_invalid_keys(tmp_path):
     """A fresh junk key per request must not mint a fresh bucket (falls back to the IP)."""
     app = create_app(make_settings(tmp_path, rate_limit_per_minute=3, api_keys=["real-key"]))
     with TestClient(app) as c:
-        codes = [c.get("/v1/health", headers={"x-api-key": f"junk-{i}"}).status_code
-                 for i in range(6)]
+        codes = [
+            c.get("/v1/health", headers={"x-api-key": f"junk-{i}"}).status_code for i in range(6)
+        ]
     assert 429 in codes
 
 
@@ -338,11 +344,10 @@ def test_request_size_cap_applies_to_chunked_body(tmp_path, monkeypatch):
 
     def chunks():
         for i in range(0, len(payload), 8):
-            yield payload[i:i + 8]
+            yield payload[i : i + 8]
 
     with TestClient(app) as c:
-        r = c.post("/v1/scan/url", content=chunks(),
-                   headers={"content-type": "application/json"})
+        r = c.post("/v1/scan/url", content=chunks(), headers={"content-type": "application/json"})
     assert r.status_code == 413
     assert r.json()["detail"] == "Request body too large."
 
@@ -351,8 +356,11 @@ def test_small_chunked_body_still_accepted(tmp_path):
     app = create_app(make_settings(tmp_path))
     payload = b'{"url": "http://example.com/"}'
     with TestClient(app) as c:
-        r = c.post("/v1/scan/url", content=iter([payload[:10], payload[10:]]),
-                   headers={"content-type": "application/json"})
+        r = c.post(
+            "/v1/scan/url",
+            content=iter([payload[:10], payload[10:]]),
+            headers={"content-type": "application/json"},
+        )
     assert r.status_code == 200
 
 

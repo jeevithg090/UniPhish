@@ -52,18 +52,18 @@ T = TypeVar("T")
 class AnalysisOptions:
     """Per-request switches. Defaults are safe: offline, no detonation."""
 
-    online: bool | None = None          # None -> Settings.online
-    fetch_pages: bool = False           # statically fetch URL content (requires online)
-    detonate: bool = False              # render in a sandboxed headless browser (requires online)
-    explain: bool = False               # expensive explanations (e.g. byte saliency)
-    ai_report: bool = False             # LLM-written analyst narrative
-    max_depth: int = 2                  # child-artifact recursion depth
-    max_children: int = 25              # per artifact
-    timeout_s: float = 30.0             # whole-analysis budget
-    analyzer_timeout_s: float = 10.0    # per analyzer
-    enable: frozenset[str] | None = None   # allowlist of analyzer names (None = all)
+    online: bool | None = None  # None -> Settings.online
+    fetch_pages: bool = False  # statically fetch URL content (requires online)
+    detonate: bool = False  # render in a sandboxed headless browser (requires online)
+    explain: bool = False  # expensive explanations (e.g. byte saliency)
+    ai_report: bool = False  # LLM-written analyst narrative
+    max_depth: int = 2  # child-artifact recursion depth
+    max_children: int = 25  # per artifact
+    timeout_s: float = 30.0  # whole-analysis budget
+    analyzer_timeout_s: float = 10.0  # per analyzer
+    enable: frozenset[str] | None = None  # allowlist of analyzer names (None = all)
     disable: frozenset[str] = frozenset()
-    persist: bool = True                # let hooks (store) persist the verdict
+    persist: bool = True  # let hooks (store) persist the verdict
 
     def is_online(self, settings: Settings) -> bool:
         return settings.online if self.online is None else self.online
@@ -88,7 +88,7 @@ class AnalyzerResult:
     children: list[Artifact] = field(default_factory=list)
     brand: BrandMatch | None = None
     techniques: list[str] = field(default_factory=list)
-    meta: dict[str, Any] = field(default_factory=dict)   # merged into Verdict.meta
+    meta: dict[str, Any] = field(default_factory=dict)  # merged into Verdict.meta
 
 
 @dataclass
@@ -100,7 +100,7 @@ class AnalysisContext:
     depth: int = 0
     parent: Artifact | None = None
     results: dict[str, AnalyzerResult] = field(default_factory=dict)  # earlier stages
-    shared: dict[str, Any] = field(default_factory=dict)              # per-artifact memo
+    shared: dict[str, Any] = field(default_factory=dict)  # per-artifact memo
 
     @property
     def online(self) -> bool:
@@ -137,9 +137,9 @@ class Analyzer(ABC):
     stage: ClassVar[int] = 0
     requires_online: ClassVar[bool] = False
     requires_detonation: ClassVar[bool] = False
-    blocking: ClassVar[bool] = False         # True -> analyze_sync() runs in a worker thread
+    blocking: ClassVar[bool] = False  # True -> analyze_sync() runs in a worker thread
     description: ClassVar[str] = ""
-    signals: ClassVar[dict[str, str]] = {}   # catalog: signal id -> title (for docs / UI)
+    signals: ClassVar[dict[str, str]] = {}  # catalog: signal id -> title (for docs / UI)
 
     def applies(self, artifact: Artifact, ctx: AnalysisContext) -> bool:
         """Cheap pre-check; return False to skip this artifact."""

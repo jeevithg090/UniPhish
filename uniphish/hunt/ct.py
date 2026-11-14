@@ -62,11 +62,21 @@ FAST_ANALYZERS = frozenset({"url"})
 
 #: Synthetic, inert replay data for ``source="sample"`` (reserved TLDs only).
 SAMPLE_DOMAINS: tuple[str, ...] = (
-    "paypa1.test", "xn--pypal-4ve.test", "secure-paypal-login.test",
-    "paypal.verify-account.example", "micr0soft-support.test", "xn--ggle-55da.test",
-    "amaz0n-orders.test", "apple-id-verify.test", "bank-of-amerca.test",
-    "my-garden-shop.test", "kitchen-recipes.test", "blog.example.org", "mail.paypal.com",
-    "*.docs.example", "paypa1.test",
+    "paypa1.test",
+    "xn--pypal-4ve.test",
+    "secure-paypal-login.test",
+    "paypal.verify-account.example",
+    "micr0soft-support.test",
+    "xn--ggle-55da.test",
+    "amaz0n-orders.test",
+    "apple-id-verify.test",
+    "bank-of-amerca.test",
+    "my-garden-shop.test",
+    "kitchen-recipes.test",
+    "blog.example.org",
+    "mail.paypal.com",
+    "*.docs.example",
+    "paypa1.test",
 )
 
 CertCallback = Callable[[str, dict[str, Any]], Awaitable[None] | None]
@@ -98,11 +108,15 @@ def clean_domain(raw: Any) -> str | None:
     if len(labels) < 2:
         return None
     for lab in labels:
-        if not 1 <= len(lab) <= 63 or lab[0] == "-" or lab[-1] == "-" \
-                or not _LABEL_CHARS.issuperset(lab):
+        if (
+            not 1 <= len(lab) <= 63
+            or lab[0] == "-"
+            or lab[-1] == "-"
+            or not _LABEL_CHARS.issuperset(lab)
+        ):
             return None
     tld = labels[-1]
-    if tld.isdigit() or not any(c.isalpha() for c in tld):   # IPv4 literal / numeric TLD
+    if tld.isdigit() or not any(c.isalpha() for c in tld):  # IPv4 literal / numeric TLD
         return None
     return h
 
@@ -113,8 +127,9 @@ def _meta_scalar(v: Any) -> Any:
     return None
 
 
-def parse_record(obj: Any, *, source: str = "certstream",
-                 max_sans: int = MAX_SANS_PER_CERT) -> list[tuple[str, dict[str, Any]]]:
+def parse_record(
+    obj: Any, *, source: str = "certstream", max_sans: int = MAX_SANS_PER_CERT
+) -> list[tuple[str, dict[str, Any]]]:
     """Extract ``(domain, cert_meta)`` pairs from one firehose / JSONL record.
 
     Accepted shapes: a certstream ``certificate_update`` message, a bare string
@@ -136,31 +151,38 @@ def parse_record(obj: Any, *, source: str = "certstream",
                 names = leaf.get("all_domains")
                 issuer = leaf.get("issuer") if isinstance(leaf.get("issuer"), Mapping) else {}
                 src = data.get("source") if isinstance(data.get("source"), Mapping) else {}
-                meta.update({
-                    "seen": _meta_scalar(data.get("seen")),
-                    "not_before": _meta_scalar(leaf.get("not_before")),
-                    "fingerprint": _meta_scalar(leaf.get("fingerprint")),
-                    "issuer": _meta_scalar(issuer.get("O") or issuer.get("CN")),
-                    "log": _meta_scalar(src.get("name")),
-                })
+                meta.update(
+                    {
+                        "seen": _meta_scalar(data.get("seen")),
+                        "not_before": _meta_scalar(leaf.get("not_before")),
+                        "fingerprint": _meta_scalar(leaf.get("fingerprint")),
+                        "issuer": _meta_scalar(issuer.get("O") or issuer.get("CN")),
+                        "log": _meta_scalar(src.get("name")),
+                    }
+                )
             else:
-                names = obj.get("all_domains") or obj.get("domains") or obj.get("domain") \
+                names = (
+                    obj.get("all_domains")
+                    or obj.get("domains")
+                    or obj.get("domain")
                     or obj.get("host")
+                )
                 for k, v in obj.items():
-                    if k not in {"all_domains", "domains", "domain", "host"} \
-                            and _meta_scalar(v) is not None:
+                    if (
+                        k not in {"all_domains", "domains", "domain", "host"}
+                        and _meta_scalar(v) is not None
+                    ):
                         meta[str(k)[:64]] = v
                 meta["source"] = source
             if isinstance(names, str):
                 names = [names]
         if not isinstance(names, (list, tuple)):
             return []
-    except Exception:   # pragma: no cover - defensive; inputs are plain JSON
+    except Exception:  # pragma: no cover - defensive; inputs are plain JSON
         return []
     meta = {k: v for k, v in meta.items() if v is not None}
     meta["san_count"] = len(names)
-    return [(d, dict(meta)) for d in
-            (clean_domain(n) for n in names[:max(1, max_sans)]) if d]
+    return [(d, dict(meta)) for d in (clean_domain(n) for n in names[: max(1, max_sans)]) if d]
 
 
 def _epoch(value: Any) -> float | None:
@@ -192,19 +214,25 @@ def _validate_url(url: str, allow_insecure: bool) -> None:
     host = (parts.hostname or "").lower()
     if parts.scheme == "wss" and host:
         return
-    if parts.scheme == "ws" and host and (allow_insecure or host in {"localhost", "127.0.0.1",
-                                                                       "::1"}):
+    if (
+        parts.scheme == "ws"
+        and host
+        and (allow_insecure or host in {"localhost", "127.0.0.1", "::1"})
+    ):
         return
-    raise ValueError(f"unsupported CT firehose URL {url!r}: use wss:// (ws:// only for "
-                     "loopback or with allow_insecure=True)")
+    raise ValueError(
+        f"unsupported CT firehose URL {url!r}: use wss:// (ws:// only for "
+        "loopback or with allow_insecure=True)"
+    )
 
 
 def _default_connector() -> Connector:
     try:
         import websockets
-    except ImportError as e:   # pragma: no cover - extra not installed
-        raise RuntimeError("the 'websockets' package is required for the live CT firehose "
-                           "(pip install websockets)") from e
+    except ImportError as e:  # pragma: no cover - extra not installed
+        raise RuntimeError(
+            "the 'websockets' package is required for the live CT firehose (pip install websockets)"
+        ) from e
     return websockets.connect
 
 
@@ -214,14 +242,16 @@ async def _call(on_cert: CertCallback, domain: str, meta: dict[str, Any]) -> Non
         await r
 
 
-async def _replay(on_cert: CertCallback, path: Path | None, stop: asyncio.Event,
-                  limit: int | None, max_sans: int) -> int:
+async def _replay(
+    on_cert: CertCallback, path: Path | None, stop: asyncio.Event, limit: int | None, max_sans: int
+) -> int:
     """Replay a JSONL file (or the bundled sample) through ``on_cert``."""
+
     def _lines() -> Iterable[str]:
         if path is None:
             return [json.dumps({"domain": d}) for d in SAMPLE_DOMAINS]
         with open(path, encoding="utf-8", errors="replace") as fh:
-            return [ln for _, ln in zip(range(1_000_000), fh, strict=False)]   # bounded read
+            return [ln for _, ln in zip(range(1_000_000), fh, strict=False)]  # bounded read
 
     lines = await asyncio.to_thread(lambda: list(_lines()))
     n = 0
@@ -243,14 +273,23 @@ async def _replay(on_cert: CertCallback, path: Path | None, stop: asyncio.Event,
     return n
 
 
-async def stream_certstream(on_cert: CertCallback, *, source: str = "certstream",
-                            url: str = CERTSTREAM_URL, path: str | Path | None = None,
-                            stop: asyncio.Event | None = None, max_certs: int | None = None,
-                            connect: Connector | None = None, allow_insecure: bool = False,
-                            max_sans: int = MAX_SANS_PER_CERT, idle_timeout_s: float = 120.0,
-                            backoff_base_s: float = 1.0, backoff_max_s: float = 60.0,
-                            max_reconnects: int | None = None,
-                            sleep: Callable[[float], Awaitable[None]] = asyncio.sleep) -> int:
+async def stream_certstream(
+    on_cert: CertCallback,
+    *,
+    source: str = "certstream",
+    url: str = CERTSTREAM_URL,
+    path: str | Path | None = None,
+    stop: asyncio.Event | None = None,
+    max_certs: int | None = None,
+    connect: Connector | None = None,
+    allow_insecure: bool = False,
+    max_sans: int = MAX_SANS_PER_CERT,
+    idle_timeout_s: float = 120.0,
+    backoff_base_s: float = 1.0,
+    backoff_max_s: float = 60.0,
+    max_reconnects: int | None = None,
+    sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+) -> int:
     """Feed ``on_cert(domain, cert_meta)`` for every domain from a CT firehose.
 
     ``source="certstream"`` connects to ``url`` (certstream-compatible websocket) and
@@ -274,13 +313,22 @@ async def stream_certstream(on_cert: CertCallback, *, source: str = "certstream"
         while not stop.is_set() and (max_certs is None or delivered < max_certs):
             got_any = False
             try:
-                async with connector(url, ping_interval=20, ping_timeout=20, max_size=1 << 20,
-                                     open_timeout=15, close_timeout=5) as ws:
+                async with connector(
+                    url,
+                    ping_interval=20,
+                    ping_timeout=20,
+                    max_size=1 << 20,
+                    open_timeout=15,
+                    close_timeout=5,
+                ) as ws:
                     it = ws.__aiter__()
                     while max_certs is None or delivered < max_certs:
                         nxt = asyncio.ensure_future(it.__anext__())
-                        done, _ = await asyncio.wait({nxt, stop_task}, timeout=idle_timeout_s,
-                                                     return_when=asyncio.FIRST_COMPLETED)
+                        done, _ = await asyncio.wait(
+                            {nxt, stop_task},
+                            timeout=idle_timeout_s,
+                            return_when=asyncio.FIRST_COMPLETED,
+                        )
                         if nxt not in done:
                             nxt.cancel()
                             if stop_task in done:
@@ -300,8 +348,7 @@ async def stream_certstream(on_cert: CertCallback, *, source: str = "certstream"
                             obj = json.loads(msg)
                         except ValueError:
                             continue
-                        for dom, meta in parse_record(obj, source="certstream",
-                                                      max_sans=max_sans):
+                        for dom, meta in parse_record(obj, source="certstream", max_sans=max_sans):
                             await _call(on_cert, dom, meta)
                             delivered += 1
             except _Stopped:
@@ -378,9 +425,22 @@ class HuntStats:
         return round(time.monotonic() - self.started_at, 3)
 
     def to_dict(self) -> dict[str, Any]:
-        d = {k: getattr(self, k) for k in (
-            "seen", "invalid", "duplicates", "official_skipped", "scored", "errors", "flagged",
-            "recorded", "duplicate_alerts", "dropped_queue_full", "dropped_rate_limit")}
+        d = {
+            k: getattr(self, k)
+            for k in (
+                "seen",
+                "invalid",
+                "duplicates",
+                "official_skipped",
+                "scored",
+                "errors",
+                "flagged",
+                "recorded",
+                "duplicate_alerts",
+                "dropped_queue_full",
+                "dropped_rate_limit",
+            )
+        }
         d["by_brand"] = dict(self.by_brand.most_common())
         d["elapsed_s"] = self.elapsed_s
         return d
@@ -405,11 +465,21 @@ class HuntHit:
     verdict: Verdict = field(repr=False)
 
     def to_event(self) -> dict[str, Any]:
-        return {"id": self.event_id, "domain": self.domain, "score": self.score,
-                "level": self.level, "brand": self.brand, "brand_name": self.brand_name,
-                "technique": self.technique, "techniques": self.techniques[:6],
-                "reason": self.reason, "fresh": self.fresh, "source": self.source,
-                "stix_id": self.stix_id, "summary": self.verdict.summary}
+        return {
+            "id": self.event_id,
+            "domain": self.domain,
+            "score": self.score,
+            "level": self.level,
+            "brand": self.brand,
+            "brand_name": self.brand_name,
+            "technique": self.technique,
+            "techniques": self.techniques[:6],
+            "reason": self.reason,
+            "fresh": self.fresh,
+            "source": self.source,
+            "stix_id": self.stix_id,
+            "summary": self.verdict.summary,
+        }
 
 
 _WARMED = False
@@ -433,16 +503,28 @@ class CTHunter:
         queue_size / workers / max_rate / max_seen: volume bounds for :meth:`run`.
     """
 
-    def __init__(self, engine: Engine | None = None, store: Any = None, *,
-                 threshold: int = 75, watch_brands: Iterable[str] | None = None,
-                 brand_floor: int = 40, fresh_weight: float = FRESH_WEIGHT,
-                 fresh_window_s: float = FRESH_WINDOW_S, queue_size: int = 10_000,
-                 workers: int = 4, max_rate: float | None = None, max_seen: int = 200_000,
-                 publish: bool = True, kb: BrandKB | None = None,
-                 warm: bool = True) -> None:
+    def __init__(
+        self,
+        engine: Engine | None = None,
+        store: Any = None,
+        *,
+        threshold: int = 75,
+        watch_brands: Iterable[str] | None = None,
+        brand_floor: int = 40,
+        fresh_weight: float = FRESH_WEIGHT,
+        fresh_window_s: float = FRESH_WINDOW_S,
+        queue_size: int = 10_000,
+        workers: int = 4,
+        max_rate: float | None = None,
+        max_seen: int = 200_000,
+        publish: bool = True,
+        kb: BrandKB | None = None,
+        warm: bool = True,
+    ) -> None:
         self.engine = self._fast_engine(engine)
         if store is None:
             from uniphish.store import get_store
+
             store = get_store()
         self.store = store
         self.kb = kb or get_kb()
@@ -462,10 +544,19 @@ class CTHunter:
         self._tokens = float(max_rate or 0)
         self._tick = time.monotonic()
         names = frozenset(a.name for a in self.engine.analyzers)
-        self._options = AnalysisOptions(online=False, fetch_pages=False, detonate=False,
-                                        explain=False, ai_report=False, max_depth=0,
-                                        max_children=0, timeout_s=5.0, analyzer_timeout_s=3.0,
-                                        enable=names, persist=False)
+        self._options = AnalysisOptions(
+            online=False,
+            fetch_pages=False,
+            detonate=False,
+            explain=False,
+            ai_report=False,
+            max_depth=0,
+            max_children=0,
+            timeout_s=5.0,
+            analyzer_timeout_s=3.0,
+            enable=names,
+            persist=False,
+        )
         if warm:
             self.warm_up()
 
@@ -481,11 +572,19 @@ class CTHunter:
             if _WARMED:
                 return
             try:
-                opts = AnalysisOptions(online=False, fetch_pages=False, detonate=False,
-                                       explain=False, ai_report=False, max_depth=0,
-                                       max_children=0, timeout_s=120.0,
-                                       analyzer_timeout_s=120.0, enable=self._options.enable,
-                                       persist=False)
+                opts = AnalysisOptions(
+                    online=False,
+                    fetch_pages=False,
+                    detonate=False,
+                    explain=False,
+                    ai_report=False,
+                    max_depth=0,
+                    max_children=0,
+                    timeout_s=120.0,
+                    analyzer_timeout_s=120.0,
+                    enable=self._options.enable,
+                    persist=False,
+                )
                 self.engine.analyze_sync(self._artifact("paypa1-login.example.test"), opts)
                 _WARMED = True
             except Exception:  # pragma: no cover - warm-up is best effort
@@ -496,9 +595,12 @@ class CTHunter:
     def _fast_engine(engine: Engine | None) -> Engine:
         base = engine or Engine()
         fast = [a for a in base.analyzers if a.name in FAST_ANALYZERS and not a.requires_online]
-        if not fast:   # custom engine without a 'url' analyzer: any offline, static analyzer
-            fast = [a for a in base.analyzers
-                    if not a.requires_online and not a.requires_detonation and a.stage == 0]
+        if not fast:  # custom engine without a 'url' analyzer: any offline, static analyzer
+            fast = [
+                a
+                for a in base.analyzers
+                if not a.requires_online and not a.requires_detonation and a.stage == 0
+            ]
         return Engine(base.settings, analyzers=fast, hooks=[])
 
     def _resolve_watch(self, brands: Iterable[str] | None) -> frozenset[str] | None:
@@ -511,9 +613,11 @@ class CTHunter:
         for b in self.kb.all():
             if wanted & {b.id.casefold(), b.name.casefold(), *(a.casefold() for a in b.aliases)}:
                 ids.add(b.id.casefold())
-        for unknown in wanted - {x for b in self.kb.all()
-                                 for x in (b.id.casefold(), b.name.casefold(),
-                                           *(a.casefold() for a in b.aliases))}:
+        for unknown in wanted - {
+            x
+            for b in self.kb.all()
+            for x in (b.id.casefold(), b.name.casefold(), *(a.casefold() for a in b.aliases))
+        }:
             log.warning("watch_brands: %r is not in the brand knowledge base", unknown)
             ids.add(unknown)
         return frozenset(ids)
@@ -571,8 +675,11 @@ class CTHunter:
         looks_alike = self._brand_ok(verdict)
         if self.watch is not None:
             b = verdict.brand
-            watched = bool(looks_alike and b and (b.brand.casefold() in self.watch
-                                                  or b.name.casefold() in self.watch))
+            watched = bool(
+                looks_alike
+                and b
+                and (b.brand.casefold() in self.watch or b.name.casefold() in self.watch)
+            )
             return "watched_brand" if watched and verdict.score >= self.brand_floor else None
         if verdict.score >= self.threshold:
             return "score"
@@ -586,13 +693,20 @@ class CTHunter:
             return
         b = verdict.brand
         assert b is not None
-        verdict.signals.append(Signal(
-            id=FRESH_SIGNAL_ID, title="Certificate issued moments ago for a brand look-alike",
-            detail=f"A TLS certificate was just issued for a domain imitating {b.name} "
-                   f"({b.technique}); phishing sites are usually staged right after issuance.",
-            weight=self.fresh_weight, confidence=max(0.5, min(1.0, b.confidence)),
-            category="infra", analyzer="ct", mitre=["T1583.001"],
-            evidence={"brand": b.brand, "technique": b.technique, "fresh_cert": True}))
+        verdict.signals.append(
+            Signal(
+                id=FRESH_SIGNAL_ID,
+                title="Certificate issued moments ago for a brand look-alike",
+                detail=f"A TLS certificate was just issued for a domain imitating {b.name} "
+                f"({b.technique}); phishing sites are usually staged right after issuance.",
+                weight=self.fresh_weight,
+                confidence=max(0.5, min(1.0, b.confidence)),
+                category="infra",
+                analyzer="ct",
+                mitre=["T1583.001"],
+                evidence={"brand": b.brand, "technique": b.technique, "fresh_cert": True},
+            )
+        )
         fused = scoring.fuse(verdict.signals, self.engine.settings)
         for k, v in fused.items():
             setattr(verdict, k, v)
@@ -600,8 +714,9 @@ class CTHunter:
         verdict.mitre = mitre.resolve_many({m.id for m in verdict.mitre} | {"T1583.001"})
         verdict.summary = scoring.summarize(verdict)
 
-    def _finish(self, host: str, verdict: Verdict, meta: Mapping[str, Any],
-                fresh_default: bool | None) -> HuntHit | None:
+    def _finish(
+        self, host: str, verdict: Verdict, meta: Mapping[str, Any], fresh_default: bool | None
+    ) -> HuntHit | None:
         with self._lock:
             self.stats.scored += 1
         fresh = self._is_fresh(meta, fresh_default)
@@ -621,24 +736,39 @@ class CTHunter:
             if ind.type is IndicatorType.DOMAIN:
                 ind.malicious = True
         if not any(i.type is IndicatorType.DOMAIN for i in verdict.indicators):
-            verdict.indicators.append(Indicator(type=IndicatorType.DOMAIN, value=host,
-                                                role="host", malicious=True))
-        verdict.meta["ct"] = {"fresh": fresh, "reason": reason, "domain": host,
-                              **{k: v for k, v in meta.items() if k != "source"}}
+            verdict.indicators.append(
+                Indicator(type=IndicatorType.DOMAIN, value=host, role="host", malicious=True)
+            )
+        verdict.meta["ct"] = {
+            "fresh": fresh,
+            "reason": reason,
+            "domain": host,
+            **{k: v for k, v in meta.items() if k != "source"},
+        }
         bundle = to_stix_bundle(verdict, include_benign=True)
-        stix_id = next((o["id"] for o in bundle["objects"] if o.get("type") == "indicator"),
-                       None)
+        stix_id = next((o["id"] for o in bundle["objects"] if o.get("type") == "indicator"), None)
         source = str(meta.get("source") or "ct")
         b = verdict.brand if self._brand_ok(verdict) else None
         event_id = self.store.add_hunt_event(
-            source, host, verdict.score, b.brand if b else None, verdict.techniques, bundle)
+            source, host, verdict.score, b.brand if b else None, verdict.techniques, bundle
+        )
         for obj in bundle["objects"]:
             self.store.add_stix_object(obj)
-        hit = HuntHit(domain=host, score=verdict.score, level=verdict.level.value,
-                      brand=b.brand if b else None, brand_name=b.name if b else None,
-                      technique=b.technique if b else None, techniques=list(verdict.techniques),
-                      reason=reason, fresh=fresh, event_id=event_id, stix_id=stix_id,
-                      source=source, verdict=verdict)
+        hit = HuntHit(
+            domain=host,
+            score=verdict.score,
+            level=verdict.level.value,
+            brand=b.brand if b else None,
+            brand_name=b.name if b else None,
+            technique=b.technique if b else None,
+            techniques=list(verdict.techniques),
+            reason=reason,
+            fresh=fresh,
+            event_id=event_id,
+            stix_id=stix_id,
+            source=source,
+            verdict=verdict,
+        )
         with self._lock:
             self.stats.recorded += 1
             if hit.brand:
@@ -649,8 +779,9 @@ class CTHunter:
         return hit
 
     # ---- public API ------------------------------------------------------ #
-    def process(self, domain: str, meta: Mapping[str, Any] | None = None, *,
-                fresh: bool | None = None) -> HuntHit | None:
+    def process(
+        self, domain: str, meta: Mapping[str, Any] | None = None, *, fresh: bool | None = None
+    ) -> HuntHit | None:
         """Score one domain synchronously; return the recorded hit or ``None``.
 
         ``fresh`` overrides whether the certificate counts as just issued (default:
@@ -668,8 +799,9 @@ class CTHunter:
             return None
         return self._finish(host, verdict, meta or {}, fresh)
 
-    async def aprocess(self, domain: str, meta: Mapping[str, Any] | None = None, *,
-                       fresh: bool | None = None) -> HuntHit | None:
+    async def aprocess(
+        self, domain: str, meta: Mapping[str, Any] | None = None, *, fresh: bool | None = None
+    ) -> HuntHit | None:
         """Async twin of :meth:`process` (used by :meth:`run`)."""
         host = self._admit(domain)
         if host is None:
@@ -683,8 +815,13 @@ class CTHunter:
             return None
         return self._finish(host, verdict, meta or {}, fresh)
 
-    def hunt_once(self, domains: Iterable[str], *, meta: Mapping[str, Any] | None = None,
-                  fresh: bool | None = True) -> list[HuntHit]:
+    def hunt_once(
+        self,
+        domains: Iterable[str],
+        *,
+        meta: Mapping[str, Any] | None = None,
+        fresh: bool | None = True,
+    ) -> list[HuntHit]:
         """Process a batch of newly issued domains (tests / CLI); return the hits."""
         base = {"source": "sample", **(meta or {})}
         hits = []
@@ -694,10 +831,18 @@ class CTHunter:
                 hits.append(hit)
         return hits
 
-    async def run(self, source: str = "certstream", *, url: str = CERTSTREAM_URL,
-                  path: str | Path | None = None, max_domains: int | None = None,
-                  duration_s: float | None = None, stop: asyncio.Event | None = None,
-                  connect: Connector | None = None, **stream_kwargs: Any) -> HuntStats:
+    async def run(
+        self,
+        source: str = "certstream",
+        *,
+        url: str = CERTSTREAM_URL,
+        path: str | Path | None = None,
+        max_domains: int | None = None,
+        duration_s: float | None = None,
+        stop: asyncio.Event | None = None,
+        connect: Connector | None = None,
+        **stream_kwargs: Any,
+    ) -> HuntStats:
         """Main loop: stream -> bounded queue -> worker pool -> :meth:`aprocess`.
 
         Live mode drops (and counts) domains when the queue is full or ``max_rate`` is
@@ -734,17 +879,23 @@ class CTHunter:
                 domain, meta = await queue.get()
                 try:
                     await self.aprocess(domain, meta)
-                except Exception:   # pragma: no cover - aprocess already isolates faults
+                except Exception:  # pragma: no cover - aprocess already isolates faults
                     log.exception("CT worker error")
                 finally:
                     queue.task_done()
 
         tasks = [asyncio.create_task(worker()) for _ in range(self.workers)]
-        timer = asyncio.get_running_loop().call_later(duration_s, stop.set) \
-            if duration_s else None
+        timer = asyncio.get_running_loop().call_later(duration_s, stop.set) if duration_s else None
         try:
-            await stream_certstream(on_cert, source=source, url=url, path=path, stop=stop,
-                                    connect=connect, **stream_kwargs)
+            await stream_certstream(
+                on_cert,
+                source=source,
+                url=url,
+                path=path,
+                stop=stop,
+                connect=connect,
+                **stream_kwargs,
+            )
             await queue.join()
         finally:
             if timer:
@@ -761,17 +912,19 @@ def _registrable(verdict: Verdict, host: str) -> str:
         parts = split_host(parse_url(f"https://{host}/"))
         if parts.sld and parts.suffix:
             return f"{parts.sld}.{parts.suffix}".lower()
-    except Exception:   # pragma: no cover - parse_url never raises on a validated host
+    except Exception:  # pragma: no cover - parse_url never raises on a validated host
         log.debug("registrable-domain split failed for %s", host)
     return host
 
 
-async def iter_domains(source: str = "sample", *, path: str | Path | None = None,
-                       limit: int | None = None) -> AsyncIterator[tuple[str, dict[str, Any]]]:
+async def iter_domains(
+    source: str = "sample", *, path: str | Path | None = None, limit: int | None = None
+) -> AsyncIterator[tuple[str, dict[str, Any]]]:
     """Async-iterate replayed ``(domain, meta)`` pairs (convenience for tools/tests)."""
     out: list[tuple[str, dict[str, Any]]] = []
-    await stream_certstream(lambda d, m: out.append((d, m)), source=source, path=path,
-                            max_certs=limit)
+    await stream_certstream(
+        lambda d, m: out.append((d, m)), source=source, path=path, max_certs=limit
+    )
     for item in out:
         yield item
 
@@ -786,11 +939,15 @@ def main(argv: list[str] | None = None) -> int:
 
     from uniphish.core.engine import default_engine
 
-    ap = argparse.ArgumentParser(prog="uniphish hunt",
-                                 description="Hunt newly-issued phishing domains via "
-                                             "Certificate Transparency.")
-    ap.add_argument("--source", default="sample",
-                    help="'sample' (offline demo), 'certstream' (live), or a JSONL file path")
+    ap = argparse.ArgumentParser(
+        prog="uniphish hunt",
+        description="Hunt newly-issued phishing domains via Certificate Transparency.",
+    )
+    ap.add_argument(
+        "--source",
+        default="sample",
+        help="'sample' (offline demo), 'certstream' (live), or a JSONL file path",
+    )
     ap.add_argument("--threshold", type=int, default=60, help="min risk score to alert (0-100)")
     ap.add_argument("--brands", default="", help="comma-separated brand ids to watch (optional)")
     ap.add_argument("--max-domains", type=int, default=None, help="stop after N domains")
@@ -811,8 +968,9 @@ def main(argv: list[str] | None = None) -> int:
         else:
             hits = asyncio.run(_run_collect(hunter, args.source, path, args.max_domains))
     else:
-        hits = asyncio.run(_run_collect(hunter, args.source, None, args.max_domains,
-                                        duration_s=args.duration))
+        hits = asyncio.run(
+            _run_collect(hunter, args.source, None, args.max_domains, duration_s=args.duration)
+        )
 
     for h in hits:
         brand = f" impersonates {h.brand}" if getattr(h, "brand", None) else ""
@@ -822,9 +980,14 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-async def _run_collect(hunter: CTHunter, source: str, path: str | None,
-                       max_domains: int | None, *, duration_s: float | None = None
-                       ) -> list[HuntHit]:
+async def _run_collect(
+    hunter: CTHunter,
+    source: str,
+    path: str | None,
+    max_domains: int | None,
+    *,
+    duration_s: float | None = None,
+) -> list[HuntHit]:
     hits: list[HuntHit] = []
     async for domain, meta in iter_domains(source, path=path, limit=max_domains):
         hit = hunter.process(domain, meta)
@@ -833,8 +996,18 @@ async def _run_collect(hunter: CTHunter, source: str, path: str | None,
     return hits
 
 
-__all__ = ["CERTSTREAM_URL", "SAMPLE_DOMAINS", "CTHunter", "HuntHit", "HuntStats",
-           "clean_domain", "iter_domains", "main", "parse_record", "stream_certstream"]
+__all__ = [
+    "CERTSTREAM_URL",
+    "SAMPLE_DOMAINS",
+    "CTHunter",
+    "HuntHit",
+    "HuntStats",
+    "clean_domain",
+    "iter_domains",
+    "main",
+    "parse_record",
+    "stream_certstream",
+]
 
 
 if __name__ == "__main__":  # pragma: no cover

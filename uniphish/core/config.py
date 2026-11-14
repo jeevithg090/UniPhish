@@ -56,8 +56,9 @@ class Settings(BaseModel):
     malicious_threshold: float = 0.85
 
     # API security
-    api_keys: list[str] = Field(default_factory=list,
-                                description="Accepted API keys (empty = auth disabled, dev).")
+    api_keys: list[str] = Field(
+        default_factory=list, description="Accepted API keys (empty = auth disabled, dev)."
+    )
     cors_origins: list[str] = Field(default_factory=list)
     rate_limit_per_minute: int = 120
 

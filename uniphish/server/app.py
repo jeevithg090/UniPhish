@@ -61,8 +61,9 @@ def _make_persist_hook(store: Store):
     return hook
 
 
-def create_app(settings: Settings | None = None, *, engine: Engine | None = None,
-               store: Store | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None, *, engine: Engine | None = None, store: Store | None = None
+) -> FastAPI:
     """Build the FastAPI app. ``engine``/``store`` may be injected (tests); otherwise the
     app owns freshly-built ones bound to *settings*."""
     settings = settings or get_settings()
@@ -77,8 +78,12 @@ def create_app(settings: Settings | None = None, *, engine: Engine | None = None
         app.state.store = _store
         app.state.engine = _engine
         app.state.ai = AIAnalyst(settings)
-        log.info("uniphish API ready (analyzers=%d, online=%s, auth=%s)",
-                 len(_engine.analyzers), settings.online, bool(settings.api_keys))
+        log.info(
+            "uniphish API ready (analyzers=%d, online=%s, auth=%s)",
+            len(_engine.analyzers),
+            settings.online,
+            bool(settings.api_keys),
+        )
         try:
             yield
         finally:
@@ -134,17 +139,24 @@ def _register_legacy(app: FastAPI, auth: list[Any]) -> None:
     @app.post("/scan", include_in_schema=False, dependencies=auth)
     async def legacy_scan(body: _LegacyScan, request: Request) -> dict[str, Any]:
         verdict = await request.app.state.engine.analyze(
-            Artifact.from_url(body.url), AnalysisOptions())
-        return {"url": body.url, "score": verdict.score, "risk": verdict.risk,
-                "level": verdict.level.value, "action": verdict.action.value,
-                "summary": verdict.summary}
+            Artifact.from_url(body.url), AnalysisOptions()
+        )
+        return {
+            "url": body.url,
+            "score": verdict.score,
+            "risk": verdict.risk,
+            "level": verdict.level.value,
+            "action": verdict.action.value,
+            "summary": verdict.summary,
+        }
 
     @app.post("/stix", include_in_schema=False, dependencies=auth)
     async def legacy_stix(body: _LegacyScan, request: Request) -> Any:
         from uniphish.export.stix import to_stix_bundle
 
         verdict = await request.app.state.engine.analyze(
-            Artifact.from_url(body.url), AnalysisOptions())
+            Artifact.from_url(body.url), AnalysisOptions()
+        )
         return JSONResponse(to_stix_bundle(verdict))
 
 
@@ -155,10 +167,15 @@ def _mount_static(app: FastAPI) -> None:
     if _STATIC_DIR.is_dir():
         app.mount("/", StaticFiles(directory=str(_STATIC_DIR), html=True), name="static")
     else:
+
         @app.get("/", include_in_schema=False)
         def root() -> dict[str, Any]:
-            return {"name": "uniphish", "version": __version__,
-                    "docs": "/docs", "api": "/v1/health"}
+            return {
+                "name": "uniphish",
+                "version": __version__,
+                "docs": "/docs",
+                "api": "/v1/health",
+            }
 
 
 app = create_app()

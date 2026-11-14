@@ -41,30 +41,44 @@ def test_tld_data_integrity():
 
 
 # --------------------------------------------------------------------------- lots
-@pytest.mark.parametrize("host,kind", [
-    ("evil.pages.dev", "serverless"),
-    ("a.b.workers.dev", "serverless"),
-    ("pages.dev", "serverless"),
-    ("x.web.app", "hosting"),
-    ("sites.google.com", "site_builder"),
-    ("bucket.blob.core.windows.net", "storage"),
-    ("x.ngrok-free.app", "tunnel"),
-    ("ipfs.io", "ipfs"),
-    ("x.trycloudflare.com", "tunnel"),
-    ("telegra.ph", "blog"),
-    ("pub-123.r2.dev", "storage"),
-    ("forms.gle", "forms"),
-    ("tenant.sharepoint.com", "file_share"),
-])
+@pytest.mark.parametrize(
+    "host,kind",
+    [
+        ("evil.pages.dev", "serverless"),
+        ("a.b.workers.dev", "serverless"),
+        ("pages.dev", "serverless"),
+        ("x.web.app", "hosting"),
+        ("sites.google.com", "site_builder"),
+        ("bucket.blob.core.windows.net", "storage"),
+        ("x.ngrok-free.app", "tunnel"),
+        ("ipfs.io", "ipfs"),
+        ("x.trycloudflare.com", "tunnel"),
+        ("telegra.ph", "blog"),
+        ("pub-123.r2.dev", "storage"),
+        ("forms.gle", "forms"),
+        ("tenant.sharepoint.com", "file_share"),
+    ],
+)
 def test_lots_match_hits(host, kind):
     e = L.lots_match(host)
     assert e is not None and e.kind == kind
 
 
-@pytest.mark.parametrize("host", [
-    "evilpages.dev", "pages.dev.evil.test", "notpages.dev", "xworkers.dev",
-    "github.io.evil.test", "", None, "paypal.com", "1.2.3.4", "a..b.pages.dev",
-])
+@pytest.mark.parametrize(
+    "host",
+    [
+        "evilpages.dev",
+        "pages.dev.evil.test",
+        "notpages.dev",
+        "xworkers.dev",
+        "github.io.evil.test",
+        "",
+        None,
+        "paypal.com",
+        "1.2.3.4",
+        "a..b.pages.dev",
+    ],
+)
 def test_lots_match_boundary_safe(host):
     assert L.lots_match(host) is None
 
@@ -98,15 +112,45 @@ def test_lots_data_integrity():
     data = load_yaml("lots.yaml")["entries"]
     assert len(data) >= 120
     seen = set()
-    required = ["pages.dev", "workers.dev", "web.app", "firebaseapp.com", "appspot.com",
-                "netlify.app", "vercel.app", "github.io", "gitlab.io", "glitch.me", "repl.co",
-                "herokuapp.com", "onrender.com", "fly.dev", "azurewebsites.net",
-                "blob.core.windows.net", "storage.googleapis.com",
-                "firebasestorage.googleapis.com", "sites.google.com", "forms.gle", "1drv.ms",
-                "forms.office.com", "sharepoint.com", "weebly.com", "wixsite.com", "webflow.io",
-                "notion.site", "canva.site", "ipfs.io", "dweb.link", "w3s.link",
-                "ngrok-free.app", "trycloudflare.com", "loca.lt", "serveo.net", "telegra.ph",
-                "r2.dev"]
+    required = [
+        "pages.dev",
+        "workers.dev",
+        "web.app",
+        "firebaseapp.com",
+        "appspot.com",
+        "netlify.app",
+        "vercel.app",
+        "github.io",
+        "gitlab.io",
+        "glitch.me",
+        "repl.co",
+        "herokuapp.com",
+        "onrender.com",
+        "fly.dev",
+        "azurewebsites.net",
+        "blob.core.windows.net",
+        "storage.googleapis.com",
+        "firebasestorage.googleapis.com",
+        "sites.google.com",
+        "forms.gle",
+        "1drv.ms",
+        "forms.office.com",
+        "sharepoint.com",
+        "weebly.com",
+        "wixsite.com",
+        "webflow.io",
+        "notion.site",
+        "canva.site",
+        "ipfs.io",
+        "dweb.link",
+        "w3s.link",
+        "ngrok-free.app",
+        "trycloudflare.com",
+        "loca.lt",
+        "serveo.net",
+        "telegra.ph",
+        "r2.dev",
+    ]
     for e in data:
         assert e["kind"] in L.LOTS_KINDS
         key = (e["match"], e.get("path", ""))
@@ -139,8 +183,20 @@ def test_dyndns():
 
 
 def test_freemail():
-    for d in ("gmail.com", "QQ.com", "163.com", "naver.com", "mail.ru", "yandex.com",
-              "gmx.de", "web.de", "proton.me", "rediffmail.com", "outlook.com", "user@gmail.com"):
+    for d in (
+        "gmail.com",
+        "QQ.com",
+        "163.com",
+        "naver.com",
+        "mail.ru",
+        "yandex.com",
+        "gmx.de",
+        "web.de",
+        "proton.me",
+        "rediffmail.com",
+        "outlook.com",
+        "user@gmail.com",
+    ):
         assert L.is_freemail(d), d
     assert not L.is_freemail("gmail.com.evil.test")
     assert not L.is_freemail("mygmail.com")
@@ -198,10 +254,15 @@ def test_open_redirect_bing_base64():
 def test_open_redirect_youtube_facebook_safelinks():
     yt = L.open_redirect_match("youtube.com", "/redirect", "q=https%3A%2F%2Fevil.test")
     assert yt is not None and yt.destination == "https://evil.test"
-    assert L.open_redirect_match("l.facebook.com", "/l.php", "u=http%3A%2F%2Fevil.test%2F&h=1") \
-        .destination == "http://evil.test/"
-    r = L.open_redirect_match("eur01.safelinks.protection.outlook.com", "/",
-                              "url=https%3A%2F%2Fevil.test%2Fa&data=x")
+    assert (
+        L.open_redirect_match(
+            "l.facebook.com", "/l.php", "u=http%3A%2F%2Fevil.test%2F&h=1"
+        ).destination
+        == "http://evil.test/"
+    )
+    r = L.open_redirect_match(
+        "eur01.safelinks.protection.outlook.com", "/", "url=https%3A%2F%2Fevil.test%2Fa&data=x"
+    )
     assert r is not None and r.destination == "https://evil.test/a"
 
 
@@ -211,8 +272,9 @@ def test_open_redirect_t_co_is_opaque():
 
 
 def test_open_redirect_proofpoint_v2_v3():
-    r = L.open_redirect_match("urldefense.proofpoint.com", "/v2/url",
-                              "u=https-3A__evil.test_a-3Fb-3D1&d=x&c=y")
+    r = L.open_redirect_match(
+        "urldefense.proofpoint.com", "/v2/url", "u=https-3A__evil.test_a-3Fb-3D1&d=x&c=y"
+    )
     assert r is not None and r.destination == "https://evil.test/a?b=1"
     r3 = L.open_redirect_match("urldefense.com", "/v3/__https://evil.test/a__;!!abc$")
     assert r3 is not None and r3.destination == "https://evil.test/a"
@@ -224,8 +286,12 @@ def test_open_redirect_pathtail_awstrack():
 
 
 def test_open_redirect_rejects_non_http_destinations():
-    for q in ("q=javascript%3Aalert(1)", "q=data%3Atext%2Fhtml%2Cx", "q=%2F%2Fevil.test",
-              "q=https%3A%2F%2Fevil.test%2F%0Ax"):
+    for q in (
+        "q=javascript%3Aalert(1)",
+        "q=data%3Atext%2Fhtml%2Cx",
+        "q=%2F%2Fevil.test",
+        "q=https%3A%2F%2Fevil.test%2F%0Ax",
+    ):
         r = L.open_redirect_match("google.com", "/url", q)
         assert r is not None and r.destination is None, q
 
@@ -244,11 +310,23 @@ def test_open_redirect_data_integrity():
     assert len(data) >= 25
     for e in data:
         assert e["name"] and e["match"] == e["match"].lower()
-        assert e.get("encoding", "url") in {"url", "base64url", "pathtail", "proofpoint_v2",
-                                            "proofpoint_v3", "opaque"}
-    probes = [("google.com", "/url"), ("bing.com", "/ck/a"), ("youtube.com", "/redirect"),
-              ("t.co", "/x"), ("l.facebook.com", "/l.php"),
-              ("x.safelinks.protection.outlook.com", "/"), ("urldefense.com", "/v3/__x__;")]
+        assert e.get("encoding", "url") in {
+            "url",
+            "base64url",
+            "pathtail",
+            "proofpoint_v2",
+            "proofpoint_v3",
+            "opaque",
+        }
+    probes = [
+        ("google.com", "/url"),
+        ("bing.com", "/ck/a"),
+        ("youtube.com", "/redirect"),
+        ("t.co", "/x"),
+        ("l.facebook.com", "/l.php"),
+        ("x.safelinks.protection.outlook.com", "/"),
+        ("urldefense.com", "/v3/__x__;"),
+    ]
     for host, path in probes:
         assert L.open_redirect_match(host, path) is not None, host
 
@@ -269,7 +347,7 @@ def test_lures_english_tokens_in_url():
 def test_lures_spans_index_original_text():
     text = "https://evil.test/Verify-Account"
     hits = L.find_lures(text)
-    assert [text[h.start:h.end] for h in hits] == ["Verify", "Account"]
+    assert [text[h.start : h.end] for h in hits] == ["Verify", "Account"]
 
 
 def test_lures_token_aware_latin():
@@ -290,52 +368,103 @@ def test_lures_compound_discounted():
     assert comp[0].start == 6 and comp[0].end == 11
 
 
-@pytest.mark.parametrize("text,term,lang", [
-    ("https://example.test/iniciar-sesion/verificar-cuenta", "cuenta", "es"),
-    ("mensagem: sua conta foi suspensa, atualize", "suspensa", "pt"),
-    ("votre colis est en attente de livraison", "livraison", "fr"),
-    ("Ihr Konto wurde gesperrt", "gesperrt", "de"),
-    ("il tuo pacco è in giacenza", "pacco", "it"),
-    ("Twoje konto zostało zablokowane", "konto", "pl"),
-    ("ваш аккаунт заблокирован, подтвердите", "заблокирован", "ru"),
-    ("ваш акаунт заблоковано", "заблоковано", "uk"),
-    ("hesabınız doğrulanmalı", "hesab", "tr"),
-    ("تم تعليق حسابك", "تم تعليق", "ar"),
-    ("حساب شما مسدود شد", "مسدود", "fa"),
-    ("आपका खाता निलंबित है", "निलंबित", "hi"),
-    ("aapka account band ho jayega turant kyc karein", "turant", "hi-Latn"),
-    ("আপনার অ্যাকাউন্ট স্থগিত", "স্থগিত", "bn"),
-    ("உங்கள் கணக்கு இடைநிறுத்தம்", "இடைநிறுத்தம்", "ta"),
-    ("您的账户已冻结请立即验证", "冻结", "zh-Hans"),
-    ("您的帳戶已凍結", "凍結", "zh-Hant"),
-    ("お客様のアカウントは利用制限されました", "アカウント", "ja"),
-    ("계정이 정지되었습니다", "정지", "ko"),
-    ("tài khoản của bạn bị khóa", "bị khóa", "vi"),
-    ("akun anda diblokir segera verifikasi", "diblokir", "id"),
-    ("บัญชีของคุณถูกระงับ", "ถูกระงับ", "th"),
-    ("akaunti yako imezuiwa", "imezuiwa", "sw"),
-    ("na-block ang iyong account, mag-login", "na-block", "tl"),
-])
+@pytest.mark.parametrize(
+    "text,term,lang",
+    [
+        ("https://example.test/iniciar-sesion/verificar-cuenta", "cuenta", "es"),
+        ("mensagem: sua conta foi suspensa, atualize", "suspensa", "pt"),
+        ("votre colis est en attente de livraison", "livraison", "fr"),
+        ("Ihr Konto wurde gesperrt", "gesperrt", "de"),
+        ("il tuo pacco è in giacenza", "pacco", "it"),
+        ("Twoje konto zostało zablokowane", "konto", "pl"),
+        ("ваш аккаунт заблокирован, подтвердите", "заблокирован", "ru"),
+        ("ваш акаунт заблоковано", "заблоковано", "uk"),
+        ("hesabınız doğrulanmalı", "hesab", "tr"),
+        ("تم تعليق حسابك", "تم تعليق", "ar"),
+        ("حساب شما مسدود شد", "مسدود", "fa"),
+        ("आपका खाता निलंबित है", "निलंबित", "hi"),
+        ("aapka account band ho jayega turant kyc karein", "turant", "hi-Latn"),
+        ("আপনার অ্যাকাউন্ট স্থগিত", "স্থগিত", "bn"),
+        ("உங்கள் கணக்கு இடைநிறுத்தம்", "இடைநிறுத்தம்", "ta"),
+        ("您的账户已冻结请立即验证", "冻结", "zh-Hans"),
+        ("您的帳戶已凍結", "凍結", "zh-Hant"),
+        ("お客様のアカウントは利用制限されました", "アカウント", "ja"),
+        ("계정이 정지되었습니다", "정지", "ko"),
+        ("tài khoản của bạn bị khóa", "bị khóa", "vi"),
+        ("akun anda diblokir segera verifikasi", "diblokir", "id"),
+        ("บัญชีของคุณถูกระงับ", "ถูกระงับ", "th"),
+        ("akaunti yako imezuiwa", "imezuiwa", "sw"),
+        ("na-block ang iyong account, mag-login", "na-block", "tl"),
+    ],
+)
 def test_lures_multilingual(text, term, lang):
     hits = [h for h in L.find_lures(text) if h.term == term]
     assert hits, f"{term!r} not found in {text!r}: {terms(text)}"
     data = load_yaml("lures.yaml")["languages"][lang]
     listed = {(i["t"] if isinstance(i, dict) else i) for items in data.values() for i in items}
-    assert term in listed   # the term really belongs to the language under test
+    assert term in listed  # the term really belongs to the language under test
 
 
 def test_lures_cover_required_languages():
-    required = {"es", "pt", "fr", "de", "it", "nl", "pl", "ru", "uk", "tr", "ar", "fa", "hi",
-                "hi-Latn", "bn", "ta", "zh-Hans", "zh-Hant", "ja", "ko", "vi", "id", "th", "sw",
-                "tl", "en", "und"}
+    required = {
+        "es",
+        "pt",
+        "fr",
+        "de",
+        "it",
+        "nl",
+        "pl",
+        "ru",
+        "uk",
+        "tr",
+        "ar",
+        "fa",
+        "hi",
+        "hi-Latn",
+        "bn",
+        "ta",
+        "zh-Hans",
+        "zh-Hant",
+        "ja",
+        "ko",
+        "vi",
+        "id",
+        "th",
+        "sw",
+        "tl",
+        "en",
+        "und",
+    }
     assert required <= L.lure_languages()
     assert len(L.lure_languages()) >= 26
 
 
 def test_lures_required_english_concepts_present():
-    must = ["login", "signin", "verify", "account", "update", "secure", "unlock", "suspended",
-            "invoice", "payment", "password", "auth", "sso", "mfa", "2fa", "recovery", "wallet",
-            "billing", "refund", "delivery", "parcel", "tax", "kyc"]
+    must = [
+        "login",
+        "signin",
+        "verify",
+        "account",
+        "update",
+        "secure",
+        "unlock",
+        "suspended",
+        "invoice",
+        "payment",
+        "password",
+        "auth",
+        "sso",
+        "mfa",
+        "2fa",
+        "recovery",
+        "wallet",
+        "billing",
+        "refund",
+        "delivery",
+        "parcel",
+        "tax",
+        "kyc",
+    ]
     for w in must:
         assert any(h.term == w for h in L.find_lures(w)), w
 
@@ -352,9 +481,9 @@ def test_lures_no_double_count_overlap():
 
 
 def test_lures_length_changing_lowercase_keeps_offsets():
-    text = "İİİ login"   # 'İ'.lower() is two code points
+    text = "İİİ login"  # 'İ'.lower() is two code points
     hits = [h for h in L.find_lures(text) if h.term == "login"]
-    assert hits and text[hits[0].start:hits[0].end] == "login"
+    assert hits and text[hits[0].start : hits[0].end] == "login"
 
 
 def test_lures_max_chars_and_max_hits():
@@ -379,8 +508,32 @@ def test_lures_data_integrity():
                 total += 1
     assert total > 800
     # Each of the 25 spec'd languages has credential and account coverage.
-    for lang in ("es", "pt", "fr", "de", "it", "nl", "pl", "ru", "uk", "tr", "ar", "fa", "hi",
-                 "bn", "ta", "zh-Hans", "zh-Hant", "ja", "ko", "vi", "id", "th", "sw", "tl"):
+    for lang in (
+        "es",
+        "pt",
+        "fr",
+        "de",
+        "it",
+        "nl",
+        "pl",
+        "ru",
+        "uk",
+        "tr",
+        "ar",
+        "fa",
+        "hi",
+        "bn",
+        "ta",
+        "zh-Hans",
+        "zh-Hant",
+        "ja",
+        "ko",
+        "vi",
+        "id",
+        "th",
+        "sw",
+        "tl",
+    ):
         assert langs[lang].get("credential") and langs[lang].get("account"), lang
 
 
@@ -392,11 +545,13 @@ def _cpu(fn, *args, **kw) -> float:
 
 def _machine_slowdown() -> float:
     """CPU-time slowdown vs. an idle ~3 GHz core (shared CI boxes can be heavily loaded)."""
+
     def spin() -> int:
         s = 0
         for i in range(500_000):
             s += i
         return s
+
     return max(1.0, min(_cpu(spin) for _ in range(3)) / 0.025)
 
 
@@ -405,13 +560,19 @@ def test_find_lures_performance_100kb():
     unit = (
         "Quarterly report for the engineering team. Shipping milestones moved, the roadmap "
         "review is on Thursday. See docs at example.test/wiki/page-name?id=4 for details. "
-        "Please login to verify your account. ")
+        "Please login to verify your account. "
+    )
     typical = (unit * (100_000 // len(unit) + 1))[:100_000]
-    dense = (("Dear customer please login to verify your account password at "
-              "secure-update.example.test/billing?x=tax_refund and the parcel delivery. ")
-             * 1000)[:100_000]
-    cjk = ("您的账户已冻结请立即验证登录 お客様のアカウント 계정이 정지 ввод пароль "
-           * 4000)[:100_000]
+    dense = (
+        (
+            "Dear customer please login to verify your account password at "
+            "secure-update.example.test/billing?x=tax_refund and the parcel delivery. "
+        )
+        * 1000
+    )[:100_000]
+    cjk = ("您的账户已冻结请立即验证登录 お客様のアカウント 계정이 정지 ввод пароль " * 4000)[
+        :100_000
+    ]
     L.find_lures("warm up login")  # build the index outside the timed region
 
     # Best-of-three: a single sample is at the mercy of a GC pause or scheduler
@@ -420,8 +581,8 @@ def test_find_lures_performance_100kb():
     def best(*args, **kw) -> float:
         return min(_cpu(L.find_lures, *args, **kw) for _ in range(3))
 
-    assert best(typical) < 0.05 * slow                       # spec: <50ms/100KB
-    for text in (dense, cjk):                                # pathological density
+    assert best(typical) < 0.05 * slow  # spec: <50ms/100KB
+    for text in (dense, cjk):  # pathological density
         assert best(text, max_hits=10_000) < 0.5 * slow
     for text in ("a" * 100_000, "login" * 20_000, "-" * 100_000, "\u4f60" * 100_000):
         assert best(text) < 0.1 * slow
@@ -432,7 +593,7 @@ def test_find_lures_scales_linearly():
     unit = "verify-your-account login password refund parcel example.test/path " * 100
     small = min(_cpu(L.find_lures, unit * 5, max_hits=100_000) for _ in range(3))
     big = min(_cpu(L.find_lures, unit * 20, max_hits=100_000) for _ in range(3))
-    assert big < small * 12   # 4x input; allow noise, forbid quadratic (16x)
+    assert big < small * 12  # 4x input; allow noise, forbid quadratic (16x)
 
 
 @settings(max_examples=200, deadline=None)
@@ -461,7 +622,7 @@ def test_top_rank():
     assert L.top_rank("google.com") == 1
     assert L.top_rank("GOOGLE.COM.") == 1
     assert L.top_rank("definitely-not-a-top-site.test") is None
-    assert L.top_rank("www.google.com") is None   # caller passes the registrable domain
+    assert L.top_rank("www.google.com") is None  # caller passes the registrable domain
     assert L.top_rank("") is None and L.top_rank(None) is None
     assert L.is_top_site("google.com", 1)
     assert not L.is_top_site("google.com", 0)
@@ -492,6 +653,14 @@ def test_freemail_not_disposable_overlap():
 
 def test_readme_documents_sources():
     readme = asset_path("README.md").read_text(encoding="utf-8")
-    for needle in ("Tranco", "disposable-email-domains", "Spamhaus", "Interisle", "tlds.yaml",
-                   "lots.yaml", "lures.yaml", "open_redirects.yaml"):
+    for needle in (
+        "Tranco",
+        "disposable-email-domains",
+        "Spamhaus",
+        "Interisle",
+        "tlds.yaml",
+        "lots.yaml",
+        "lures.yaml",
+        "open_redirects.yaml",
+    ):
         assert needle in readme, needle

