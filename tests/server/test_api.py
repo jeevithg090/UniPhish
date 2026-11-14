@@ -285,6 +285,18 @@ def test_auth_required_when_keys_set(tmp_path):
         assert ok2.status_code == 200
 
 
+def test_auth_covers_taxii_and_legacy_routes(tmp_path):
+    """TAXII (serves the IOC store) and the legacy shims must not bypass API-key auth."""
+    app = create_app(make_settings(tmp_path, api_keys=["s3cret-key"]))
+    with TestClient(app) as c:
+        assert c.get("/taxii2/").status_code == 401
+        assert c.post("/scan", json={"url": "http://a.test"}).status_code == 401
+        assert c.post("/stix", json={"url": "http://a.test"}).status_code == 401
+        hdr = {"x-api-key": "s3cret-key"}
+        assert c.get("/taxii2/", headers=hdr).status_code == 200
+        assert c.post("/scan", json={"url": "http://a.test"}, headers=hdr).status_code == 200
+
+
 # --------------------------------------------------------------------------- #
 # rate limiting
 # --------------------------------------------------------------------------- #

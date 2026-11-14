@@ -96,7 +96,7 @@ Treat UniPhish as one layer. Do not make it the only control between a user and 
 | 2 | **Resource exhaustion**: huge inputs, decompression bombs, deep recursion, slow responses | size caps at artifact construction, streaming body cap plus a decompressed-size cap, bounded archive extraction, child depth/fan-out/cycle limits, per-analyzer and global timeouts, bounded SSE queues, rate limiting | analyzers run in-process threads: a timed-out CPU-bound analyzer is *abandoned*, not killed, and may keep a worker thread busy. No process-level sandboxing or memory limit. |
 | 3 | **ReDoS** in rules fed by attacker text | regexes precompiled; kit-signature regexes are linted at load (no unbounded repeats, back-references, nested variable repeats or alternation in a repeat); inputs truncated before matching; Hypothesis tests on parsers | contributed rules must pass the linter; third-party libraries' regexes are out of our control |
 | 4 | **Parser exploits** (XML bombs, HTML nesting, malformed MIME, hostile archives, Office, PDF, images) | `defusedxml` for XML/SVG, bounded HTML parsing, bounded MIME depth, archive extraction caps, files are never executed or opened by path from input contents, QR decoding via OpenCV on size-bounded images | native libraries (OpenCV, lxml, Pillow) have their own CVE history; keep them updated, and consider process isolation for untrusted bulk scanning |
-| 5 | **Unauthenticated API use** | API-key auth (constant-time compare), rate limit, size cap, option clamps, strict security headers, no CORS by default | **see Known gaps**: auth is off by default; TAXII and legacy routes bypass it |
+| 5 | **Unauthenticated API use** | API-key auth (constant-time compare), rate limit, size cap, option clamps, strict security headers, no CORS by default | **see Known gaps**: auth is off by default; limits are per process |
 | 6 | **Forcing the server online** (SSRF amplification or egress abuse) | `online` is honoured only if the operator enabled it; `fetch_pages` and `detonate` forced off when offline | an operator who enables online accepts the egress risk |
 | 7 | **Malicious page runs in the sandbox browser** | headless Chromium, JavaScript only inside the page, sub-resources blocked by default, downloads off, service workers blocked, file:/chrome: and private IP literals aborted, hard timeouts, only observations returned | the browser is a high-value attack surface. Flags include `--disable-features=site-per-process` and the context ignores HTTPS errors (to see invalid-cert phishing). **Run detonation only in a disposable, egress-restricted container or VM, never on a workstation.** `--no-sandbox` exists as a CI escape hatch; do not use it on hosts you care about. |
 | 8 | **Prompt injection of the LLM analyst** | prompts present artifacts as defanged, size-bounded quoted data inside delimiters with an explicit guard; only a compact digest of the verdict (top signals, indicators, brand) is sent, never raw content; output limited to prose and a fixed-schema tool call; **the analyst never changes the score** | an LLM can still be influenced by quoted text; its narrative is advisory. Defanged strings and indicators (domains, hashes) do leave the machine when `ANTHROPIC_API_KEY` is set; leave it unset to stay fully local (a template is used). |
@@ -121,44 +121,42 @@ deployment.
 These are real, current and unfixed at the time of writing. They are listed so that an
 operator can compensate, and so that nobody discovers them the hard way.
 
-1. **Authentication does not cover every route.** With `UNIPHISH_API_KEYS` set, `/v1/scan*`,
-   `/v1/verdicts*`, `/v1/stats`, `/v1/indicators`, `/v1/export/*` and `/v1/stream` require a
-   key (verified). `/taxii2/*` (which serves every stored malicious indicator), the legacy
-   `POST /scan` and `POST /stix`, `/v1/health` and `/v1/meta/*` do **not**. The legacy scan
-   routes run the offline engine for anyone who can reach the port and the TAXII routes
-   expose the IOC store. **Mitigation**: bind to loopback, or put a reverse proxy with its own
-   auth in front and block those paths; do not expose the server directly.
-2. **Auth is off by default.** With no keys configured the whole API is open (it says so with
+1. **Auth is off by default.** With no keys configured the whole API is open (it says so with
    `X-UniPhish-Auth: disabled`, and `uniphish serve` warns when binding a non-loopback address
-   without keys).
-3. **Rate limiting is naive.** In-memory, per process; keyed by whatever key string a client
-   presents (including invalid ones, so a client can mint new buckets) or by the socket peer
-   address (the proxy's, behind a reverse proxy). The size cap checks `Content-Length` only.
-   Enforce limits and body caps at the proxy.
+   without keys). With `UNIPHISH_API_KEYS` set, every data route requires a key, including
+   `/taxii2/*` and the legacy `POST /scan` / `POST /stix` (covered by tests); only
+   `/v1/health`, `/v1/meta/*`, the OpenAPI docs and the static console stay open.
+2. **Rate limiting is per process and in memory.** Buckets are keyed by a *valid* API key or
+   else the socket peer address (invalid keys fall back to the address, and the bucket table
+   is bounded), but behind a reverse proxy every client shares the proxy's address, and
+   several workers each keep their own budget. Enforce hard limits at the proxy.
+3. **Body size cap is enforced in-process.** Bodies over 40 MB are refused with 413 whether
+   or not they declare a `Content-Length` (the streamed byte count is checked too), but the
+   bytes are still received up to the cap; set a smaller limit at the proxy if you can.
 4. **The CNN raises false alarms** (25 % FPR on the synthetic URL set; alone it lands at about
    88/100) and the fused score is poorly calibrated (ECE 0.145). Do not auto-block on the
    Python engine's ML signal alone without corroboration.
 5. **Cold-start timeout.** The first scan in a process can time out the `url` analyzer while
    the brand data loads, silently dropping its evidence for that call. Warm the engine at
    start-up. A timed-out analyzer is visible only in `verdict.analyzers`.
-6. **Detonation DNS residual risk** (threat 7 and 1) and the abandoned-thread behaviour on
+6. **Detonation DNS residual risk** (threats 1 and 7) and the abandoned-thread behaviour on
    analyzer timeouts (threat 2).
 7. **No adaptive-adversary evaluation, no real-traffic false-positive rate, and the online
    path has no benchmark.**
 8. **Event stream is per process**, and the SSE endpoint cannot be authenticated from a plain
    browser `EventSource`.
-9. **`uniphish hunt` CLI wrapper is broken**; the CT hunter works as a Python API. It consumes
-   a public WebSocket firehose, so apply the same input-hostility assumptions to its data.
-10. **Legacy TensorFlow modules** at the top level of `uniphish/` are research code, not
-    hardened; they are not imported by the runtime engine.
+9. **The CT hunter consumes a public WebSocket firehose** (`uniphish hunt --source
+   certstream`); apply the same input-hostility assumptions to its data.
+10. **The v1 TensorFlow research code** lives under `legacy/`; it is not hardened and is not
+    imported by the runtime engine.
 
 # Deployment guidance
 
 * **Personal or desktop use**: install the extension (fully on-device) and use the CLI offline.
   Nothing leaves your machine.
 * **Team API**: run `uniphish serve` on loopback behind a TLS-terminating reverse proxy that
-  adds authentication, rate limits, body size caps and blocks `/taxii2/`, `/scan` and `/stix` if
-  you do not need them; set `UNIPHISH_API_KEYS`; leave `UNIPHISH_ONLINE` off unless you need
+  adds rate limits and body size caps, and blocks `/taxii2/`, `/scan` and `/stix` if you do
+  not need them; set `UNIPHISH_API_KEYS`; leave `UNIPHISH_ONLINE` off unless you need
   enrichment; run as an unprivileged user in a container with a read-only filesystem except
   `UNIPHISH_DATA_DIR`; restrict egress to DNS and HTTPS.
 * **Online enrichment and fetch**: egress through a network where private ranges are
