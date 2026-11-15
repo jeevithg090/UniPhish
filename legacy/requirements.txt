@@ -1,7 +1,7 @@
 # v1 research stack (legacy/ only). The v2 package installs from pyproject.toml:
 #   pip install -e ".[dev]"   (add ",train" for TensorFlow training)
 # Core (pinned ranges for reproducibility)
-numpy>=1.24,<2.0
+numpy>=1.24,<3.0
 tensorflow>=2.16,<2.20      # arm64 macOS supported natively since 2.16
 pandas>=2.0
 scikit-learn>=1.3
