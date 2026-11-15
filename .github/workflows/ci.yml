@@ -104,7 +104,7 @@ jobs:
           assert v.level.value == "malicious" and v.brand and v.brand.brand == "paypal"
           PY
           /tmp/clean/bin/uniphish version
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: python-dist
           path: dist/
@@ -136,7 +136,7 @@ jobs:
           npm test
       - name: Upload the built dashboard
         if: steps.detect.outputs.present == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dashboard
           path: uniphish/server/static/
